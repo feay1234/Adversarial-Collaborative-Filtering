@@ -16,7 +16,7 @@ def parse_args():
                         help='Model Name: lstm', default="amf2")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="TREC")
+                        help='Dataset name', default="ml")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -60,6 +60,8 @@ if __name__ == '__main__':
     uNum = df.uid.max() + 1
     iNum = df.iid.max() + 1
 
+    print("#Users: %d, #Items: %d" % (uNum, iNum))
+
     # Preparing dataset
     train, test = train_test_split(df, test_size=0.3, random_state=1111)
 
@@ -83,7 +85,7 @@ if __name__ == '__main__':
 
     if "a" not in modelName:
 
-        history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=10, batch_size=256)
+        history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=epochs, batch_size=batch_size, shuffle=True)
 
     else:
 
@@ -154,6 +156,7 @@ if __name__ == '__main__':
                 _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
 
                 _popular_rare_y = np.concatenate([np.zeros(int(batch_size / 2)), np.ones(int(batch_size / 2))])
+                # _popular_rare_y = np.concatenate([np.ones(int(batch_size / 2)), np.zeros(int(batch_size / 2))])
 
 
                 # Train adversarial model
