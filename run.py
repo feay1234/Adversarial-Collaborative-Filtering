@@ -5,6 +5,7 @@ import math
 from sklearn.model_selection import train_test_split
 from Models.MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 import argparse
+from datetime import datetime
 
 
 def parse_args():
@@ -51,7 +52,9 @@ if __name__ == '__main__':
     epochs = args.epochs
 
     columns = ["uid", "iid", "rating", "timestamp"]
-    df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-latest-small/ratings.csv", names=columns,
+    # df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-latest-small/ratings.csv", names=columns,
+    #                  skiprows=1)
+    df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-20m/ratings.csv", names=columns,
                      skiprows=1)
 
     df.uid = df.uid.astype('category').cat.codes.values
@@ -76,16 +79,34 @@ if __name__ == '__main__':
 
     if modelName == "mf":
         ranker = MatrixFactorization(uNum, iNum, dim)
+        runName = "%s_%s_d%d_%s" % (dataset, modelName, dim,
+                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     elif modelName == "amf":
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent, 1)
     elif modelName == "amf2":
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent, 2)
+        runName = "%s_%s_d%d_w%f_pp%f_%s" % (dataset, modelName, dim, weight, pop_percent,
+                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # Trian model
 
     if "a" not in modelName:
 
-        history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=epochs, batch_size=batch_size, shuffle=True)
+        # history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=epochs, batch_size=batch_size, shuffle=True)
+
+        for epoch in range(epochs):
+            print(epoch)
+            for i in range(math.ceil(y_train.shape[0] / batch_size)):
+                idx = np.random.randint(0, y_train.shape[0], batch_size)
+                _x_train = [x_train[0][idx], x_train[1][idx]]
+                _y_train = y_train[idx]
+                ranker.model.train_on_batch(_x_train, _y_train)
+            res = ranker.model.evaluate(x_test, y_test)
+            output = "loss: %f, mse: %f" % (res[0], res[1])
+            print(res)
+            with open(path + "out/%s.res" % runName, "a") as myfile:
+                myfile.write(output + "\n")
+            print(output)
 
     else:
 
@@ -99,7 +120,7 @@ if __name__ == '__main__':
                                                                                                        batch_size)
 
         for epoch in range(epochs):
-
+            print(epoch)
             for i in range(math.ceil(y_train.shape[0] / batch_size)):
                 # sample mini-batch
                 idx = np.random.randint(0, y_train.shape[0], batch_size)
@@ -164,6 +185,9 @@ if __name__ == '__main__':
                                                         [_y_train, _popular_rare_y, _popular_rare_y])
 
             res = ranker.model.evaluate(x_test, y_test)
-            print(res)
+            output = "loss: %f, mse: %f" % (res[0], res[1])
+            with open(path + "out/%s.res" % runName, "a") as myfile:
+                myfile.write(output + "\n")
+            print(output)
 
             # history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=10, batch_size=256)
