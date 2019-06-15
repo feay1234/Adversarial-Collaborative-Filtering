@@ -52,10 +52,13 @@ if __name__ == '__main__':
     epochs = args.epochs
 
     columns = ["uid", "iid", "rating", "timestamp"]
-    # df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-latest-small/ratings.csv", names=columns,
-    #                  skiprows=1)
-    df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-20m/ratings.csv", names=columns,
-                     skiprows=1)
+
+    if dataset == "ml-small":
+        df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-latest-small/ratings.csv", names=columns,
+                         skiprows=1)
+    elif dataset == "ml":
+        df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-20m/ratings.csv", names=columns,
+                         skiprows=1)
 
     df.uid = df.uid.astype('category').cat.codes.values
     df.iid = df.iid.astype('category').cat.codes.values
@@ -80,13 +83,13 @@ if __name__ == '__main__':
     if modelName == "mf":
         ranker = MatrixFactorization(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (dataset, modelName, dim,
-                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     elif modelName == "amf":
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent, 1)
     elif modelName == "amf2":
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent, 2)
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (dataset, modelName, dim, weight, pop_percent,
-                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # Trian model
 
