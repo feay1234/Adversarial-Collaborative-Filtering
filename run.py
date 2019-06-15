@@ -1,11 +1,13 @@
-import pandas as pd
-import numpy as np
-from time import time
-import math
-from sklearn.model_selection import train_test_split
-from Models.MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 import argparse
+import math
 from datetime import datetime
+from time import time
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 
 
 def parse_args():
