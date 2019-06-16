@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="amf2")
+                        help='Model Name: lstm', default="mf")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml")
@@ -101,13 +101,15 @@ if __name__ == '__main__':
 
         for epoch in range(epochs):
             print(epoch)
+            t1 = time()
             for i in range(math.ceil(y_train.shape[0] / batch_size)):
                 idx = np.random.randint(0, y_train.shape[0], batch_size)
                 _x_train = [x_train[0][idx], x_train[1][idx]]
                 _y_train = y_train[idx]
                 ranker.model.train_on_batch(_x_train, _y_train)
+            t2 = time()
             res = ranker.model.evaluate(x_test, y_test)
-            output = "loss: %f, mse: %f" % (res[0], res[1])
+            output = "loss: %f, mse: %f, [%f.h]" % (res[0], res[1], (t2 - t1) / 3600)
             print(res)
             with open(path + "out/%s.res" % runName, "a") as myfile:
                 myfile.write(output + "\n")
@@ -126,6 +128,7 @@ if __name__ == '__main__':
 
         for epoch in range(epochs):
             print(epoch)
+            t1 = time()
             for i in range(math.ceil(y_train.shape[0] / batch_size)):
                 # sample mini-batch
                 idx = np.random.randint(0, y_train.shape[0], batch_size)
@@ -189,10 +192,14 @@ if __name__ == '__main__':
                 g_loss = ranker.advModel.train_on_batch(_x_train + [_popular_rare_user_x, _popular_rare_item_x],
                                                         [_y_train, _popular_rare_y, _popular_rare_y])
 
+            t2 = time()
+
             res = ranker.model.evaluate(x_test, y_test)
-            output = "loss: %f, mse: %f" % (res[0], res[1])
+            output = "loss: %f, mse: %f, [%f.h]" % (res[0], res[1], (t2 - t1) / 3600)
             with open(path + "out/%s.res" % runName, "a") as myfile:
                 myfile.write(output + "\n")
             print(output)
+
+            # TODO save results user item score for further analysis and save model when codes are stable
 
             # history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=10, batch_size=256)
