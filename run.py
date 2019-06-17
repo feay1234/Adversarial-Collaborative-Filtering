@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
+from NeuMF import NeuMF, AdversarialNeuMF
 
 
 def parse_args():
@@ -16,10 +17,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="mf")
+                        help='Model Name: lstm', default="aneumf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="gowalla")
+                        help='Dataset name', default="ml-small")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -27,7 +28,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=50,
                         help='Epoch number')
 
-    parser.add_argument('--w', type=float, default=0.1,
+    parser.add_argument('--w', type=float, default=0.001,
                         help='Weight:')
 
     parser.add_argument('--pp', type=float, default=0.2,
@@ -64,9 +65,11 @@ if __name__ == '__main__':
     elif dataset == "dating":
         columns = ["uid", "iid", "rating"]
         df = pd.read_csv(path+"data/libimseti/ratings.dat", names=columns, sep=",")
-    elif dataset == "gowalla":
-        columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path+"data/gowalla/gowalla.txt.gz", names=columns)
+
+    # Checkin data is not appropriate
+    # elif dataset == "gowalla":
+    #     columns = ["uid", "timestamp", "lat", "lng", "iid"]
+    #     df = pd.read_csv(path+"data/gowalla/gowalla.txt.gz", names=columns)
 
     df.uid = df.uid.astype('category').cat.codes.values
     df.iid = df.iid.astype('category').cat.codes.values
@@ -99,6 +102,15 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (dataset, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
+    elif modelName == "neumf":
+        ranker = NeuMF(uNum, iNum, dim)
+        runName = "%s_%s_d%d_%s" % (dataset, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+    elif modelName == "aneumf":
+        ranker = AdversarialNeuMF(uNum, iNum, dim, weight, pop_percent)
+        runName = "%s_%s_d%d_w%f_pp%f_%s" % (dataset, modelName, dim, weight, pop_percent,
+                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
     # Trian model
 
     if "a" not in modelName:
@@ -123,80 +135,14 @@ if __name__ == '__main__':
 
     else:
 
-        #
-        # if "2" in modelName:
-        popular_user_x, popular_user_y, rare_user_x, rare_user_y = ranker.get_discriminator_train_data(x_train[0],
-                                                                                                       x_test[0],
-                                                                                                       batch_size)
-        popular_item_x, popular_item_y, rare_item_x, rare_item_y = ranker.get_discriminator_train_data(x_train[1],
-                                                                                                       x_test[1],
-                                                                                                       batch_size)
+        ranker.init(x_train, x_test, batch_size)
 
         for epoch in range(epochs):
             print(epoch)
             t1 = time()
             for i in range(math.ceil(y_train.shape[0] / batch_size)):
                 # sample mini-batch
-                idx = np.random.randint(0, y_train.shape[0], batch_size)
-                _x_train = [x_train[0][idx], x_train[1][idx]]
-                _y_train = y_train[idx]
-
-                # sample mini-batch for User Discriminator
-
-                idx = np.random.randint(0, len(popular_user_x), batch_size)
-                _popular_user_x = popular_user_x[idx]
-
-                idx = np.random.randint(0, len(rare_user_x), batch_size)
-                _rare_user_x = rare_user_x[idx]
-
-                _popular_user_x = ranker.uEncoder.predict(_popular_user_x)
-                _rare_user_x = ranker.uEncoder.predict(_rare_user_x)
-
-                d_loss_popular_user = ranker.discriminator_u.train_on_batch(_popular_user_x, popular_user_y)
-                d_loss_rare_user = ranker.discriminator_u.train_on_batch(_rare_user_x, rare_user_y)
-
-                # sample mini-batch for Item Discriminator
-
-                idx = np.random.randint(0, len(popular_item_x), batch_size)
-                _popular_item_x = popular_item_x[idx]
-
-                idx = np.random.randint(0, len(rare_item_x), batch_size)
-                _rare_item_x = rare_item_x[idx]
-
-                _popular_item_x = ranker.iEncoder.predict(_popular_item_x)
-                _rare_item_x = ranker.iEncoder.predict(_rare_item_x)
-
-                d_loss_popular_item = ranker.discriminator_i.train_on_batch(_popular_item_x, popular_item_y)
-                d_loss_rare_item = ranker.discriminator_i.train_on_batch(_rare_item_x, rare_item_y)
-
-                # Discriminator's loss
-                d_loss = 0.5 * np.add(d_loss_popular_user, d_loss_rare_user) + 0.5 * np.add(d_loss_popular_item,
-                                                                                            d_loss_rare_item)
-
-                # Sample mini-batch for adversarial model
-
-                idx = np.random.randint(0, len(popular_user_x), int(batch_size / 2))
-                _popular_user_x = popular_user_x[idx]
-
-                idx = np.random.randint(0, len(rare_user_x), int(batch_size / 2))
-                _rare_user_x = rare_user_x[idx]
-
-                idx = np.random.randint(0, len(popular_item_x), int(batch_size / 2))
-                _popular_item_x = popular_item_x[idx]
-
-                idx = np.random.randint(0, len(rare_item_x), int(batch_size / 2))
-                _rare_item_x = rare_item_x[idx]
-
-                _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
-                _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
-
-                _popular_rare_y = np.concatenate([np.zeros(int(batch_size / 2)), np.ones(int(batch_size / 2))])
-                # _popular_rare_y = np.concatenate([np.ones(int(batch_size / 2)), np.zeros(int(batch_size / 2))])
-
-
-                # Train adversarial model
-                g_loss = ranker.advModel.train_on_batch(_x_train + [_popular_rare_user_x, _popular_rare_item_x],
-                                                        [_y_train, _popular_rare_y, _popular_rare_y])
+                ranker.train(x_train, y_train, batch_size)
 
             t2 = time()
 
@@ -207,5 +153,4 @@ if __name__ == '__main__':
             print(output)
 
             # TODO save results user item score for further analysis and save model when codes are stable
-
             # history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=10, batch_size=256)
