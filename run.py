@@ -56,10 +56,10 @@ if __name__ == '__main__':
     columns = ["uid", "iid", "rating", "timestamp"]
 
     if dataset == "ml-small":
-        df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-latest-small/ratings.csv", names=columns,
+        df = pd.read_csv(path+"data/ml-latest-small/ratings.csv", names=columns,
                          skiprows=1)
     elif dataset == "ml":
-        df = pd.read_csv("../Adversarial-Collaborative-Filtering/data/ml-20m/ratings.csv", names=columns,
+        df = pd.read_csv(path+"data/ml-20m/ratings.csv", names=columns,
                          skiprows=1)
 
     df.uid = df.uid.astype('category').cat.codes.values
