@@ -19,7 +19,7 @@ def parse_args():
                         help='Model Name: lstm', default="mf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml")
+                        help='Dataset name', default="gowalla")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -61,6 +61,12 @@ if __name__ == '__main__':
     elif dataset == "ml":
         df = pd.read_csv(path+"data/ml-20m/ratings.csv", names=columns,
                          skiprows=1)
+    elif dataset == "dating":
+        columns = ["uid", "iid", "rating"]
+        df = pd.read_csv(path+"data/libimseti/ratings.dat", names=columns, sep=",")
+    elif dataset == "gowalla":
+        columns = ["uid", "timestamp", "lat", "lng", "iid"]
+        df = pd.read_csv(path+"data/gowalla/gowalla.txt.gz", names=columns)
 
     df.uid = df.uid.astype('category').cat.codes.values
     df.iid = df.iid.astype('category').cat.codes.values
