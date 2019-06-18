@@ -46,12 +46,12 @@ class NeuMF(MatrixFactorization):
         predict_vector = Concatenate()([mf_vector, mlp_vector])
 
         # Final prediction layer
-        self.pred = Dense(1, activation='linear', name="prediction")(predict_vector)
+        self.pred = Dense(1, activation='sigmoid', name="prediction")(predict_vector)
 
         self.model = Model(input=[self.user_input, self.item_input],
                       output=self.pred)
 
-        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
+        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
 
 class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
@@ -100,7 +100,7 @@ class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
 
 
         self.advModel = Model([self.user_input, self.item_input, self.userMFAdvInput, self.itemMFAdvInput, self.userMLPAdvInput, self.itemMLPAdvInput], [self.pred, self.pred_u_mf_disc, self.pred_i_mf_disc, self.pred_u_mlp_disc, self.pred_i_mlp_disc])
-        self.advModel.compile(optimizer="adam", loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy", "binary_crossentropy", "binary_crossentropy"], metrics=['mse', 'acc', 'acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight, self.weight, self.weight])
+        self.advModel.compile(optimizer="adam", loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy", "binary_crossentropy", "binary_crossentropy"], metrics=['mse', 'acc', 'acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight, self.weight, self.weight])
 
     def train(self, x_train, y_train, batch_size):
 

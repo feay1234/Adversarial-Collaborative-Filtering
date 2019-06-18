@@ -23,7 +23,7 @@ class MatrixFactorization:
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
+        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['mse'])
 
     def get_train_instances(self, train, num_negatives):
         user_input, item_input, labels = [], [], []
@@ -70,24 +70,24 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         self.iEncoder = Model(itemInput, iEmb)
 
         self.discriminator_i = self.generate_discriminator()
-        self.discriminator_i.compile(optimizer="adam", loss="binary_crossentropy", metrics=['accuracy'])
+        self.discriminator_i.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
         self.discriminator_i.trainable = False
         validity = self.discriminator_i(iAdvEmb)
 
         self.discriminator_u = self.generate_discriminator()
-        self.discriminator_u.compile(optimizer="adam", loss="binary_crossentropy", metrics=['accuracy'])
+        self.discriminator_u.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
         self.discriminator_u.trainable = False
         validity_u = self.discriminator_u(uAdvEmb)
 
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
+        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
         self.advModel = Model([userInput, itemInput, userAdvInput, itemAdvInput], [pred, validity_u, validity])
         self.advModel.compile(optimizer="adam",
-                              loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy"],
-                              metrics=['mse', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
+                              loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy"],
+                              metrics=['acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
 
     def init(self, users, items):
         self.popular_user_x, self.rare_user_x = self.get_discriminator_train_data(
@@ -233,6 +233,7 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
             # # Train adversarial model
             hist = self.advModel.fit([x_train[0][start:end], x_train[1][start:end]] + [_popular_rare_user_x[start:end], _popular_rare_item_x[start:end]],
                                                 [y_train[start:end], _popular_rare_y[start:end], _popular_rare_y[start:end]], verbose=0, batch_size=batch_size, shuffle=True)
+        print(hist.history)
 
         return hist
 

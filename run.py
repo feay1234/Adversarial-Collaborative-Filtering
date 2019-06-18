@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=20,
                         help='Epoch number')
 
-    parser.add_argument('--w', type=float, default=0.001,
+    parser.add_argument('--w', type=float, default=0.1,
                         help='Weight:')
 
     parser.add_argument('--pp', type=float, default=0.2,
