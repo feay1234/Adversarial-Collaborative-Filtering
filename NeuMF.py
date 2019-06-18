@@ -3,7 +3,7 @@
 from keras import backend as K
 from keras.models import Sequential, Model
 from keras.layers.core import Dense, Lambda, Activation
-from keras.layers import Embedding, Input, Dense, merge, Multiply, Concatenate, Flatten, Dropout
+from keras.layers import Embedding, Input, Dense, merge,  Flatten, Dropout, Multiply, Concatenate
 import numpy as np
 
 from MatrixFactorisation import AdversarialMatrixFactorisation, MatrixFactorization
