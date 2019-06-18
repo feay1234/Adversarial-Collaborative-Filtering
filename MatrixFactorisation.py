@@ -5,6 +5,10 @@ import numpy as np
 
 class MatrixFactorization:
     def __init__(self, uNum, iNum, dim):
+
+        self.uNum = uNum
+        self.iNum = iNum
+
         # Define user input -- user index (an integer)
         userInput = Input(shape=(1,), dtype="int32")
         itemInput = Input(shape=(1,), dtype="int32")
@@ -18,6 +22,24 @@ class MatrixFactorization:
 
         self.model = Model([userInput, itemInput], pred)
         self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
+
+    def get_train_instances(self, train, num_negatives):
+        user_input, item_input, labels = [], [], []
+        num_users = train.shape[0]
+        for (u, i) in train.keys():
+            # positive instance
+            user_input.append(u)
+            item_input.append(i)
+            labels.append(1)
+            # negative instances
+            for t in range(num_negatives):
+                j = np.random.randint(self.iNum)
+                while (u,j) in train:
+                    j = np.random.randint(self.iNum)
+                user_input.append(u)
+                item_input.append(j)
+                labels.append(0)
+        return user_input, item_input, labels
 
 
 class AdversarialMatrixFactorisation:
