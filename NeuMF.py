@@ -6,11 +6,15 @@ from keras.layers.core import Dense, Lambda, Activation
 from keras.layers import Embedding, Input, Dense, merge, Multiply, Concatenate, Flatten, Dropout
 import numpy as np
 
-from MatrixFactorisation import AdversarialMatrixFactorisation
+from MatrixFactorisation import AdversarialMatrixFactorisation, MatrixFactorization
 
 
-class NeuMF():
-    def __init__(self, num_users, num_items, mf_dim=10):
+class NeuMF(MatrixFactorization):
+    def __init__(self, uNum, iNum, mf_dim=10):
+
+        self.uNum = uNum
+        self.iNum = iNum
+        
 
         layers = [mf_dim, mf_dim*2, mf_dim]
 
@@ -20,11 +24,11 @@ class NeuMF():
         self.item_input = Input(shape=(1,), dtype='int32', name = 'item_input')
 
         # Embedding layer
-        self.MF_Embedding_User = Embedding(input_dim = num_users, output_dim = mf_dim, name = 'mf_embedding_user', input_length=1)
-        self.MF_Embedding_Item = Embedding(input_dim = num_items, output_dim = mf_dim, name = 'mf_embedding_item', input_length=1)
+        self.MF_Embedding_User = Embedding(input_dim = uNum, output_dim = mf_dim, name = 'mf_embedding_user', input_length=1)
+        self.MF_Embedding_Item = Embedding(input_dim = iNum, output_dim = mf_dim, name = 'mf_embedding_item', input_length=1)
 
-        self.MLP_Embedding_User = Embedding(input_dim = num_users, output_dim = layers[0 ], name = "mlp_embedding_user", input_length=1)
-        self.MLP_Embedding_Item = Embedding(input_dim = num_items, output_dim = layers[0 ], name = 'mlp_embedding_item', input_length=1)
+        self.MLP_Embedding_User = Embedding(input_dim = uNum, output_dim = layers[0 ], name = "mlp_embedding_user", input_length=1)
+        self.MLP_Embedding_Item = Embedding(input_dim = iNum, output_dim = layers[0 ], name = 'mlp_embedding_item', input_length=1)
 
         # MF part
         self.mf_user_latent = Flatten()(self.MF_Embedding_User(self.user_input))
@@ -51,8 +55,8 @@ class NeuMF():
 
 
 class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
-    def __init__(self, num_users, num_items, mf_dim, weight, pop_percent):
-        NeuMF.__init__(self, num_users, num_items, mf_dim=mf_dim)
+    def __init__(self, uNum, iNum, mf_dim, weight, pop_percent):
+        NeuMF.__init__(self, uNum, iNum, mf_dim=mf_dim)
 
         self.dim = mf_dim
         self.weight = weight
