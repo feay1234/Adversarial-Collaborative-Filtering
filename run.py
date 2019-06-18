@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=20,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.1,
@@ -149,14 +149,13 @@ if __name__ == '__main__':
         if modelName in isAdvModel:
             # ranker.init(user_input, item_input, batch_size)
             # for i in tqdm(range(math.ceil(len(labels) / batch_size))):
-            #         print(math.ceil(len(labels) / batch_size), i )
-            # hist = ranker.train([np.array(user_input), np.array(item_input)],  # input
+            #     hist = ranker.train([np.array(user_input), np.array(item_input)],  # input
             #                     np.array(labels), batch_size)
-
-
-            ranker.init(user_input, item_input, len(labels))
-            hist = ranker.train([np.array(user_input), np.array(item_input)],  # input
-                                np.array(labels), len(labels))
+            #
+            #
+            ranker.init(user_input, item_input)
+            hist = ranker.train2([np.array(user_input), np.array(item_input)],  # input
+                                np.array(labels), batch_size)
         else:
             # Training
             hist = ranker.model.fit([np.array(user_input), np.array(item_input)],  # input

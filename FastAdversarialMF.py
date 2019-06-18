@@ -80,7 +80,7 @@ class FastAdversarialMF(MatrixFactorization):
         #                           player_compile_kwargs=[{"loss_weights": {"yfake": 1e-2, "yreal": 1e-2,
         #                                                                    "xpred": 1}}] * 2)
 
-    def init(self, users, items, batch_size):
+    def init(self, users, items):
         self.popular_user_x, self.rare_user_x = self.get_discriminator_train_data(users)
         self.popular_item_x, self.rare_item_x = self.get_discriminator_train_data(items)
 
