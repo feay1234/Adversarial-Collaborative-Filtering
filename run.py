@@ -12,14 +12,13 @@ from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisat
 from NeuMF import NeuMF, AdversarialNeuMF
 from evaluation import evaluate_model
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Adversarial Collaborative Filtering")
 
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="neumf")
+                        help='Model Name: lstm', default="amf")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-1m")
@@ -27,7 +26,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=50,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -48,7 +47,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     path = args.path
-    dataset = args.data
+    data = args.data
     modelName = args.model
     dim = args.d
     weight = args.w
@@ -65,25 +64,25 @@ if __name__ == '__main__':
 
     # Loading data
     t1 = time()
-    dataset = Dataset(args.path + "data/" + args.data)
+    dataset = Dataset(path + "data/" + data)
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
     print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
           %(time()-t1, uNum, iNum, train.nnz, len(testRatings)))
 
 
-    if dataset == "ml-small":
+    if data == "ml-small":
         df = pd.read_csv(path+"data/ml-latest-small/ratings.csv", names=columns,
                          skiprows=1)
-    elif dataset == "ml":
+    elif data == "ml":
         df = pd.read_csv(path+"data/ml-20m/ratings.csv", names=columns,
                          skiprows=1)
-    elif dataset == "dating":
+    elif data == "dating":
         columns = ["uid", "iid", "rating"]
         df = pd.read_csv(path+"data/libimseti/ratings.dat", names=columns, sep=",")
 
     # Checkin data is not appropriate
-    # elif dataset == "gowalla":
+    # elif data == "gowalla":
     #     columns = ["uid", "timestamp", "lat", "lng", "iid"]
     #     df = pd.read_csv(path+"data/gowalla/gowalla.txt.gz", names=columns)
 
@@ -109,23 +108,25 @@ if __name__ == '__main__':
 
     if modelName == "mf":
         ranker = MatrixFactorization(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (dataset, modelName, dim,
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
     elif modelName == "amf":
-        ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent, 1)
-    elif modelName == "amf2":
-        ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent, 2)
-        runName = "%s_%s_d%d_w%f_pp%f_%s" % (dataset, modelName, dim, weight, pop_percent,
+        ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent)
+        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "neumf":
         ranker = NeuMF(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (dataset, modelName, dim,
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
     elif modelName == "aneumf":
         ranker = AdversarialNeuMF(uNum, iNum, dim, weight, pop_percent)
-        runName = "%s_%s_d%d_w%f_pp%f_%s" % (dataset, modelName, dim, weight, pop_percent,
+        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
+    isAdvModel = ["amf", "aneumf"]
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker.model, testRatings, testNegatives, topK, evaluation_threads)
@@ -133,25 +134,52 @@ if __name__ == '__main__':
     print('Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg))
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
 
+
+    print(path)
     # Training model
     for epoch in range(epochs):
         t1 = time()
         # Generate training instances
         user_input, item_input, labels = ranker.get_train_instances(train, num_negatives)
 
-        # Training
-        hist = ranker.model.fit([np.array(user_input), np.array(item_input)],  # input
-                         np.array(labels),  # labels
-                         batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
+        if modelName in isAdvModel:
+            ranker.init(user_input, item_input, batch_size)
+            for i in range(math.ceil(len(labels) / batch_size)):
+                hist = ranker.train([np.array(user_input), np.array(item_input)],  # input
+                                 np.array(labels), batch_size)
+        else:
+            # Training
+            hist = ranker.model.fit([np.array(user_input), np.array(item_input)],  # input
+                             np.array(labels),  # labels
+                             batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
         t2 = time()
 
 
         (hits, ndcgs) = evaluate_model(ranker.model, testRatings, testNegatives, topK, evaluation_threads)
         hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
-        print('Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]'
-              % (epoch, t2 - t1, hr, ndcg, loss, time() - t2))
-        if hr > best_hr:
+
+        output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (epoch, t2 - t1, hr, ndcg, loss, time() - t2)
+        print(output)
+
+        thefile = open(path +"out/" + runName + ".out", 'a')
+        thefile.write("%s\n" % output)
+        thefile.close()
+
+        if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
+
+            # only save result file for the best model
+            thefile = open(path +"out/" + runName + ".hr", 'w')
+            for item in hits:
+                thefile.write("%f\n" % item)
+            thefile.close()
+
+            thefile = open(path +"out/" + runName + ".ndcg", 'w')
+            for item in ndcgs:
+                thefile.write("%f\n" % item)
+            thefile.close()
+
+            # TODO save best model, .h5 file
             # ranker.model.save_weights(model_out_file, overwrite=True)
 
     print("End. Best Iteration %d:  HR = %.4f, NDCG = %.4f. " % (best_iter, best_hr, best_ndcg))

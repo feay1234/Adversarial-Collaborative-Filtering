@@ -74,3 +74,7 @@ class Dataset(object):
                     mat[user, item] = 1.0
                 line = f.readline()
         return mat
+
+
+def generate_leave_one_out_dataset():
+    print("TODO")

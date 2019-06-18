@@ -25,7 +25,6 @@ class MatrixFactorization:
 
     def get_train_instances(self, train, num_negatives):
         user_input, item_input, labels = [], [], []
-        num_users = train.shape[0]
         for (u, i) in train.keys():
             # positive instance
             user_input.append(u)
@@ -34,7 +33,7 @@ class MatrixFactorization:
             # negative instances
             for t in range(num_negatives):
                 j = np.random.randint(self.iNum)
-                while (u,j) in train:
+                while (u, j) in train:
                     j = np.random.randint(self.iNum)
                 user_input.append(u)
                 item_input.append(j)
@@ -42,9 +41,11 @@ class MatrixFactorization:
         return user_input, item_input, labels
 
 
-class AdversarialMatrixFactorisation:
-    def __init__(self, uNum, iNum, dim, weight, pop_percent, mode=1):
+class AdversarialMatrixFactorisation(MatrixFactorization):
+    def __init__(self, uNum, iNum, dim, weight, pop_percent):
 
+        self.uNum = uNum
+        self.iNum = iNum
         self.dim = dim
         self.weight = weight
         self.pop_percent = pop_percent
@@ -71,35 +72,29 @@ class AdversarialMatrixFactorisation:
         self.discriminator_i.trainable = False
         validity = self.discriminator_i(iAdvEmb)
 
-        if mode == 2:
-            self.discriminator_u = self.generate_discriminator()
-            self.discriminator_u.compile(optimizer="adam", loss="binary_crossentropy", metrics=['accuracy'])
-            self.discriminator_u.trainable = False
-            validity_u = self.discriminator_u(uAdvEmb)
+        self.discriminator_u = self.generate_discriminator()
+        self.discriminator_u.compile(optimizer="adam", loss="binary_crossentropy", metrics=['accuracy'])
+        self.discriminator_u.trainable = False
+        validity_u = self.discriminator_u(uAdvEmb)
 
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
         self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
 
-        if mode == 1:
-            self.advModel = Model([userInput, itemInput, itemAdvInput], [pred, validity])
-            self.advModel.compile(optimizer="adam", loss=["mean_squared_error", "binary_crossentropy"],
-                                  metrics=['mse', 'acc'], loss_weights=[1, self.weight])
-        else:
-            self.advModel = Model([userInput, itemInput, userAdvInput, itemAdvInput], [pred, validity_u, validity])
-            self.advModel.compile(optimizer="adam",
-                                  loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy"],
-                                  metrics=['mse', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
+        self.advModel = Model([userInput, itemInput, userAdvInput, itemAdvInput], [pred, validity_u, validity])
+        self.advModel.compile(optimizer="adam",
+                              loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy"],
+                              metrics=['mse', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
 
-    def init(self, x_train, x_test, batch_size):
-        self.popular_user_x, self.popular_user_y, self.rare_user_x, self.rare_user_y = self.get_discriminator_train_data(x_train[0],
-                                                                                                     x_test[0],
-                                                                                                     batch_size)
+    def init(self, users, items, batch_size):
+        self.popular_user_x, self.popular_user_y, self.rare_user_x, self.rare_user_y = self.get_discriminator_train_data(
+            users,
+            batch_size)
 
-        self.popular_item_x, self.popular_item_y, self.rare_item_x, self.rare_item_y = self.get_discriminator_train_data(x_train[1],
-                                                                                                     x_test[1],
-                                                                                                     batch_size)
+        self.popular_item_x, self.popular_item_y, self.rare_item_x, self.rare_item_y = self.get_discriminator_train_data(
+            items,
+            batch_size)
 
     def train(self, x_train, y_train, batch_size):
 
@@ -162,8 +157,9 @@ class AdversarialMatrixFactorisation:
 
 
         # Train adversarial model
-        g_loss = self.advModel.train_on_batch(_x_train + [_popular_rare_user_x, _popular_rare_item_x],
-                                              [_y_train, _popular_rare_y, _popular_rare_y])
+        hist = self.advModel.fit(_x_train + [_popular_rare_user_x, _popular_rare_item_x],
+                                              [_y_train, _popular_rare_y, _popular_rare_y], batch_size=batch_size, epochs=1, shuffle=True, verbose=0)
+        return hist
 
     def generate_discriminator(self):
 
@@ -175,14 +171,8 @@ class AdversarialMatrixFactorisation:
 
         return Model(itemInput, pred)
 
-    def get_discriminator_train_data(self, x_train, x_test, batch_size):
+    def get_discriminator_train_data(self, items, batch_size):
 
-        # print(x_train.shape)
-        # print(x_train)
-        # print(x_test)
-        print(x_train.shape, x_test.shape)
-
-        items = np.concatenate([x_train, x_test], axis=-1)
         popularity = {}
         for i in items:
             if i in popularity:
