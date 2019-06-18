@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from Dataset import Dataset
+from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
@@ -24,7 +24,7 @@ def parse_args():
                         help='Model Name: lstm', default="amf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="ml-small")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=20,
                         help='Epoch number')
 
-    parser.add_argument('--w', type=float, default=0.1,
+    parser.add_argument('--w', type=float, default=0.001,
                         help='Weight:')
 
     parser.add_argument('--pp', type=float, default=0.2,
@@ -66,21 +66,29 @@ if __name__ == '__main__':
 
     # Loading data
     t1 = time()
-    dataset = Dataset(path + "data/" + data)
-    train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
-    uNum, iNum = train.shape
-    print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
-          % (time() - t1, uNum, iNum, train.nnz, len(testRatings)))
 
-    if data == "ml-small":
+    if data == "ml-1m":
+        dataset = Dataset(path + "data/" + data)
+
+    elif data == "ml-small":
         df = pd.read_csv(path + "data/ml-latest-small/ratings.csv", names=columns,
                          skiprows=1)
+        dataset = RawDataset(df)
+        # train, testRatings, testNegatives =
     elif data == "ml":
         df = pd.read_csv(path + "data/ml-20m/ratings.csv", names=columns,
                          skiprows=1)
     elif data == "dating":
         columns = ["uid", "iid", "rating"]
         df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
+
+    train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
+    uNum, iNum = train.shape
+    # print(train)
+    print(np.array(testRatings).shape)
+    print(np.array(testNegatives).shape)
+    print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
+          % (time() - t1, uNum, iNum, train.nnz, len(testRatings)))
 
     # Checkin data is not appropriate
     # elif data == "gowalla":
@@ -92,7 +100,7 @@ if __name__ == '__main__':
     #
     # uNum = df.uid.max() + 1
     # iNum = df.iid.max() + 1
-    #
+
     # print("#Users: %d, #Items: %d" % (uNum, iNum))
     #
     # Preparing dataset
@@ -104,7 +112,7 @@ if __name__ == '__main__':
     # sample = test
     # x_test = [sample['uid'].values, sample['iid'].values]
     # y_test = sample.rating.values
-    #
+
     # Initialise Model
 
     if modelName == "mf":
@@ -139,7 +147,6 @@ if __name__ == '__main__':
     print('Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg))
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
 
-    print(path)
     # Training model
     for epoch in range(epochs):
         t1 = time()

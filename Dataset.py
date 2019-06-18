@@ -76,5 +76,35 @@ class Dataset(object):
         return mat
 
 
-def generate_leave_one_out_dataset():
-    print("TODO")
+class RawDataset():
+
+    def __init__(self, df):
+        np.random.seed(1111)
+        df.uid = df.uid.astype('category').cat.codes.values
+        df.iid = df.iid.astype('category').cat.codes.values
+        uNum = df.uid.max() + 1
+        iNum = df.iid.max() + 1
+        self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
+
+        df = df[df.groupby("uid").cumcount(ascending=False) > 0]
+        import scipy.sparse as sp
+        mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
+        for u, i in df[["uid", "iid"]].values.tolist():
+            mat[u, i] = 1
+        self.trainMatrix = mat
+
+        negatives = []
+        for u in range(uNum):
+            neg = []
+            for i in range(99):
+                r = np.random.randint(0, iNum, 1)[0]
+                while (u, r) in mat:
+                    r = np.random.randint(0, iNum, 1)[0]
+                neg.append(r)
+            negatives.append(neg)
+
+        self.testNegatives = negatives
+        assert len(self.testRatings) == len(self.testNegatives)
+
+        self.num_users, self.num_items = self.trainMatrix.shape
+
