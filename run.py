@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=20,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.1,
@@ -170,7 +170,7 @@ if __name__ == '__main__':
             for i in range(math.ceil(len(y_train) / batch_size)):
 
                 _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-                _i = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
                 _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
                 _batch_size = _u.shape[0]
                 #

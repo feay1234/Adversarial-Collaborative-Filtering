@@ -84,13 +84,13 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
+        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
         self.advModel = Model([userInput, itemInput, userAdvInput, itemAdvInput], [pred, validity_u, validity])
         # self.advModel = Model([userInput, itemInput], [pred, validity_u, validity])
         self.advModel.compile(optimizer="adam",
-                              loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy"],
-                              metrics=['mse', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
+                              loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy"],
+                              metrics=['acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
 
     def init(self, users, items):
         self.popular_user_x, self.rare_user_x = self.get_discriminator_train_data(
