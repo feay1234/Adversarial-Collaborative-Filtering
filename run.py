@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from BPR import BPR
+from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="amf")
+                        help='Model Name: lstm', default="abpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.1,
@@ -134,6 +134,13 @@ if __name__ == '__main__':
         x_train, y_train = ranker.get_train_instances(train)
         ranker.init(x_train[0], x_train[1])
 
+    elif modelName == "abpr":
+        ranker = AdversarialBPR(uNum, iNum, dim, weight, pop_percent)
+        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
+                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        x_train, y_train = ranker.get_train_instances(train)
+        ranker.init(x_train[0], x_train[1])
+
     elif modelName == "amf2":
         ranker = FastAdversarialMF(uNum, iNum, dim, weight, pop_percent)
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
@@ -149,8 +156,8 @@ if __name__ == '__main__':
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     print(runName)
 
-    isAdvModel = ["amf", "aneumf"]
-    isPairwiseModel = True if modelName in ["bpr"] else False
+    isAdvModel = ["amf", "aneumf", "abpr"]
+    isPairwiseModel = True if modelName in ["bpr", "abpr"] else False
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker.predictor if isPairwiseModel else ranker.model, testRatings, testNegatives, topK, evaluation_threads)
@@ -166,20 +173,32 @@ if __name__ == '__main__':
 
         if modelName in isAdvModel:
 
-            # for i in tqdm(range(math.ceil(len(labels) / batch_size))):
-            for i in range(math.ceil(len(y_train) / batch_size)):
+            if isPairwiseModel:
+                for i in range(math.ceil(len(y_train) / batch_size)):
+                    _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                    _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+                    _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+                    _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+                    _batch_size = _u.shape[0]
 
-                _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-                _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-                _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-                _batch_size = _u.shape[0]
-                #
-                hist = ranker.train([_u, _i], _labels, _batch_size)
-                #
-                #
-            # ranker.init(user_input, item_input)
-            # hist = ranker.train2([np.array(user_input), np.array(item_input)],  # input
-            #                         np.array(labels), batch_size)
+                    hist = ranker.train([_u, _p, _n], _labels, _batch_size)
+
+            else:
+
+                # for i in tqdm(range(math.ceil(len(labels) / batch_size))):
+                for i in range(math.ceil(len(y_train) / batch_size)):
+
+                    _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                    _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+                    _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+                    _batch_size = _u.shape[0]
+                    #
+                    hist = ranker.train([_u, _i], _labels, _batch_size)
+                    #
+                    #
+                # ranker.init(user_input, item_input)
+                # hist = ranker.train2([np.array(user_input), np.array(item_input)],  # input
+                #                         np.array(labels), batch_size)
         else:
             # Training
             hist = ranker.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)

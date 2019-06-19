@@ -3,43 +3,39 @@ from keras.models import Model
 from keras import backend as K
 import numpy as np
 
+from MatrixFactorisation import AdversarialMatrixFactorisation
+
 
 class BPR():
-
     def __init__(self, uNum, iNum, dim):
 
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
 
-        userInput = Input(shape=(1,), dtype="int32")
-        itemPosInput = Input(shape=(1,), dtype="int32")
-        itemNegInput = Input(shape=(1,), dtype="int32")
+        self.userInput = Input(shape=(1,), dtype="int32")
+        self.itemPosInput = Input(shape=(1,), dtype="int32")
+        self.itemNegInput = Input(shape=(1,), dtype="int32")
 
         userEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim)
         itemEmbeddingLayer = Embedding(input_dim=iNum, output_dim=dim)
 
+        self.uEmb = Flatten()(userEmbeddingLayer(self.userInput))
+        self.pEmb = Flatten()(itemEmbeddingLayer(self.itemPosInput))
+        self.nEmb = Flatten()(itemEmbeddingLayer(self.itemNegInput))
 
-        uEmb = Flatten()(userEmbeddingLayer(userInput))
-        pEmb = Flatten()(itemEmbeddingLayer(itemPosInput))
-        nEmb = Flatten()(itemEmbeddingLayer(itemNegInput))
-
-
-        pDot = Dot(axes = -1)([uEmb, pEmb])
-        nDot = Dot(axes = -1)([uEmb, nEmb])
+        pDot = Dot(axes=-1)([self.uEmb, self.pEmb])
+        nDot = Dot(axes=-1)([self.uEmb, self.nEmb])
 
         diff = Subtract()([pDot, nDot])
 
         # Pass difference through sigmoid function.
-        pred = Activation("sigmoid")(diff)
+        self.pred = Activation("sigmoid")(diff)
 
-        self.model = Model(inputs = [userInput, itemPosInput, itemNegInput], outputs = pred)
+        self.model = Model(inputs=[self.userInput, self.itemPosInput, self.itemNegInput], outputs=self.pred)
 
-        def identity_loss(y_true, y_pred):
-            return K.mean(y_pred - 0 * y_true)
-
-        self.model.compile(optimizer = "adam", loss = "binary_crossentropy")
-        self.predictor = Model([userInput, itemPosInput], [pDot])
+        self.model.compile(optimizer="adam", loss="binary_crossentropy")
+        self.predictor = Model([self.userInput, self.itemPosInput], [pDot])
 
     def get_train_instances(self, train):
         user_input, pos_item_input, neg_item_input, labels = [], [], [], []
@@ -56,50 +52,69 @@ class BPR():
 
         return [np.array(user_input), np.array(pos_item_input), np.array(neg_item_input)], np.array(labels)
 
-class AdversarialBPR(BPR):
 
+class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
+    
     def __init__(self, uNum, iNum, dim, weight, pop_percent):
         BPR.__init__(self, uNum, iNum, dim)
 
         self.weight = weight
         self.pop_percent = pop_percent
 
-        # Define user input -- user index (an integer)
-        userInput = Input(shape=(1,), dtype="int32")
-        itemInput = Input(shape=(1,), dtype="int32")
-        userAdvInput = Input(shape=(1,), dtype="int32")
-        itemAdvInput = Input(shape=(1,), dtype="int32")
-
-        userEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim)
-        itemEmbeddingLayer = Embedding(input_dim=iNum, output_dim=dim)
-
-        uEmb = Flatten()(userEmbeddingLayer(userInput))
-        iEmb = Flatten()(itemEmbeddingLayer(itemInput))
-        uAdvEmb = Flatten()(userEmbeddingLayer(userAdvInput))
-        iAdvEmb = Flatten()(itemEmbeddingLayer(itemAdvInput))
-
-        self.uEncoder = Model(userInput, uEmb)
-        self.iEncoder = Model(itemInput, iEmb)
-
-        self.discriminator_i = self.generate_discriminator()
-        self.discriminator_i.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
-        self.discriminator_i.trainable = False
-        validity = self.discriminator_i(iAdvEmb)
-        # validity = self.discriminator_i(iEmb)
+        self.uEncoder = Model(self.userInput, self.uEmb)
+        self.iEncoder = Model(self.itemPosInput, self.pEmb)
 
         self.discriminator_u = self.generate_discriminator()
         self.discriminator_u.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
         self.discriminator_u.trainable = False
-        validity_u = self.discriminator_u(uAdvEmb)
-        # validity_u = self.discriminator_u(uEmb)
+        validity_u = self.discriminator_u(self.uEmb)
 
-        pred = dot([uEmb, iEmb], axes=-1)
+        self.discriminator_i = self.generate_discriminator()
+        self.discriminator_i.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
+        self.discriminator_i.trainable = False
+        validity_i = self.discriminator_i(self.pEmb)
 
-        self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
-
-        self.advModel = Model([userInput, itemInput, userAdvInput, itemAdvInput], [pred, validity_u, validity])
-        # self.advModel = Model([userInput, itemInput], [pred, validity_u, validity])
+        self.advModel = Model([self.userInput, self.itemPosInput, self.itemNegInput],
+                              [self.pred, validity_u, validity_i])
         self.advModel.compile(optimizer="adam",
-                              loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy"],
-                              metrics=['mse', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
+                              loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy"],
+                              metrics=['acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
+
+    def train(self, x_train, y_train, batch_size):
+        # sample mini-batch for User Discriminator
+
+        idx = np.random.randint(0, len(self.popular_user_x), batch_size)
+        _popular_user_x = self.popular_user_x[idx]
+
+        idx = np.random.randint(0, len(self.rare_user_x), batch_size)
+        _rare_user_x = self.rare_user_x[idx]
+
+        _popular_user_x = self.uEncoder.predict(_popular_user_x)
+        _rare_user_x = self.uEncoder.predict(_rare_user_x)
+
+        d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, np.ones(batch_size))
+        d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, np.zeros(batch_size))
+
+        # sample mini-batch for Item Discriminator
+
+        idx = np.random.randint(0, len(self.popular_item_x), batch_size)
+        _popular_item_x = self.popular_item_x[idx]
+
+        idx = np.random.randint(0, len(self.rare_item_x), batch_size)
+        _rare_item_x = self.rare_item_x[idx]
+
+        _popular_item_x = self.iEncoder.predict(_popular_item_x)
+        _rare_item_x = self.iEncoder.predict(_rare_item_x)
+
+        d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, np.ones(batch_size))
+        d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, np.zeros(batch_size))
+
+        # Sample mini-batch for adversarial model
+
+        # Important: we need to swape label to confuse discriminator
+        y_user = np.array([0 if i in self.popular_user_x else 1 for i in x_train[0]])
+        y_item = np.array([0 if i in self.popular_item_x else 1 for i in x_train[1]])
+
+        hist = self.advModel.fit(x_train, [y_train, y_user, y_item], batch_size=batch_size, epochs=1, verbose=0)
+
+        return hist
