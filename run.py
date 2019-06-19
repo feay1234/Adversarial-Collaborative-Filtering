@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
+from BPR import BPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
@@ -21,10 +22,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="amf")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-small")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
 
-    num_negatives = 1
+    # num_negatives = 1
     topK = 10
     evaluation_threads = 1
 
@@ -117,6 +118,10 @@ if __name__ == '__main__':
         ranker = MatrixFactorization(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+    elif modelName == "bpr":
+        ranker = BPR(uNum, iNum, dim)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "amf":
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent)
@@ -141,9 +146,10 @@ if __name__ == '__main__':
     print(runName)
 
     isAdvModel = ["amf", "aneumf"]
+    isPairwiseModel = True if modelName in ["bpr"] else False
 
     # Init performance
-    (hits, ndcgs) = evaluate_model(ranker.model, testRatings, testNegatives, topK, evaluation_threads)
+    (hits, ndcgs) = evaluate_model(ranker.predictor if isPairwiseModel else ranker.model, testRatings, testNegatives, topK, evaluation_threads)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     print('Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg))
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
@@ -152,7 +158,7 @@ if __name__ == '__main__':
     for epoch in range(epochs):
         t1 = time()
         # Generate training instances
-        user_input, item_input, labels = ranker.get_train_instances(train, num_negatives)
+        x_train, y_train = ranker.get_train_instances(train)
 
         if modelName in isAdvModel:
 
@@ -172,12 +178,10 @@ if __name__ == '__main__':
             #                         np.array(labels), batch_size)
         else:
             # Training
-            hist = ranker.model.fit([user_input, item_input],  # input
-                                    labels,  # labels
-                                    batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
+            hist = ranker.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
         t2 = time()
 
-        (hits, ndcgs) = evaluate_model(ranker.model, testRatings, testNegatives, topK, evaluation_threads)
+        (hits, ndcgs) = evaluate_model(ranker.predictor if isPairwiseModel else ranker.model, testRatings, testNegatives, topK, evaluation_threads)
         hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
         # hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist[0]
 

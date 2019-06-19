@@ -23,25 +23,24 @@ class MatrixFactorization:
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
+        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
-    def get_train_instances(self, train, num_negatives):
+    def get_train_instances(self, train):
         user_input, item_input, labels = [], [], []
         for (u, i) in train.keys():
             # positive instance
             user_input.append(u)
             item_input.append(i)
-            # labels.append(1)
-            labels.append(train[u,i])
+            labels.append(1)
+            # labels.append(train[u,i])
             # negative instances
-            for t in range(num_negatives):
+            j = np.random.randint(self.iNum)
+            while (u, j) in train:
                 j = np.random.randint(self.iNum)
-                while (u, j) in train:
-                    j = np.random.randint(self.iNum)
-                user_input.append(u)
-                item_input.append(j)
-                labels.append(0)
-        return np.array(user_input), np.array(item_input), np.array(labels)
+            user_input.append(u)
+            item_input.append(j)
+            labels.append(0)
+        return [np.array(user_input), np.array(item_input)], np.array(labels)
 
 
 class AdversarialMatrixFactorisation(MatrixFactorization):
