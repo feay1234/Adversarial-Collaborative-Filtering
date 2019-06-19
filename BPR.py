@@ -54,7 +54,7 @@ class BPR():
 
 
 class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
-    
+
     def __init__(self, uNum, iNum, dim, weight, pop_percent):
         BPR.__init__(self, uNum, iNum, dim)
 

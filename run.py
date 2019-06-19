@@ -2,6 +2,7 @@ import argparse
 import math
 from datetime import datetime
 from time import time
+from keras.models import load_model
 
 import numpy as np
 import pandas as pd
@@ -33,13 +34,13 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=10,
                         help='Epoch number')
 
-    parser.add_argument('--w', type=float, default=0.1,
+    parser.add_argument('--w', type=float, default=0,
                         help='Weight:')
 
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=256,
+    parser.add_argument('--bs', type=int, default=32,
                         help='Batch Size:')
 
     return parser.parse_args()
@@ -141,6 +142,9 @@ if __name__ == '__main__':
         x_train, y_train = ranker.get_train_instances(train)
         ranker.init(x_train[0], x_train[1])
 
+    #   load pretrained
+    #     ranker.model = load_model("h5/ml-small_bpr_d10_06-19-2019_17-41-21.h5")
+
     elif modelName == "amf2":
         ranker = FastAdversarialMF(uNum, iNum, dim, weight, pop_percent)
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
@@ -218,6 +222,7 @@ if __name__ == '__main__':
 
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
+            ranker.model.save(path +"h5/" + runName + ".h5", overwrite=True)
 
         # only save result file for the best model
         thefile = open(path + "out/" + runName + ".hr", 'w')
@@ -231,7 +236,6 @@ if __name__ == '__main__':
         thefile.close()
 
         # TODO save best model, .h5 file
-        # ranker.model.save_weights(model_out_file, overwrite=True)
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f. " % (best_iter, best_hr, best_ndcg)
     print(output)
