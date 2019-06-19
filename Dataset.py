@@ -89,8 +89,8 @@ class RawDataset():
         df = df[df.groupby("uid").cumcount(ascending=False) > 0]
         import scipy.sparse as sp
         mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
-        for u, i in df[["uid", "iid"]].values.tolist():
-            mat[u, i] = 1
+        for u, i, r in df[["uid", "iid", "rating"]].values.tolist():
+            mat[u, i] = r
         self.trainMatrix = mat
 
         negatives = []

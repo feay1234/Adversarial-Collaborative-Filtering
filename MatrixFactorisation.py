@@ -23,7 +23,7 @@ class MatrixFactorization:
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['mse'])
+        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
 
     def get_train_instances(self, train, num_negatives):
         user_input, item_input, labels = [], [], []
@@ -31,7 +31,8 @@ class MatrixFactorization:
             # positive instance
             user_input.append(u)
             item_input.append(i)
-            labels.append(1)
+            # labels.append(1)
+            labels.append(train[u,i])
             # negative instances
             for t in range(num_negatives):
                 j = np.random.randint(self.iNum)
@@ -40,7 +41,7 @@ class MatrixFactorization:
                 user_input.append(u)
                 item_input.append(j)
                 labels.append(0)
-        return user_input, item_input, labels
+        return np.array(user_input), np.array(item_input), np.array(labels)
 
 
 class AdversarialMatrixFactorisation(MatrixFactorization):
@@ -73,21 +74,24 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         self.discriminator_i.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
         self.discriminator_i.trainable = False
         validity = self.discriminator_i(iAdvEmb)
+        # validity = self.discriminator_i(iEmb)
 
         self.discriminator_u = self.generate_discriminator()
         self.discriminator_u.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
         self.discriminator_u.trainable = False
         validity_u = self.discriminator_u(uAdvEmb)
+        # validity_u = self.discriminator_u(uEmb)
 
         pred = dot([uEmb, iEmb], axes=-1)
 
         self.model = Model([userInput, itemInput], pred)
-        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
+        self.model.compile(optimizer="adam", loss="mean_squared_error", metrics=['mse'])
 
         self.advModel = Model([userInput, itemInput, userAdvInput, itemAdvInput], [pred, validity_u, validity])
+        # self.advModel = Model([userInput, itemInput], [pred, validity_u, validity])
         self.advModel.compile(optimizer="adam",
-                              loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy"],
-                              metrics=['acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
+                              loss=["mean_squared_error", "binary_crossentropy", "binary_crossentropy"],
+                              metrics=['mse', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight])
 
     def init(self, users, items):
         self.popular_user_x, self.rare_user_x = self.get_discriminator_train_data(
@@ -98,9 +102,9 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
 
     def train(self, x_train, y_train, batch_size):
 
-        idx = np.random.randint(0, y_train.shape[0], batch_size)
-        _x_train = [x_train[0][idx], x_train[1][idx]]
-        _y_train = y_train[idx]
+        # idx = np.random.randint(0, y_train.shape[0], batch_size)
+        # _x_train = [x_train[0][idx], x_train[1][idx]]
+        # _y_train = y_train[idx]
 
         # sample mini-batch for User Discriminator
 
@@ -113,8 +117,8 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         _popular_user_x = self.uEncoder.predict(_popular_user_x)
         _rare_user_x = self.uEncoder.predict(_rare_user_x)
 
-        d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, self.popular_user_y)
-        d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, self.rare_user_y)
+        d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, np.ones(batch_size))
+        d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, np.zeros(batch_size))
 
         # sample mini-batch for Item Discriminator
 
@@ -127,8 +131,8 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         _popular_item_x = self.iEncoder.predict(_popular_item_x)
         _rare_item_x = self.iEncoder.predict(_rare_item_x)
 
-        d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, self.popular_item_y)
-        d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, self.rare_item_y)
+        d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, np.ones(batch_size))
+        d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, np.zeros(batch_size))
 
         # Discriminator's loss
         # d_loss = 0.5 * np.add(d_loss_popular_user, d_loss_rare_user) + 0.5 * np.add(d_loss_popular_item,
@@ -148,8 +152,8 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         idx = np.random.randint(0, len(self.rare_item_x), int(batch_size / 2))
         _rare_item_x = self.rare_item_x[idx]
         #
-        _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
-        _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
+        # _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
+        # _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
         #
         _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
         _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
@@ -160,10 +164,10 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
 
 
         # Train adversarial model
-        # hist = self.advModel.fit(_x_train + [_popular_rare_user_x, _popular_rare_item_x],
-        #                                       [_y_train, _popular_rare_y, _popular_rare_y], batch_size=256, epochs=1, verbose=0)
-        hist = self.advModel.fit(_x_train + [_popular_rare_user_x, _popular_rare_item_x],
-                                 [_y_train, _popular_rare_y, _popular_rare_y], batch_size=batch_size, epochs=1,
+        # hist = self.advModel.train_on_batch(x_train + [_popular_rare_user_x, _popular_rare_item_x],
+        #                                       [y_train, _popular_rare_y, _popular_rare_y])
+        hist = self.advModel.fit(x_train + [_popular_rare_user_x, _popular_rare_item_x],
+                                 [y_train, _popular_rare_y, _popular_rare_y], batch_size=batch_size, epochs=1,
                                  verbose=0)
         return hist
 
@@ -220,7 +224,7 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
         _popular_rare_item_x = _popular_rare_item_x[idx]
         _popular_rare_y = _popular_rare_y[idx]
 
-        for i in tqdm(range(math.ceil(len(y_train) / batch_size))):
+        for i in range(math.ceil(len(y_train) / batch_size)):
             start = i * batch_size
             end = start + batch_size
 
@@ -233,7 +237,7 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
             # # Train adversarial model
             hist = self.advModel.fit([x_train[0][start:end], x_train[1][start:end]] + [_popular_rare_user_x[start:end], _popular_rare_item_x[start:end]],
                                                 [y_train[start:end], _popular_rare_y[start:end], _popular_rare_y[start:end]], verbose=0, batch_size=batch_size, shuffle=True)
-        print(hist.history)
+        # print(hist.history)
 
         return hist
 
