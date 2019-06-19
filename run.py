@@ -22,10 +22,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="mf")
+                        help='Model Name: lstm', default="amf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-small")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -131,8 +131,8 @@ if __name__ == '__main__':
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent)
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-        user_input, item_input, labels = ranker.get_train_instances(train, 0)
-        ranker.init(user_input, item_input)
+        x_train, y_train = ranker.get_train_instances(train)
+        ranker.init(x_train[0], x_train[1])
 
     elif modelName == "amf2":
         ranker = FastAdversarialMF(uNum, iNum, dim, weight, pop_percent)
