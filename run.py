@@ -167,11 +167,11 @@ if __name__ == '__main__':
         if modelName in isAdvModel:
 
             # for i in tqdm(range(math.ceil(len(labels) / batch_size))):
-            for i in range(math.ceil(len(labels) / batch_size)):
+            for i in range(math.ceil(len(y_train) / batch_size)):
 
-                _u = user_input[i * batch_size:(i * batch_size) + batch_size]
-                _i = item_input[i * batch_size:(i * batch_size) + batch_size]
-                _labels = labels[i * batch_size: (i * batch_size) + batch_size]
+                _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                _i = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
                 _batch_size = _u.shape[0]
                 #
                 hist = ranker.train([_u, _i], _labels, _batch_size)
