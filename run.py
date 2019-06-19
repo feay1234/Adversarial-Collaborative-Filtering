@@ -22,10 +22,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="mf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -83,6 +83,10 @@ if __name__ == '__main__':
     elif data == "dating":
         columns = ["uid", "iid", "rating"]
         df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
+    elif data == "brightkite":
+        columns = ["uid", "timestamp", "lat", "lng", "iid"]
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
+        dataset = RawDataset(df)
 
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
