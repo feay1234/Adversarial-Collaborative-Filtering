@@ -56,6 +56,6 @@ class APL():
             pos_item_input.append(i)
             # negative instances
 
-        return [np.array(user_input), np.array(pos_item_input), np.array(labels)
+        return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
 
 
