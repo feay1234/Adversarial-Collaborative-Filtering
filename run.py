@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="abpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "h5/ml-small_bpr_d10_06-20-2019_09-09-51.h5"
+    pre = "h5/brightkite_bpr_d10_06-20-2019_10-00-37.h5"
 
     # num_negatives = 1
     topK = 10
