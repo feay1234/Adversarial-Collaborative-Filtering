@@ -26,7 +26,7 @@ def parse_args():
                         help='Model Name: lstm', default="abpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-small")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    pre = "h5/brightkite_bpr_d10_06-20-2019_10-00-37.h5"
+    # pre = "h5/ml-small_bpr_d10_06-20-2019_14-49-38.h5"
 
     # num_negatives = 1
     topK = 10
@@ -153,13 +153,6 @@ if __name__ == '__main__':
         x_train, y_train = ranker.get_train_instances(train)
         ranker.init(x_train[0], x_train[1])
 
-        # load pretrained
-        if pre != "":
-            ranker.model = load_model(pre)
-            runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
-                                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-            ranker.predictor.get_layer("uEmb").set_weights(ranker.model.get_layer("uEmb").get_weights())
-            ranker.predictor.get_layer("iEmb").set_weights(ranker.model.get_layer("iEmb").get_weights())
 
     elif modelName == "amf2":
         ranker = FastAdversarialMF(uNum, iNum, dim, weight, pop_percent)
@@ -174,6 +167,15 @@ if __name__ == '__main__':
         ranker = AdversarialNeuMF(uNum, iNum, dim, weight, pop_percent)
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+    # load pretrained
+    # TODO only support BPR-based models
+    if pre != "":
+        pretrainModel = load_model(pre)
+        runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
+                                                 datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        ranker.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
+        ranker.predictor.get_layer("iEmb").set_weights(pretrainModel.get_layer("iEmb").get_weights())
+
     print(runName)
 
     isAdvModel = ["amf", "aneumf", "abpr"]
