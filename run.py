@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
+from APL import APL
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
@@ -23,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="abpr")
+                        help='Model Name: lstm', default="apl")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -31,7 +32,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "h5/ml-small_bpr_d10_06-20-2019_14-49-38.h5"
+    # pre = "h5/ml-small_bpr_d10_06-20-2019_15-30-30.h5"
 
     # num_negatives = 1
     topK = 10
@@ -167,6 +168,12 @@ if __name__ == '__main__':
         ranker = AdversarialNeuMF(uNum, iNum, dim, weight, pop_percent)
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
+    elif modelName == "apl":
+        ranker = APL(uNum, iNum, dim)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
     # load pretrained
     # TODO only support BPR-based models
     if pre != "":
