@@ -95,7 +95,7 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
+        df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t")
         dataset = RawDataset(df)
 
 
@@ -251,8 +251,6 @@ if __name__ == '__main__':
         for item in ndcgs:
             thefile.write("%f\n" % item)
         thefile.close()
-
-        # TODO save best model, .h5 file
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f. " % (best_iter, best_hr, best_ndcg)
     print(output)
