@@ -93,6 +93,12 @@ if __name__ == '__main__':
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
         dataset = RawDataset(df)
+    elif data == "gowalla":
+        columns = ["uid", "timestamp", "lat", "lng", "iid"]
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
+        dataset = RawDataset(df)
+
+
 
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
