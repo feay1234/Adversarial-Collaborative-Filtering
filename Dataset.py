@@ -80,6 +80,10 @@ class RawDataset():
 
     def __init__(self, df):
         np.random.seed(1111)
+
+        # pre-process
+        df = df.groupby("iid").filter(lambda x: len(x) >= 10)
+
         df.uid = df.uid.astype('category').cat.codes.values
         df.iid = df.iid.astype('category').cat.codes.values
         uNum = df.uid.max() + 1
