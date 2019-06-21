@@ -9,15 +9,16 @@ from keras.activations import softmax
 
 
 class APL():
-    def __init__(self, uNum, iNum, dim):
+    def __init__(self, uNum, iNum, dim, trainGeneratorOnly=False):
 
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
+        self.trainGeneratorOnly = trainGeneratorOnly
 
         def gumbel_softmax(logits):
             tau = K.variable(0.2, name="temperature")
-            eps = 1e-20
+            eps = 1e-1
             # eps = 1
             U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
             gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
@@ -41,7 +42,7 @@ class APL():
             return x[0], dim
 
         userGInput = Input(shape=(1,))
-        realItemGInput = Input(shape=(1,))
+        realItemGInput = Input(shape=(iNum,1,))
 
         userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
         itemGEmbeddingLayer = Dense(iNum, name="iGEmb")
@@ -90,29 +91,30 @@ class APL():
     def train(self, x_train, y_train, batch_size=32):
 
         # train clitic
+        if not self.trainGeneratorOnly:
+            for i in range(math.ceil(len(y_train) / batch_size)):
+                _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+                fake = self.generator.predict(_u)
+                _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+                _batch_size = _u.shape[0]
+
+                real = np.expand_dims(to_categorical(real, self.iNum), axis=-1)
+                # fake = np.expand_dims(to_categorical(fake, self.iNum), axis=-1)
+
+                self.discriminator.train_on_batch([_u, real, fake], _labels)
+
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            fake = self.generator.predict(_u)
+            # fake = self.generator.predict(_u)
             _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
 
             real = np.expand_dims(to_categorical(real, self.iNum), axis=-1)
-            fake = np.expand_dims(to_categorical(fake, self.iNum), axis=-1)
+            # fake = np.expand_dims(to_categorical(fake, self.iNum), axis=-1)
 
-            self.discriminator.train_on_batch([_u, real, fake], _labels)
-
-        for i in range(math.ceil(len(y_train) / batch_size)):
-            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-            real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            fake = self.generator.predict(_u)
-            _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-            _batch_size = _u.shape[0]
-
-            real = np.expand_dims(to_categorical(real, self.iNum), axis=-1)
-            fake = np.expand_dims(to_categorical(fake, self.iNum), axis=-1)
-
-            hist = self.advModel.fit([_u, real, fake], _labels, batch_size=batch_size, verbose=0)
+            hist = self.advModel.fit([_u, real], _labels, batch_size=_batch_size, verbose=0)
         return hist
 
 

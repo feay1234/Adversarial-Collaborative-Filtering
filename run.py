@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="amf")
+                        help='Model Name: lstm', default="apl_g")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -151,6 +151,10 @@ if __name__ == '__main__':
         ranker = APL(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+    elif modelName == "apl_g":
+        ranker = APL(uNum, iNum, dim, True)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # load pretrained
     # TODO only support BPR-based models
@@ -162,9 +166,6 @@ if __name__ == '__main__':
         ranker.predictor.get_layer("iEmb").set_weights(pretrainModel.get_layer("iEmb").get_weights())
 
     print(runName)
-
-    isAdvModel = ["amf", "aneumf", "abpr"]
-    isPairwiseModel = True if modelName in ["bpr", "abpr", "apl"] else False
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
