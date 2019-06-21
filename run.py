@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=2,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -106,28 +106,6 @@ if __name__ == '__main__':
     print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
           % (time() - t1, uNum, iNum, train.nnz, len(testRatings)))
 
-    # Checkin data is not appropriate
-    # elif data == "gowalla":
-    #     columns = ["uid", "timestamp", "lat", "lng", "iid"]
-    #     df = pd.read_csv(path+"data/gowalla/gowalla.txt.gz", names=columns)
-
-    # df.uid = df.uid.astype('category').cat.codes.values
-    # df.iid = df.iid.astype('category').cat.codes.values
-    #
-    # uNum = df.uid.max() + 1
-    # iNum = df.iid.max() + 1
-
-    # print("#Users: %d, #Items: %d" % (uNum, iNum))
-    #
-    # Preparing dataset
-    # train, test = train_test_split(df, test_size=0.3, random_state=1111)
-    #
-    # sample = train
-    # x_train = [sample['uid'].values, sample['iid'].values]
-    # y_train = sample.rating.values
-    # sample = test
-    # x_test = [sample['uid'].values, sample['iid'].values]
-    # y_test = sample.rating.values
 
     # Initialise Model
 
@@ -204,7 +182,7 @@ if __name__ == '__main__':
         hist = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
-        (hits, ndcgs) = evaluate_model(ranker.predictor if isPairwiseModel else ranker.model, testRatings,
+        (hits, ndcgs) = evaluate_model(ranker, testRatings,
                                        testNegatives, topK, evaluation_threads)
         hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
         # hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist[0]
@@ -239,46 +217,4 @@ if __name__ == '__main__':
     thefile.close()
 
 
-    # Trian model
-    #
-    # if "a" not in modelName:
-    #
-    #     # history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=epochs, batch_size=batch_size, shuffle=True)
-    #
-    #     for epoch in range(epochs):
-    #         print(epoch)
-    #         t1 = time()
-    #         for i in range(math.ceil(y_train.shape[0] / batch_size)):
-    #             idx = np.random.randint(0, y_train.shape[0], batch_size)
-    #             _x_train = [x_train[0][idx], x_train[1][idx]]
-    #             _y_train = y_train[idx]
-    #             ranker.model.train_on_batch(_x_train, _y_train)
-    #         t2 = time()
-    #         res = ranker.model.evaluate(x_test, y_test)
-    #         output = "loss: %.4f, mse: %.4f, [%.2f.h]" % (res[0], res[1], (t2 - t1) / 3600)
-    #         print(res)
-    #         with open(path + "out/%s.res" % runName, "a") as myfile:
-    #             myfile.write(output + "\n")
-    #         print(output)
-    #
-    # else:
-    #
-    #     ranker.init(x_train, x_test, batch_size)
-    #
-    #     for epoch in range(epochs):
-    #         print(epoch)
-    #         t1 = time()
-    #         for i in range(math.ceil(y_train.shape[0] / batch_size)):
-    #             # sample mini-batch
-    #             ranker.train(x_train, y_train, batch_size)
-    #
-    #         t2 = time()
-    #
-    #         res = ranker.model.evaluate(x_test, y_test)
-    #         output = "loss: %.4f, mse: %.4f, [%.2f.h]" % (res[0], res[1], (t2 - t1) / 3600)
-    #         with open(path + "out/%s.res" % runName, "a") as myfile:
-    #             myfile.write(output + "\n")
-    #         print(output)
-    #
-    #         # TODO save results user item score for further analysis and save model when codes are stable
-    #         # history = ranker.model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=10, batch_size=256)
+
