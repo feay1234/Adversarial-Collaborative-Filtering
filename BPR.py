@@ -42,7 +42,7 @@ class BPR():
         return self.predictor.predict([users, items], batch_size=100, verbose=0)
 
     def train(self, x_train, y_train, batch_size):
-        hist = self.advModel.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0)
+        hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0)
         return hist
 
     def get_train_instances(self, train):
