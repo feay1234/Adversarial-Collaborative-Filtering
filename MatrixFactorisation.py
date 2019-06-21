@@ -117,31 +117,31 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
 
             # sample mini-batch for User Discriminator
 
-            idx = np.random.randint(0, len(self.popular_user_x), batch_size)
+            idx = np.random.randint(0, len(self.popular_user_x), _batch_size)
             _popular_user_x = self.popular_user_x[idx]
 
-            idx = np.random.randint(0, len(self.rare_user_x), batch_size)
+            idx = np.random.randint(0, len(self.rare_user_x), _batch_size)
             _rare_user_x = self.rare_user_x[idx]
 
             _popular_user_x = self.uEncoder.predict(_popular_user_x)
             _rare_user_x = self.uEncoder.predict(_rare_user_x)
 
-            d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, np.ones(batch_size))
-            d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, np.zeros(batch_size))
+            d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, np.ones(_batch_size))
+            d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, np.zeros(_batch_size))
 
             # sample mini-batch for Item Discriminator
 
-            idx = np.random.randint(0, len(self.popular_item_x), batch_size)
+            idx = np.random.randint(0, len(self.popular_item_x), _batch_size)
             _popular_item_x = self.popular_item_x[idx]
 
-            idx = np.random.randint(0, len(self.rare_item_x), batch_size)
+            idx = np.random.randint(0, len(self.rare_item_x), _batch_size)
             _rare_item_x = self.rare_item_x[idx]
 
             _popular_item_x = self.iEncoder.predict(_popular_item_x)
             _rare_item_x = self.iEncoder.predict(_rare_item_x)
 
-            d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, np.ones(batch_size))
-            d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, np.zeros(batch_size))
+            d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, np.ones(_batch_size))
+            d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, np.zeros(_batch_size))
 
             # Discriminator's loss
             # d_loss = 0.5 * np.add(d_loss_popular_user, d_loss_rare_user) + 0.5 * np.add(d_loss_popular_item,
@@ -149,16 +149,16 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
 
             # Sample mini-batch for adversarial model
 
-            idx = np.random.randint(0, len(self.popular_user_x), int(batch_size / 2))
+            idx = np.random.randint(0, len(self.popular_user_x), int(_batch_size / 2))
             _popular_user_x = self.popular_user_x[idx]
 
-            idx = np.random.randint(0, len(self.rare_user_x), int(batch_size / 2))
+            idx = np.random.randint(0, len(self.rare_user_x), int(_batch_size / 2))
             _rare_user_x = self.rare_user_x[idx]
 
-            idx = np.random.randint(0, len(self.popular_item_x), int(batch_size / 2))
+            idx = np.random.randint(0, len(self.popular_item_x), int(_batch_size / 2))
             _popular_item_x = self.popular_item_x[idx]
 
-            idx = np.random.randint(0, len(self.rare_item_x), int(batch_size / 2))
+            idx = np.random.randint(0, len(self.rare_item_x), int(_batch_size / 2))
             _rare_item_x = self.rare_item_x[idx]
             #
             # _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
@@ -167,7 +167,7 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
             _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
             _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
 
-            _popular_rare_y = np.concatenate([np.zeros(int(batch_size / 2)), np.ones(int(batch_size / 2))])
+            _popular_rare_y = np.concatenate([np.zeros(int(_batch_size / 2)), np.ones(int(_batch_size / 2))])
             # Important: we need to swape label to confuse discriminator
             # _popular_rare_y = np.concatenate([np.ones(int(batch_size / 2)), np.zeros(int(batch_size / 2))])
 

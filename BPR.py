@@ -93,6 +93,7 @@ class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+            _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
 
             # sample mini-batch for User Discriminator
@@ -126,9 +127,9 @@ class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
             # Sample mini-batch for adversarial model
 
             # Important: we need to swape label to confuse discriminator
-            y_user = np.array([0 if i in self.popular_user_x else 1 for i in x_train[0]])
-            y_item = np.array([0 if i in self.popular_item_x else 1 for i in x_train[1]])
+            y_user = np.array([0 if i in self.popular_user_x else 1 for i in _u])
+            y_item = np.array([0 if i in self.popular_item_x else 1 for i in _p])
 
-            hist = self.advModel.fit([_u, _p, _n], [y_train, y_user, y_item], batch_size=batch_size, epochs=1, verbose=0)
+            hist = self.advModel.fit([_u, _p, _n], [_labels, y_user, y_item], batch_size=batch_size, epochs=1, verbose=0)
 
         return hist
