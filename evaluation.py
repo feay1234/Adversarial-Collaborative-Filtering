@@ -60,9 +60,10 @@ def eval_one_rating(idx):
     # Get prediction scores
     map_item_score = {}
     users = np.full(len(items), u, dtype='int32')
-    # TODO update for pairwise model
-    predictions = _model.predict([users, np.array(items)],
-                                 batch_size=100, verbose=0)
+    # predictions = _model.predict([users, np.array(items)],
+    #                              batch_size=100, verbose=0)
+    predictions = _model.rank(users, np.array(items))
+
     for i in range(len(items)):
         item = items[i]
         map_item_score[item] = predictions[i]

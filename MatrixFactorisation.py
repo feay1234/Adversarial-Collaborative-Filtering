@@ -25,6 +25,13 @@ class MatrixFactorization:
         self.model = Model([userInput, itemInput], pred)
         self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
+    def train(self, x_train, y_train, batch_size):
+        hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
+        return hist
+
+    def rank(self, users, items):
+        return self.model.predict([users, items], batch_size=100, verbose=0)
+
     def get_train_instances(self, train):
         user_input, item_input, labels = [], [], []
         for (u, i) in train.keys():
@@ -101,73 +108,76 @@ class AdversarialMatrixFactorisation(MatrixFactorization):
 
     def train(self, x_train, y_train, batch_size):
 
-        # idx = np.random.randint(0, y_train.shape[0], batch_size)
-        # _x_train = [x_train[0][idx], x_train[1][idx]]
-        # _y_train = y_train[idx]
-
-        # sample mini-batch for User Discriminator
-
-        idx = np.random.randint(0, len(self.popular_user_x), batch_size)
-        _popular_user_x = self.popular_user_x[idx]
-
-        idx = np.random.randint(0, len(self.rare_user_x), batch_size)
-        _rare_user_x = self.rare_user_x[idx]
-
-        _popular_user_x = self.uEncoder.predict(_popular_user_x)
-        _rare_user_x = self.uEncoder.predict(_rare_user_x)
-
-        d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, np.ones(batch_size))
-        d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, np.zeros(batch_size))
-
-        # sample mini-batch for Item Discriminator
-
-        idx = np.random.randint(0, len(self.popular_item_x), batch_size)
-        _popular_item_x = self.popular_item_x[idx]
-
-        idx = np.random.randint(0, len(self.rare_item_x), batch_size)
-        _rare_item_x = self.rare_item_x[idx]
-
-        _popular_item_x = self.iEncoder.predict(_popular_item_x)
-        _rare_item_x = self.iEncoder.predict(_rare_item_x)
-
-        d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, np.ones(batch_size))
-        d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, np.zeros(batch_size))
-
-        # Discriminator's loss
-        # d_loss = 0.5 * np.add(d_loss_popular_user, d_loss_rare_user) + 0.5 * np.add(d_loss_popular_item,
-        #                                                                             d_loss_rare_item)
-
-        # Sample mini-batch for adversarial model
-
-        idx = np.random.randint(0, len(self.popular_user_x), int(batch_size / 2))
-        _popular_user_x = self.popular_user_x[idx]
-
-        idx = np.random.randint(0, len(self.rare_user_x), int(batch_size / 2))
-        _rare_user_x = self.rare_user_x[idx]
-
-        idx = np.random.randint(0, len(self.popular_item_x), int(batch_size / 2))
-        _popular_item_x = self.popular_item_x[idx]
-
-        idx = np.random.randint(0, len(self.rare_item_x), int(batch_size / 2))
-        _rare_item_x = self.rare_item_x[idx]
-        #
-        # _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
-        # _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
-        #
-        _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
-        _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
-
-        _popular_rare_y = np.concatenate([np.zeros(int(batch_size / 2)), np.ones(int(batch_size / 2))])
-        # Important: we need to swape label to confuse discriminator
-        # _popular_rare_y = np.concatenate([np.ones(int(batch_size / 2)), np.zeros(int(batch_size / 2))])
+        for i in range(math.ceil(len(y_train) / batch_size)):
+            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+            _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+            _batch_size = _u.shape[0]
 
 
-        # Train adversarial model
-        # hist = self.advModel.train_on_batch(x_train + [_popular_rare_user_x, _popular_rare_item_x],
-        #                                       [y_train, _popular_rare_y, _popular_rare_y])
-        hist = self.advModel.fit(x_train + [_popular_rare_user_x, _popular_rare_item_x],
-                                 [y_train, _popular_rare_y, _popular_rare_y], batch_size=batch_size, epochs=1,
-                                 verbose=0)
+            # sample mini-batch for User Discriminator
+
+            idx = np.random.randint(0, len(self.popular_user_x), batch_size)
+            _popular_user_x = self.popular_user_x[idx]
+
+            idx = np.random.randint(0, len(self.rare_user_x), batch_size)
+            _rare_user_x = self.rare_user_x[idx]
+
+            _popular_user_x = self.uEncoder.predict(_popular_user_x)
+            _rare_user_x = self.uEncoder.predict(_rare_user_x)
+
+            d_loss_popular_user = self.discriminator_u.train_on_batch(_popular_user_x, np.ones(batch_size))
+            d_loss_rare_user = self.discriminator_u.train_on_batch(_rare_user_x, np.zeros(batch_size))
+
+            # sample mini-batch for Item Discriminator
+
+            idx = np.random.randint(0, len(self.popular_item_x), batch_size)
+            _popular_item_x = self.popular_item_x[idx]
+
+            idx = np.random.randint(0, len(self.rare_item_x), batch_size)
+            _rare_item_x = self.rare_item_x[idx]
+
+            _popular_item_x = self.iEncoder.predict(_popular_item_x)
+            _rare_item_x = self.iEncoder.predict(_rare_item_x)
+
+            d_loss_popular_item = self.discriminator_i.train_on_batch(_popular_item_x, np.ones(batch_size))
+            d_loss_rare_item = self.discriminator_i.train_on_batch(_rare_item_x, np.zeros(batch_size))
+
+            # Discriminator's loss
+            # d_loss = 0.5 * np.add(d_loss_popular_user, d_loss_rare_user) + 0.5 * np.add(d_loss_popular_item,
+            #                                                                             d_loss_rare_item)
+
+            # Sample mini-batch for adversarial model
+
+            idx = np.random.randint(0, len(self.popular_user_x), int(batch_size / 2))
+            _popular_user_x = self.popular_user_x[idx]
+
+            idx = np.random.randint(0, len(self.rare_user_x), int(batch_size / 2))
+            _rare_user_x = self.rare_user_x[idx]
+
+            idx = np.random.randint(0, len(self.popular_item_x), int(batch_size / 2))
+            _popular_item_x = self.popular_item_x[idx]
+
+            idx = np.random.randint(0, len(self.rare_item_x), int(batch_size / 2))
+            _rare_item_x = self.rare_item_x[idx]
+            #
+            # _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
+            # _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
+            #
+            _popular_rare_user_x = np.concatenate([_popular_user_x, _rare_user_x])
+            _popular_rare_item_x = np.concatenate([_popular_item_x, _rare_item_x])
+
+            _popular_rare_y = np.concatenate([np.zeros(int(batch_size / 2)), np.ones(int(batch_size / 2))])
+            # Important: we need to swape label to confuse discriminator
+            # _popular_rare_y = np.concatenate([np.ones(int(batch_size / 2)), np.zeros(int(batch_size / 2))])
+
+
+            # Train adversarial model
+            # hist = self.advModel.train_on_batch(x_train + [_popular_rare_user_x, _popular_rare_item_x],
+            #                                       [y_train, _popular_rare_y, _popular_rare_y])
+            hist = self.advModel.fit([_u, _i] + [_popular_rare_user_x, _popular_rare_item_x],
+                                     [_labels, _popular_rare_y, _popular_rare_y], batch_size=batch_size, epochs=1,
+                                     verbose=0)
         return hist
 
     # Fast but not effective

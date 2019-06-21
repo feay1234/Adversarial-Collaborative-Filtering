@@ -186,10 +186,10 @@ if __name__ == '__main__':
     print(runName)
 
     isAdvModel = ["amf", "aneumf", "abpr"]
-    isPairwiseModel = True if modelName in ["bpr", "abpr"] else False
+    isPairwiseModel = True if modelName in ["bpr", "abpr", "apl"] else False
 
     # Init performance
-    (hits, ndcgs) = evaluate_model(ranker.predictor if isPairwiseModel else ranker.model, testRatings, testNegatives,
+    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
                                    topK, evaluation_threads)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     print('Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg))
@@ -201,36 +201,7 @@ if __name__ == '__main__':
         # Generate training instances
         x_train, y_train = ranker.get_train_instances(train)
 
-        if modelName in isAdvModel:
-
-            if isPairwiseModel:
-                for i in range(math.ceil(len(y_train) / batch_size)):
-                    _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-                    _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-                    _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
-                    _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-                    _batch_size = _u.shape[0]
-
-                    hist = ranker.train([_u, _p, _n], _labels, _batch_size)
-
-            else:
-
-                # for i in tqdm(range(math.ceil(len(labels) / batch_size))):
-                for i in range(math.ceil(len(y_train) / batch_size)):
-                    _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-                    _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-                    _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-                    _batch_size = _u.shape[0]
-                    #
-                    hist = ranker.train([_u, _i], _labels, _batch_size)
-                    #
-                    #
-                    # ranker.init(user_input, item_input)
-                    # hist = ranker.train2([np.array(user_input), np.array(item_input)],  # input
-                    #                         np.array(labels), batch_size)
-        else:
-            # Training
-            hist = ranker.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
+        hist = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
         (hits, ndcgs) = evaluate_model(ranker.predictor if isPairwiseModel else ranker.model, testRatings,
