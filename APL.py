@@ -13,13 +13,10 @@ class APL():
         def gumbel_softmax(logits):
             tau = K.variable(0.2, name="temperature")
             eps = 1e-20
-            U = K.random_uniform(K.shape(logits), 0, 1)
+            U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
             gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
             y = K.log(logits + eps) + gumbel_noise
-            # y = logits - K.log(-K.log(U + eps) + eps)  # logits + gumbel noise
-            # y = softmax(K.reshape(y, (-1, iNum)) / tau)
-            # y = K.argmax(y, axis=-1)
-            return y
+            return K.softmax(y / tau)
 
         def gumbel_shape(x):
             return x[0], iNum
@@ -30,8 +27,9 @@ class APL():
         userInput = Input(shape=(1,), dtype="int32")
         itemInput = Input(shape=(1,), dtype="int32")
 
-        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uGEmb")
-        itemGEmbeddingLayer = Dense(iNum, name="iGEmb")
+        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
+        itemGEmbeddingLayer = Embedding(input_dim=iNum, output_dim=dim, name="iEmb")
+        # itemGEmbeddingLayer = Dense(iNum, name="iGEmb")
         Gout = itemGEmbeddingLayer(userGEmbeddingLayer(userInput))
 
         fakeInput = Lambda(gumbel_softmax, output_shape=gumbel_shape)(Gout)
@@ -49,10 +47,10 @@ class APL():
         diff = Subtract()([pDot, nDot])
         # Pass difference through sigmoid function.
         pred = Activation("sigmoid")(diff)
-        self.model = Model([userInput, itemInput], [pDot])
+        self.model = Model([userInput, itemInput], [diff])
 
         self.model.compile(optimizer="adam", loss="binary_crossentropy")
-        self.predictor = Model([userInput, itemInput], [pDot])
+        self.predictor = Model([userInput], [Gout])
 
 
     def get_train_instances(self, train):
@@ -77,6 +75,7 @@ y = np.random.randint(0,5, size=(2))
 y2 = np.random.randint(0,7, size=(2,10))
 y3 = np.random.randint(0,7, size=(2,7))
 apl.model.fit([u,i], [y])
-
-print(apl.model.predict([u,i]))
-
+#
+print(apl.predictor.predict([u]).shape)
+#
+#
