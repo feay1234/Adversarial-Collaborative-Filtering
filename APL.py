@@ -107,7 +107,7 @@ class APL():
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            # fake = self.generator.predict(_u)
+            fake = self.generator.predict(_u)
             _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
 

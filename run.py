@@ -27,7 +27,7 @@ def parse_args():
                         help='Model Name: lstm', default="apl_g")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-small")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
