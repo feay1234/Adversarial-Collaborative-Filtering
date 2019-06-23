@@ -45,7 +45,7 @@ class APL():
         realItemGInput = Input(shape=(iNum,1,))
 
         userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
-        itemGEmbeddingLayer = Dense(iNum, name="iGEmb")
+        itemGEmbeddingLayer = Dense(iNum, name="iEmb")
         Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
 
         fakeInput = Lambda(gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(Gout)
@@ -97,7 +97,6 @@ class APL():
                 real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
                 fake = self.generator.predict(_u)
                 _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-                _batch_size = _u.shape[0]
 
                 real = np.expand_dims(to_categorical(real, self.iNum), axis=-1)
                 # fake = np.expand_dims(to_categorical(fake, self.iNum), axis=-1)
@@ -107,7 +106,6 @@ class APL():
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            fake = self.generator.predict(_u)
             _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
 
