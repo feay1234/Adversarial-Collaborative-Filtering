@@ -1,14 +1,11 @@
 from keras.engine import Layer
 from keras.engine.saving import load_model
-from keras.initializers import RandomUniform
-from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda, Dense, Multiply
+from keras.layers import Input, Embedding, Dot, Subtract, Activation, Flatten, Lambda
 from keras.models import Model
 from keras import backend as K
 import numpy as np
 import math
 from keras.utils import to_categorical
-import tensorflow as tf
-from MatrixFactorisation import AdversarialMatrixFactorisation
 from scipy.special import softmax
 
 
@@ -16,7 +13,6 @@ class OnehotEmbedding(Layer):
     def __init__(self, input_num, output_num, **kwargs):
         self.input_num = input_num
         self.output_num = output_num
-        # self.enableTranspose = enableTranspose
         super(OnehotEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
@@ -28,14 +24,9 @@ class OnehotEmbedding(Layer):
         super(OnehotEmbedding, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, x):
-        # if self.enableTranspose:
-        #     return K.dot(x, K.transpose(self.kernel))
         return K.dot(x, self.kernel)
 
     def compute_output_shape(self, input_shape):
-        # if self.enableTranspose:
-        #     return (input_shape[0], input_shape[-1])
-        # return (input_shape[0], self.Nembeddings)
         return (input_shape[0], self.output_num)
 
 
@@ -59,6 +50,11 @@ class APL():
             y = logits - K.log(-K.log(U + eps) + eps)
             y = K.softmax(y / tau)
             return y
+            # eps = 1e-20
+            # u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            # gumbel_noise = -K.log(-K.log(u + eps) + eps)
+            # y = K.log(logits + eps) + gumbel_noise
+            # return K.softmax(y / tau)
 
         def discriminator_gumbel_softmax(logits):
             tau = K.variable(0.2, name="temperature")
@@ -68,18 +64,16 @@ class APL():
             y = K.softmax(y / tau)
             return y
 
-        def mul_emb(x):
-            fakeEmb, emb = x
-            return K.multiply(fakeEmb, emb)
-
-        def mul_shape(x):
-            return x[0], iNum, dim
+        #   Original
+        #     eps = 1e-20
+        #     u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+        #     gumbel_noise = -K.log(-K.log(u + eps) + eps)
+        #     y = K.log(logits + eps) + gumbel_noise
+        #     return K.softmax(y / tau)
 
         def gumbel_shape(x):
             return x[0], iNum
 
-        def sum_shape(x):
-            return x[0], dim
 
         userInput = Input(shape=(1,))
         posItemInput = Input(shape=(iNum,), name="pos_item")
@@ -126,18 +120,9 @@ class APL():
         self.predictor = Model([userGInput], [Gout])
 
     def rank(self, users, items):
-        # items = np.expand_dims(to_categorical(items, self.iNum), axis=-1)
-        # items = to_categorical(items, self.iNum)
-        # ranks = self.predictor.predict([users, items], batch_size=100, verbose=0)
-        ranks = self.predictor.predict(users[:1], batch_size=1, verbose=0)
-        # print(ranks.shape)
-        # print(items)
-        return ranks[0][items]
 
-        # ranks = self.predictor.predict([users, items], batch_size=100, verbose=0)
-        # ranks = self.predictor.predict(users, batch_size=100, verbose=0)
-        # print(ranks)
-        # return ranks[0][items]
+        ranks = self.predictor.predict(users[:1], batch_size=1, verbose=0)
+        return ranks[0][items]
 
     def load_pre_train(self, pre):
         pretrainModel = load_model(pre)
@@ -145,9 +130,9 @@ class APL():
         weight = np.transpose(pretrainModel.get_layer("iEmb").get_weights()[0])
         self.predictor.get_layer("iEmb").set_weights([weight])
 
+    # TODO
     def save(self, path):
-        print("TODO")
-        # self.model.save(path, overwrite=True)
+        a = 0
 
     def train(self, x_train, y_train, batch_size=32):
 
@@ -187,24 +172,6 @@ class APL():
             hist = self.generator.fit([_u, real, aux], _labels, batch_size=_batch_size, verbose=0)
         return hist
 
-    # def train(self, x_train, y_train, batch_size=32):
-    #
-    #     for i in range(math.ceil(len(y_train) / batch_size)):
-    #         # print(i)
-    #         _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-    #         real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-    #         fake = x_train[2][i * batch_size:(i * batch_size) + batch_size]
-    #         _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-    #         _batch_size = _u.shape[0]
-    #
-    #         # real = np.expand_dims(to_categorical(real, self.iNum), axis=-1)
-    #         # fake = np.expand_dims(to_categorical(fake, self.iNum), axis=-1)
-    #         real = to_categorical(real, self.iNum)
-    #         fake = to_categorical(fake, self.iNum)
-    #
-    #         hist = self.discriminator.fit([_u, real, fake], _labels, batch_size=_batch_size, verbose=0)
-    #         # print(hist.history, real, fake)
-    #     return hist
 
     def init(self, train):
 
@@ -220,13 +187,7 @@ class APL():
 
     def get_train_instances(self, train):
         return self.x_train, self.y_train
-        # for (u, i) in train.keys():
-        #     positive instance
-            # user_input.append(u)
-            # pos_item_input.append(i)
-            # labels.append(1)
-        #
-        # return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
+
 
 # from keras.datasets import mnist
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()
