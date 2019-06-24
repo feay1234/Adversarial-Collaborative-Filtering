@@ -50,22 +50,13 @@ class APL():
             tau = K.variable(0.2, name="temperature")
             eps = 1e-20
             U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            # gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
+            gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
             # y = K.log(logits + eps) + gumbel_noise
-            # y = K.softmax(y / tau)
+            # return K.softmax(y / tau)
             # y = K.softmax(K.log(logits))
-            # return K.expand_dims(y)
             y = logits - K.log(-K.log(U + eps) + eps)
             y = K.softmax(y / tau)
-            # return K.expand_dims(y)
             return y
-
-        # def sampling(logits_y):
-        #     U = K.random_uniform(K.shape(logits_y), 0, 1)
-        #     y = logits_y - K.log(-K.log(U + 1e-20) + 1e-20)  # logits + gumbel noise
-        #     y = softmax(K.reshape(y, (-1, N, M)) / tau)
-        #     y = K.reshape(y, (-1, N * M))
-        #     return y
 
         def mul_emb(x):
             fakeEmb, emb = x
@@ -206,16 +197,16 @@ class APL():
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()
 # print(x_train.shape)
 
-uNum = 5000
-iNum = 5
-dim = 10
-
-apl = APL(uNum, iNum, dim)
+# uNum = 5000
+# iNum = 5
+# dim = 10
+#
+# apl = APL(uNum, iNum, dim)
 #
 # u = np.random.randint(0, uNum, size=2)
 # i = np.random.randint(0, iNum, size=(2, iNum, 1))
 # print(apl.rank(np.array([1]), [1,2,4]))
-print(apl.predictor.predict(np.array([1])).shape)
+# print(apl.predictor.predict(np.array([1])).shape)
 #
 # print(apl.generator.predict(u).shape)
 # print(apl.generator.predict(u))

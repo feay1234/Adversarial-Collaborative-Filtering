@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -159,11 +159,12 @@ if __name__ == '__main__':
     # load pretrained
     # TODO only support BPR-based models
     if pre != "":
-        pretrainModel = load_model(pre)
+        # pretrainModel = load_model(pre)
+        ranker.load_pre_train(pre)
         runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-        ranker.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
-        ranker.predictor.get_layer("iEmb").set_weights(pretrainModel.get_layer("iEmb").get_weights())
+        # ranker.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
+        # ranker.predictor.get_layer("iEmb").set_weights(pretrainModel.get_layer("iEmb").get_weights())
 
     print(runName)
 
@@ -197,9 +198,9 @@ if __name__ == '__main__':
         thefile.close()
 
         # TODO each mode save
-        # if ndcg > best_ndcg:
-        #     best_hr, best_ndcg, best_iter = hr, ndcg, epoch
-        #     ranker.model.save(path + "h5/" + runName + ".h5", overwrite=True)
+        if ndcg > best_ndcg:
+            best_hr, best_ndcg, best_iter = hr, ndcg, epoch
+            ranker.save(path + "h5/" + runName + ".h5")
 
         # only save result file for the best model
         thefile = open(path + "out/" + runName + ".hr", 'w')

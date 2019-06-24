@@ -1,3 +1,4 @@
+from keras.engine.saving import load_model
 from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda
 from keras.models import Model
 from keras import backend as K
@@ -37,6 +38,14 @@ class BPR():
 
         self.model.compile(optimizer="adam", loss="binary_crossentropy")
         self.predictor = Model([self.userInput, self.itemPosInput], [pDot])
+
+    def load_pre_train(self, pre):
+        pretrainModel = load_model(pre)
+        self.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
+        self.predictor.get_layer("iEmb").set_weights(pretrainModel.get_layer("iEmb").get_weights())
+
+    def save(self, path):
+        self.model.save(path, overwrite=True)
 
     def rank(self, users, items):
         return self.predictor.predict([users, items], batch_size=100, verbose=0)
