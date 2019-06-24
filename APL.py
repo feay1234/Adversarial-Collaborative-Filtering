@@ -76,7 +76,6 @@ class APL():
         realItemGInput = Input(shape=(iNum,))
 
         userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
-                                        # embeddings_initializer=RandomUniform())
         itemGEmbeddingLayer = OnehotEmbedding(dim, iNum,  name="iEmb")
         Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
 
@@ -84,8 +83,6 @@ class APL():
         fakeInput = Lambda(gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(Gout)
 
         userDEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uDEmb")
-        # itemDEmbeddingLayer = Embedding(input_dim=iNum, output_dim=dim, name="iDEmb")
-        # itemDEmbeddingLayer = Dense(dim, use_bias=False, name="iDEmb")
         itemDEmbeddingLayer = OnehotEmbedding(iNum, dim,  name="iDEmb")
 
         userInput = Input(shape=(1,))
@@ -94,9 +91,7 @@ class APL():
 
         uEmb = Flatten()(userDEmbeddingLayer(userInput))
         piEmb = itemDEmbeddingLayer(posItemInput)
-        # piEmb = Lambda(lambda x: K.sum(x, axis=1), output_shape=sum_shape)(piEmb)
         niEmb = itemDEmbeddingLayer(negItemInput)
-        # niEmb = Lambda(lambda x: K.sum(x, axis=1), output_shape=sum_shape)(niEmb)
 
         pDot = Dot(axes=-1)([uEmb, piEmb])
         nDot = Dot(axes=-1)([uEmb, niEmb])
@@ -110,10 +105,9 @@ class APL():
 
         validity = self.discriminator([userGInput, realItemGInput, fakeInput])
 
-        self.advModel = Model([userGInput, realItemGInput], validity)
-        self.advModel.compile(optimizer="adam", loss="binary_crossentropy")
+        self.generator = Model([userGInput, realItemGInput], validity)
+        self.generator.compile(optimizer="adam", loss="binary_crossentropy")
 
-        self.generator = Model([userGInput], fakeInput)
 
         # self.predictor = Model([userInput, posItemInput], [pDot])
         self.predictor = Model([userGInput], [Gout])
@@ -145,16 +139,15 @@ class APL():
     def train(self, x_train, y_train, batch_size=32):
 
         # train clitic
-        if not self.trainGeneratorOnly:
-            for i in range(math.ceil(len(y_train) / batch_size)):
-                _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-                real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-                fake = self.generator.predict(_u)
-                _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+        for i in range(math.ceil(len(y_train) / batch_size)):
+            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+            fake = self.generator.predict(_u)
+            _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
 
-                real = to_categorical(real, self.iNum)
+            real = to_categorical(real, self.iNum)
 
-                self.discriminator.train_on_batch([_u, real, fake], _labels)
+            self.discriminator.train_on_batch([_u, real, fake], _labels)
 
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]

@@ -151,10 +151,6 @@ if __name__ == '__main__':
         ranker = APL(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-    elif modelName == "apl_g":
-        ranker = APL(uNum, iNum, dim, True)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # load pretrained
     # TODO only support BPR-based models
