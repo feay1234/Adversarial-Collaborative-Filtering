@@ -64,7 +64,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "h5/ml-small_bpr_d10_06-24-2019_20-45-40.h5"
+    pre = "h5/ml-small_bpr_d10_06-24-2019_20-45-40.h5"
 
     # num_negatives = 1
     topK = 10
@@ -148,9 +148,10 @@ if __name__ == '__main__':
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "apl":
-        ranker = APL(uNum, iNum, dim, train)
+        ranker = APL(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        ranker.init(train)
 
     # load pretrained
     # TODO only support BPR-based models

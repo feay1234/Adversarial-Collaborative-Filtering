@@ -40,12 +40,11 @@ class OnehotEmbedding(Layer):
 
 
 class APL():
-    def __init__(self, uNum, iNum, dim, train, trainGeneratorOnly=False):
+    def __init__(self, uNum, iNum, dim, trainGeneratorOnly=False):
 
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
-        self.user_pos_item = train
         self.trainGeneratorOnly = trainGeneratorOnly
 
         def generator_gumbel_softmax(x):
@@ -125,6 +124,12 @@ class APL():
 
         self.predictor = Model([userGInput], [Gout])
 
+    def init(self, train):
+
+        self.user_pos_item = {i:[] for i in range(self.uNum)}
+        for (u, i) in train.keys():
+            self.user_pos_item[u].append(i)
+
     def rank(self, users, items):
         # items = np.expand_dims(to_categorical(items, self.iNum), axis=-1)
         # items = to_categorical(items, self.iNum)
@@ -158,9 +163,9 @@ class APL():
             _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
 
             # sample fake instances
-            fake = self.generator.predict(_u)
+            fake = self.predictor.predict(_u)
             fake = softmax(fake / 0.2)
-            fake = self.discriminator_gumbel_sampler(fake)
+            fake = self.discriminator_gumbel_sampler.predict(fake)
 
             real = to_categorical(real, self.iNum)
 
@@ -172,11 +177,13 @@ class APL():
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
             # swap label to confuse discriminator
-            _labels = np.ones(_batch_size)
+            _labels = np.zeros(_batch_size)
 
             aux = np.zeros([_batch_size, self.iNum])
             for j in range(_batch_size):
-                aux[j][self.user_pos_item[_u[j]]] = 0.2 / len(self.user_pos_item[_u[j]])
+                pos_items = self.user_pos_item[_u[j]]
+                if len(pos_items) > 0:
+                    aux[j][pos_items] = 0.2 / len(pos_items)
 
             # sample fake instances
 
