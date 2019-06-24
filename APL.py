@@ -103,7 +103,8 @@ class APL():
         self.discriminator.trainable = False
 
         fakeItemInput = Input(shape=(iNum,))
-        gumbel_out = Lambda(discriminator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(fakeItemInput)
+        gumbel_out = Lambda(discriminator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(
+            fakeItemInput)
         self.discriminator_gumbel_sampler = Model(fakeItemInput, gumbel_out)
 
         userGInput = Input(shape=(1,))
@@ -114,8 +115,8 @@ class APL():
         itemGEmbeddingLayer = OnehotEmbedding(dim, iNum, name="iEmb")
         Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
 
-
-        fakeInput = Lambda(generator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")([Gout, auxGInput])
+        fakeInput = Lambda(generator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(
+            [Gout, auxGInput])
 
         validity = self.discriminator([userGInput, realItemGInput, fakeInput])
 
@@ -123,12 +124,6 @@ class APL():
         self.generator.compile(optimizer="adam", loss="binary_crossentropy")
 
         self.predictor = Model([userGInput], [Gout])
-
-    def init(self, train):
-
-        self.user_pos_item = {i:[] for i in range(self.uNum)}
-        for (u, i) in train.keys():
-            self.user_pos_item[u].append(i)
 
     def rank(self, users, items):
         # items = np.expand_dims(to_categorical(items, self.iNum), axis=-1)
@@ -211,15 +206,27 @@ class APL():
     #         # print(hist.history, real, fake)
     #     return hist
 
-    def get_train_instances(self, train):
+    def init(self, train):
+
+        self.user_pos_item = {i: [] for i in range(self.uNum)}
         user_input, pos_item_input, labels = [], [], []
         for (u, i) in train.keys():
-            # positive instance
+            self.user_pos_item[u].append(i)
             user_input.append(u)
             pos_item_input.append(i)
             labels.append(1)
+        self.x_train = [np.array(user_input), np.array(pos_item_input)]
+        self.y_train = np.array(labels)
 
-        return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
+    def get_train_instances(self, train):
+        return self.x_train, self.y_train
+        # for (u, i) in train.keys():
+        #     positive instance
+            # user_input.append(u)
+            # pos_item_input.append(i)
+            # labels.append(1)
+        #
+        # return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
 
 # from keras.datasets import mnist
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()
