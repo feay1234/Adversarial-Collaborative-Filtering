@@ -18,7 +18,8 @@ class APL():
 
         def gumbel_softmax(logits):
             tau = K.variable(0.2, name="temperature")
-            eps = 1e-1
+            # eps = 1e-1
+            eps = 1
             # eps = 1
             U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
             gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
