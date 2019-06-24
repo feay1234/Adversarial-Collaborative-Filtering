@@ -9,10 +9,10 @@ import math
 from keras.utils import to_categorical
 import tensorflow as tf
 from MatrixFactorisation import AdversarialMatrixFactorisation
-from keras.activations import softmax
+from scipy.special import softmax
+
 
 class OnehotEmbedding(Layer):
-
     def __init__(self, input_num, output_num, **kwargs):
         self.input_num = input_num
         self.output_num = output_num
@@ -40,21 +40,31 @@ class OnehotEmbedding(Layer):
 
 
 class APL():
-    def __init__(self, uNum, iNum, dim, trainGeneratorOnly=False):
+    def __init__(self, uNum, iNum, dim, train, trainGeneratorOnly=False):
 
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
+        self.user_pos_item = train
         self.trainGeneratorOnly = trainGeneratorOnly
 
-        def gumbel_softmax(logits):
+        def generator_gumbel_softmax(x):
+            logits, aux = x
+            logits = K.softmax(logits)
+            logits = (1 - 0.2) * logits + aux
+
+            # This one works
             tau = K.variable(0.2, name="temperature")
             eps = 1e-20
             U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
-            # y = K.log(logits + eps) + gumbel_noise
-            # return K.softmax(y / tau)
-            # y = K.softmax(K.log(logits))
+            y = logits - K.log(-K.log(U + eps) + eps)
+            y = K.softmax(y / tau)
+            return y
+
+        def discriminator_gumbel_softmax(logits):
+            tau = K.variable(0.2, name="temperature")
+            eps = 1e-20
+            U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
             y = logits - K.log(-K.log(U + eps) + eps)
             y = K.softmax(y / tau)
             return y
@@ -72,22 +82,12 @@ class APL():
         def sum_shape(x):
             return x[0], dim
 
-        userGInput = Input(shape=(1,))
-        realItemGInput = Input(shape=(iNum,))
-
-        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
-        itemGEmbeddingLayer = OnehotEmbedding(dim, iNum,  name="iEmb")
-        Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
-
-        # fakeInput = Gout
-        fakeInput = Lambda(gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(Gout)
-
-        userDEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uDEmb")
-        itemDEmbeddingLayer = OnehotEmbedding(iNum, dim,  name="iDEmb")
-
         userInput = Input(shape=(1,))
         posItemInput = Input(shape=(iNum,), name="pos_item")
         negItemInput = Input(shape=(iNum,), name="neg_item")
+
+        userDEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uDEmb")
+        itemDEmbeddingLayer = OnehotEmbedding(iNum, dim, name="iDEmb")
 
         uEmb = Flatten()(userDEmbeddingLayer(userInput))
         piEmb = itemDEmbeddingLayer(posItemInput)
@@ -103,13 +103,26 @@ class APL():
         self.discriminator.compile(optimizer="adam", loss="binary_crossentropy")
         self.discriminator.trainable = False
 
+        fakeItemInput = Input(shape=(iNum,))
+        gumbel_out = Lambda(discriminator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(fakeItemInput)
+        self.discriminator_gumbel_sampler = Model(fakeItemInput, gumbel_out)
+
+        userGInput = Input(shape=(1,))
+        realItemGInput = Input(shape=(iNum,))
+        auxGInput = Input(shape=(iNum,))
+
+        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
+        itemGEmbeddingLayer = OnehotEmbedding(dim, iNum, name="iEmb")
+        Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
+
+
+        fakeInput = Lambda(generator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")([Gout, auxGInput])
+
         validity = self.discriminator([userGInput, realItemGInput, fakeInput])
 
-        self.generator = Model([userGInput, realItemGInput], validity)
+        self.generator = Model([userGInput, realItemGInput, auxGInput], validity)
         self.generator.compile(optimizer="adam", loss="binary_crossentropy")
 
-
-        # self.predictor = Model([userInput, posItemInput], [pDot])
         self.predictor = Model([userGInput], [Gout])
 
     def rank(self, users, items):
@@ -138,17 +151,22 @@ class APL():
 
     def train(self, x_train, y_train, batch_size=32):
 
-        # train clitic
+        # train discriminator
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            fake = self.generator.predict(_u)
             _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+
+            # sample fake instances
+            fake = self.generator.predict(_u)
+            fake = softmax(fake / 0.2)
+            fake = self.discriminator_gumbel_sampler(fake)
 
             real = to_categorical(real, self.iNum)
 
             self.discriminator.train_on_batch([_u, real, fake], _labels)
 
+        # train generator
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
@@ -156,9 +174,15 @@ class APL():
             # swap label to confuse discriminator
             _labels = np.ones(_batch_size)
 
+            aux = np.zeros([_batch_size, self.iNum])
+            for j in range(_batch_size):
+                aux[j][self.user_pos_item[_u[j]]] = 0.2 / len(self.user_pos_item[_u[j]])
+
+            # sample fake instances
+
             real = to_categorical(real, self.iNum)
 
-            hist = self.advModel.fit([_u, real], _labels, batch_size=_batch_size, verbose=0)
+            hist = self.generator.fit([_u, real, aux], _labels, batch_size=_batch_size, verbose=0)
         return hist
 
     # def train(self, x_train, y_train, batch_size=32):
@@ -189,8 +213,6 @@ class APL():
             labels.append(1)
 
         return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
-
-
 
 # from keras.datasets import mnist
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()

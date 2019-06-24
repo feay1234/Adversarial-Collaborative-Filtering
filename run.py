@@ -148,7 +148,7 @@ if __name__ == '__main__':
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "apl":
-        ranker = APL(uNum, iNum, dim)
+        ranker = APL(uNum, iNum, dim, train)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
