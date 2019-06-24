@@ -159,8 +159,9 @@ class APL():
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
+            # swap label to confuse discriminator
+            _labels = np.ones(_batch_size)
 
             real = to_categorical(real, self.iNum)
 
@@ -188,18 +189,12 @@ class APL():
 
     def get_train_instances(self, train):
         user_input, pos_item_input, labels = [], [], []
-        negs = []
         for (u, i) in train.keys():
             # positive instance
             user_input.append(u)
             pos_item_input.append(i)
-            # j = np.random.randint(self.iNum)
-            # while (u, j) in train:
-            #     j = np.random.randint(self.iNum)
-            # negs.append(j)
             labels.append(1)
 
-        # return [np.array(user_input), np.array(pos_item_input), np.array(negs)], np.array(labels)
         return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
 
 
