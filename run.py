@@ -64,7 +64,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    pre = "h5/ml-small_bpr_d10_06-24-2019_20-45-40.h5"
+    # pre = "h5/ml-small_bpr_d10_06-24-2019_20-45-40.h5"
 
     # num_negatives = 1
     topK = 10
