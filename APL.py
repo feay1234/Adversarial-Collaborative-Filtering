@@ -1,9 +1,11 @@
+from keras.initializers import RandomUniform
 from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda, Dense, Multiply
 from keras.models import Model
 from keras import backend as K
 import numpy as np
 import math
 from keras.utils import to_categorical
+import tensorflow as tf
 from MatrixFactorisation import AdversarialMatrixFactorisation
 from keras.activations import softmax
 
@@ -18,23 +20,30 @@ class APL():
 
         def gumbel_softmax(logits):
             tau = K.variable(0.2, name="temperature")
-            # eps = 1e-1
-            eps = 1
-            # eps = 1
+            eps = 1e-20
             U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
-            y = K.log(logits + eps) + gumbel_noise
+            # gumbel_noise = - K.log(-K.log(U + eps) + eps) # logits + gumbel noise
+            # y = K.log(logits + eps) + gumbel_noise
+            # y = K.softmax(y / tau)
+            # y = K.softmax(K.log(logits))
+            # return K.expand_dims(y)
+            y = logits - K.log(-K.log(U + eps) + eps)
             y = K.softmax(y / tau)
             return K.expand_dims(y)
+
+        # def sampling(logits_y):
+        #     U = K.random_uniform(K.shape(logits_y), 0, 1)
+        #     y = logits_y - K.log(-K.log(U + 1e-20) + 1e-20)  # logits + gumbel noise
+        #     y = softmax(K.reshape(y, (-1, N, M)) / tau)
+        #     y = K.reshape(y, (-1, N * M))
+        #     return y
 
         def mul_emb(x):
             fakeEmb, emb = x
             return K.multiply(fakeEmb, emb)
 
-
         def mul_shape(x):
             return x[0], iNum, dim
-
 
         def gumbel_shape(x):
             return x[0], iNum, 1
@@ -43,12 +52,14 @@ class APL():
             return x[0], dim
 
         userGInput = Input(shape=(1,))
-        realItemGInput = Input(shape=(iNum,1,))
+        realItemGInput = Input(shape=(iNum, 1,))
 
-        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
-        itemGEmbeddingLayer = Dense(iNum, name="iEmb")
+        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb",
+                                        embeddings_initializer=RandomUniform())
+        itemGEmbeddingLayer = Dense(iNum, name="iEmb", use_bias=False, kernel_initializer=RandomUniform())
         Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
 
+        # fakeInput = Gout
         fakeInput = Lambda(gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(Gout)
 
         userDEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uDEmb")
@@ -83,7 +94,7 @@ class APL():
 
         self.generator = Model([userGInput], fakeInput)
 
-        self.predictor = Model([userInput,posItemInput], [pDot])
+        # self.predictor = Model([userInput,posItemInput], [pDot])
 
     def rank(self, users, items):
         items = np.expand_dims(to_categorical(items, self.iNum), axis=-1)
@@ -116,7 +127,6 @@ class APL():
             hist = self.advModel.fit([_u, real], _labels, batch_size=_batch_size, verbose=0)
         return hist
 
-
     def get_train_instances(self, train):
         user_input, pos_item_input, labels = [], [], []
         for (u, i) in train.keys():
@@ -128,16 +138,25 @@ class APL():
 
         return [np.array(user_input), np.array(pos_item_input)], np.array(labels)
 
+
 # from keras.datasets import mnist
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()
 # print(x_train.shape)
 
-# uNum = 5
-# iNum = 7
+# uNum = 5000
+# iNum = 3
 # dim = 10
-#
+
 # apl = APL(uNum, iNum, dim)
-# u = np.random.randint(0,5, size=2)
+#
+# u = np.random.randint(0, uNum, size=2)
+# i = np.random.randint(0, iNum, size=(2, iNum, 1))
+#
+# print(apl.generator.predict(u).shape)
+# print(apl.generator.predict(u))
+
+# print(apl.advModel.predict([u,i]))
+
 # i = np.random.randint(0,7, size=(2,7,1))
 # y = np.random.randint(0,5, size=(2))
 # y2 = np.random.randint(0,7, size=(2,7))
