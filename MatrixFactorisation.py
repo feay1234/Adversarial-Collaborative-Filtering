@@ -39,7 +39,6 @@ class MatrixFactorization:
             user_input.append(u)
             item_input.append(i)
             labels.append(1)
-            # labels.append(train[u,i])
             # negative instances
             j = np.random.randint(self.iNum)
             while (u, j) in train:

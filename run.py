@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl_g")
+                        help='Model Name: lstm', default="apl")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -196,9 +196,10 @@ if __name__ == '__main__':
         thefile.write("%s\n" % output)
         thefile.close()
 
-        if ndcg > best_ndcg:
-            best_hr, best_ndcg, best_iter = hr, ndcg, epoch
-            ranker.model.save(path + "h5/" + runName + ".h5", overwrite=True)
+        # TODO each mode save
+        # if ndcg > best_ndcg:
+        #     best_hr, best_ndcg, best_iter = hr, ndcg, epoch
+        #     ranker.model.save(path + "h5/" + runName + ".h5", overwrite=True)
 
         # only save result file for the best model
         thefile = open(path + "out/" + runName + ".hr", 'w')
