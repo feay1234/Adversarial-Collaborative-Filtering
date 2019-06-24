@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apl")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "h5/ml-small_bpr_d10_06-20-2019_15-30-30.h5"
+    pre = "h5/ml-small_bpr_d10_06-24-2019_20-16-26.h5"
 
     # num_negatives = 1
     topK = 10
@@ -163,8 +163,6 @@ if __name__ == '__main__':
         ranker.load_pre_train(pre)
         runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-        # ranker.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
-        # ranker.predictor.get_layer("iEmb").set_weights(pretrainModel.get_layer("iEmb").get_weights())
 
     print(runName)
 

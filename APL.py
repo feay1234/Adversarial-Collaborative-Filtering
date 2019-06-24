@@ -1,4 +1,5 @@
 from keras.engine import Layer
+from keras.engine.saving import load_model
 from keras.initializers import RandomUniform
 from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda, Dense, Multiply
 from keras.models import Model
@@ -130,6 +131,16 @@ class APL():
         # ranks = self.predictor.predict(users, batch_size=100, verbose=0)
         # print(ranks)
         # return ranks[0][items]
+
+    def load_pre_train(self, pre):
+        pretrainModel = load_model(pre)
+        self.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
+        weight = np.transpose(pretrainModel.get_layer("iEmb").get_weights()[0])
+        self.predictor.get_layer("iEmb").set_weights([weight])
+
+    def save(self, path):
+        print("TODO")
+        # self.model.save(path, overwrite=True)
 
     def train(self, x_train, y_train, batch_size=32):
 
