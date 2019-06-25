@@ -16,7 +16,7 @@ from FastAdversarialMF import FastAdversarialMF
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
 from evaluation import evaluate_model
-
+from utils import write2file, prediction2file
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Adversarial Collaborative Filtering")
@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-small")
@@ -162,14 +162,19 @@ if __name__ == '__main__':
                                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     print(runName)
+    write2file(path + "out/" + runName + ".out", runName)
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
                                    topK, evaluation_threads)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    print('Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg))
+    output = 'Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
+    write2file(path + "out/" + runName + ".out", output)
 
+
+
+    start = time()
     # Training model
     for epoch in range(epochs):
         t1 = time()
@@ -187,10 +192,7 @@ if __name__ == '__main__':
         output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         print(output)
-
-        thefile = open(path + "out/" + runName + ".out", 'a')
-        thefile.write("%s\n" % output)
-        thefile.close()
+        write2file(path + "out/" + runName + ".out", output)
 
         # TODO each mode save
         if ndcg > best_ndcg:
@@ -198,21 +200,12 @@ if __name__ == '__main__':
             ranker.save(path + "h5/" + runName + ".h5")
 
         # only save result file for the best model
-        thefile = open(path + "out/" + runName + ".hr", 'w')
-        for item in hits:
-            thefile.write("%f\n" % item)
-        thefile.close()
+        prediction2file(path + "out/" + runName + ".hr", hits)
+        prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
 
-        thefile = open(path + "out/" + runName + ".ndcg", 'w')
-        for item in ndcgs:
-            thefile.write("%f\n" % item)
-        thefile.close()
-
-    output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f. " % (best_iter, best_hr, best_ndcg)
+    output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f. %.2f hour" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     print(output)
-    thefile = open(path + "out/" + runName + ".out", 'a')
-    thefile.write("%s\n" % output)
-    thefile.close()
+    write2file(path + "out/" + runName + ".out", output)
 
 
 
