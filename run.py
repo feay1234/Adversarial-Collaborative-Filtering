@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-1m")
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     epochs = args.epochs
     pre = args.pre
     # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
-    pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
+    # pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
 
     # num_negatives = 1
     topK = 10
@@ -79,11 +79,6 @@ if __name__ == '__main__':
     if data in ["ml-1m", "yelp", "pinterest-20"]:
         dataset = Dataset(path + "data/" + data)
 
-    elif data == "ml-small":
-        df = pd.read_csv(path + "data/ml-latest-small/ratings.csv", names=columns,
-                         skiprows=1)
-        dataset = RawDataset(df)
-        # train, testRatings, testNegatives =
     elif data == "ml":
         df = pd.read_csv(path + "data/ml-20m/ratings.csv", names=columns,
                          skiprows=1)

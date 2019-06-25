@@ -44,34 +44,34 @@ class APL():
             logits = (1 - 0.2) * logits + aux
 
             # This one works
-            # tau = K.variable(0.2, name="temperature")
-            # eps = 1e-20
-            # U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            # y = logits - K.log(-K.log(U + eps) + eps)
-            # y = K.softmax(y / tau)
-            # return y
-            tau = 0.2
+            tau = K.variable(0.2, name="temperature")
             eps = 1e-20
-            u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            gumbel_noise = -K.log(-K.log(u + eps) + eps)
-            y = K.log(logits + eps) + gumbel_noise
-            return K.softmax(y / tau)
+            U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            y = logits - K.log(-K.log(U + eps) + eps)
+            y = K.softmax(y / tau)
+            return y
+            # tau = 0.2
+            # eps = 1e-20
+            # u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            # gumbel_noise = -K.log(-K.log(u + eps) + eps)
+            # y = K.log(logits + eps) + gumbel_noise
+            # return K.softmax(y / tau)
 
         def discriminator_gumbel_softmax(logits):
-            # tau = K.variable(0.2, name="temperature")
-            # eps = 1e-20
-            # U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            # y = logits - K.log(-K.log(U + eps) + eps)
-            # y = K.softmax(y / tau)
-            # return y
+            tau = K.variable(0.2, name="temperature")
+            eps = 1e-20
+            U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            y = logits - K.log(-K.log(U + eps) + eps)
+            y = K.softmax(y / tau)
+            return y
         #
         #   Original
-            tau = 0.2
-            eps = 1e-20
-            u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            gumbel_noise = -K.log(-K.log(u + eps) + eps)
-            y = K.log(logits + eps) + gumbel_noise
-            return K.softmax(y / tau)
+        #     tau = 0.2
+        #     eps = 1e-20
+        #     u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+        #     gumbel_noise = -K.log(-K.log(u + eps) + eps)
+        #     y = K.log(logits + eps) + gumbel_noise
+        #     return K.softmax(y / tau)
         #
         def gumbel_shape(x):
             return x[0], iNum
@@ -142,8 +142,9 @@ class APL():
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-
+            # _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
+            _batch_size = _u.shape[0]
+            _labels = np.zeros(_batch_size)
             # sample fake instances
             fake = self.predictor.predict(_u)
             fake = softmax(fake / 0.2)
@@ -159,7 +160,7 @@ class APL():
             real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _batch_size = _u.shape[0]
             # swap label to confuse discriminator
-            _labels = np.zeros(_batch_size)
+            _labels = np.ones(_batch_size)
 
             aux = np.zeros([_batch_size, self.iNum])
             for j in range(_batch_size):
