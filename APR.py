@@ -31,16 +31,16 @@ class APR(BPR):
             _batch_size = _u.shape[0]
 
             # Embedding
-            _ue = self.uEncoder.predict(_u)
-            _pe = self.iEncoder.predict(_p)
-            _ne = self.iEncoder.predict(_n)
+            # _ue = self.uEncoder.predict(_u)
+            # _pe = self.iEncoder.predict(_p)
+            # _ne = self.iEncoder.predict(_n)
 
-            x = [_ue, _pe, _ne]
+            x = [_u, _p, _n]
             y = np.ones(_batch_size)
 
             # self.adv_noise_model.train_on_batch(x, y)
 
-            uDelta, iDelta = self.get_gradients(x + [y, y, 1])
+            uDelta, iDelta = self.get_gradients(x + [y, y, 0])
             # split iDelta to pos and neg item grads
             pDelta = iDelta[:_batch_size]
             nDelta = iDelta[_batch_size:]
