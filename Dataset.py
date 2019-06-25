@@ -83,6 +83,7 @@ class RawDataset():
 
         # pre-process
         df = df.groupby("iid").filter(lambda x: len(x) >= 10)
+        # df = df.groupby("uid").filter(lambda x: len(x) >= 10)
 
         df.uid = df.uid.astype('category').cat.codes.values
         df.iid = df.iid.astype('category').cat.codes.values

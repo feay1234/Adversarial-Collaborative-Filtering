@@ -44,33 +44,35 @@ class APL():
             logits = (1 - 0.2) * logits + aux
 
             # This one works
-            tau = K.variable(0.2, name="temperature")
-            eps = 1e-20
-            U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            y = logits - K.log(-K.log(U + eps) + eps)
-            y = K.softmax(y / tau)
-            return y
+            # tau = K.variable(0.2, name="temperature")
             # eps = 1e-20
-            # u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            # gumbel_noise = -K.log(-K.log(u + eps) + eps)
-            # y = K.log(logits + eps) + gumbel_noise
-            # return K.softmax(y / tau)
+            # U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            # y = logits - K.log(-K.log(U + eps) + eps)
+            # y = K.softmax(y / tau)
+            # return y
+            tau = 0.2
+            eps = 1e-20
+            u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            gumbel_noise = -K.log(-K.log(u + eps) + eps)
+            y = K.log(logits + eps) + gumbel_noise
+            return K.softmax(y / tau)
 
         def discriminator_gumbel_softmax(logits):
-            tau = K.variable(0.2, name="temperature")
-            eps = 1e-20
-            U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            y = logits - K.log(-K.log(U + eps) + eps)
-            y = K.softmax(y / tau)
-            return y
-
+            # tau = K.variable(0.2, name="temperature")
+            # eps = 1e-20
+            # U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            # y = logits - K.log(-K.log(U + eps) + eps)
+            # y = K.softmax(y / tau)
+            # return y
+        #
         #   Original
-        #     eps = 1e-20
-        #     u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-        #     gumbel_noise = -K.log(-K.log(u + eps) + eps)
-        #     y = K.log(logits + eps) + gumbel_noise
-        #     return K.softmax(y / tau)
-
+            tau = 0.2
+            eps = 1e-20
+            u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
+            gumbel_noise = -K.log(-K.log(u + eps) + eps)
+            y = K.log(logits + eps) + gumbel_noise
+            return K.softmax(y / tau)
+        #
         def gumbel_shape(x):
             return x[0], iNum
 

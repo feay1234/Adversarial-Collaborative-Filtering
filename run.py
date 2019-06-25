@@ -27,7 +27,7 @@ def parse_args():
                         help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-small")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -103,9 +103,8 @@ if __name__ == '__main__':
 
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
-    print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
-          % (time() - t1, uNum, iNum, train.nnz, len(testRatings)))
-
+    stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (time() - t1, uNum, iNum, train.nnz, len(testRatings))
+    print(stat)
 
     # Initialise Model
 
@@ -147,7 +146,7 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
-    elif modelName == "apl":
+    elif modelName == "apl2":
         ranker = APL(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
@@ -161,6 +160,7 @@ if __name__ == '__main__':
         runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
+    write2file(path + "out/" + runName + ".out", stat)
     print(runName)
     write2file(path + "out/" + runName + ".out", runName)
 
