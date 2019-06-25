@@ -96,7 +96,7 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t", engine='python')
+        df = pd.read_csv(path + "data/gowalla.csv", names=columns, sep="\t", engine='python')
         dataset = RawDataset(df)
 
 
