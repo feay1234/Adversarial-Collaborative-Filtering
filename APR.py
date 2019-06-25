@@ -1,6 +1,7 @@
 from keras.engine.saving import load_model
 from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda, Add
 from keras.models import Model
+from keras.optimizers import Adagrad
 from keras import backend as K
 import numpy as np
 
@@ -18,11 +19,10 @@ class APR(BPR):
         self.dim = dim
         self.eps = eps
 
-        self.model, self.predictor, self.uEncoder, self.iEncoder = self.generate_apr()
-        self.adv_noise_model, self.get_gradients = self.generate_adv_noise()
+        self.model, self.predictor, self.uEncoder, self.iEncoder, self.get_gradients = self.generate_apr()
+        self.adv_noise_model = self.generate_adv_noise()
 
     def train(self, x_train, y_train, batch_size):
-
         # train discriminator
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
@@ -35,18 +35,22 @@ class APR(BPR):
             _pe = self.iEncoder.predict(_p)
             _ne = self.iEncoder.predict(_n)
 
-            x = [_u, _p, _n, _ue, _pe, _ne]
+            x = [_ue, _pe, _ne]
             y = np.ones(_batch_size)
 
-            self.adv_noise_model.train_on_batch(x, y)
+            # self.adv_noise_model.train_on_batch(x, y)
 
-            uDelta, iDelta = self.get_gradients(x + [y, y, 0])
+            uDelta, iDelta = self.get_gradients(x + [y, y, 1])
+            # split iDelta to pos and neg item grads
+            pDelta = iDelta[:_batch_size]
+            nDelta = iDelta[_batch_size:]
 
             # Delta
-            _ud = uDelta[_u]
-            _pd = iDelta[_p]
-            _nd = iDelta[_n]
+            _ud = uDelta
+            _pd = pDelta
+            _nd = nDelta
 
+            # TODO may not need these because normalisation has already applied in tf.gradients
             # Normalise
             _ud = (_ud / np.linalg.norm(_ud)) * self.eps
             _pd = (_pd / np.linalg.norm(_pd)) * self.eps
@@ -91,16 +95,23 @@ class APR(BPR):
         diffPerturbed = Subtract()([pPerturbedDot, nPerturbedDot])
         lossPerturbed = Activation("sigmoid")(diffPerturbed)
 
-        loss = Add()([loss, lossPerturbed])
+        combine_loss = Add()([loss, lossPerturbed])
 
-        model = Model(inputs=[userInput, itemPosInput, itemNegInput, uDelEmb, pDelEmb, nDelEmb], outputs=loss)
+        model = Model(inputs=[userInput, itemPosInput, itemNegInput, uDelEmb, pDelEmb, nDelEmb], outputs=combine_loss)
+        # model.compile(optimizer=Adagrad(0.05), loss="binary_crossentropy")
         model.compile(optimizer="adam", loss="binary_crossentropy")
 
         predictor = Model([userInput, itemPosInput], pDot)
         uEncoder = Model(userInput, uEmb)
         iEncoder = Model(itemPosInput, pEmb)
 
-        return model, predictor, uEncoder, iEncoder
+        weights = model.trainable_weights  # weight tensors
+        gradients = model.optimizer.get_gradients(loss, weights)  # gradient tensors
+        input_tensors = [userInput, itemPosInput, itemNegInput] + model.sample_weights + model.targets + [
+            K.learning_phase()]
+        get_gradients = K.function(inputs=input_tensors, outputs=gradients)
+
+        return model, predictor, uEncoder, iEncoder, get_gradients
 
     def generate_adv_noise(self):
         userInput = Input(shape=(1,), dtype="int32", name="uInput")
@@ -134,13 +145,9 @@ class APR(BPR):
         model.compile(optimizer="adam", loss="binary_crossentropy")
         # model.trainable = False
 
-        weights = model.trainable_weights  # weight tensors
-        gradients = model.optimizer.get_gradients(model.total_loss, weights)  # gradient tensors
-        input_tensors = model.inputs + model.sample_weights + model.targets + [K.learning_phase()]
-        get_gradients = K.function(inputs=input_tensors, outputs=gradients)
 
-        return model, get_gradients
 
+        return model
 
 # uNum = 5
 # iNum = 4
