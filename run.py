@@ -24,15 +24,15 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apl")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=32,
+    parser.add_argument('--bs', type=int, default=256,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",
@@ -64,7 +64,8 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "h5/ml-small_bpr_d10_06-24-2019_20-45-40.h5"
+    # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
+    pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
 
     # num_negatives = 1
     topK = 10
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     # Loading data
     t1 = time()
 
-    if data == "ml-1m":
+    if data in ["ml-1m", "yelp", "pinterest-20"]:
         dataset = Dataset(path + "data/" + data)
 
     elif data == "ml-small":
@@ -96,7 +97,7 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/gowalla.csv", names=columns, sep="\t", engine='python')
+        df = pd.read_csv(path + "data/gowalla.csv", names=columns, sep="\t")
         dataset = RawDataset(df)
 
 
@@ -146,7 +147,7 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
-    elif modelName == "apl2":
+    elif modelName == "apl":
         ranker = APL(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
