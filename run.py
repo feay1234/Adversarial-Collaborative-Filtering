@@ -157,7 +157,7 @@ if __name__ == '__main__':
     # TODO only support BPR-based models
     if pre != "":
         # pretrainModel = load_model(pre)
-        ranker.load_pre_train(pre)
+        ranker.load_pre_train(path+"h5/"+pre)
         runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
                                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
