@@ -203,7 +203,7 @@ if __name__ == '__main__':
         prediction2file(path + "out/" + runName + ".hr", hits)
         prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
 
-    output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f. %.2f hour" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
+    output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     print(output)
     write2file(path + "out/" + runName + ".out", output)
 
