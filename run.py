@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 from APL import APL
+from APR import APR
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
@@ -24,7 +25,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-1m")
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     epochs = args.epochs
     pre = args.pre
     # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
-    # pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
+    pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
 
     # num_negatives = 1
     topK = 10
@@ -146,6 +147,9 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         ranker.init(train)
+
+    elif modelName == "apr":
+        ranker = APR(uNum, iNum, dim)
 
     # load pretrained
     # TODO only support BPR-based models
