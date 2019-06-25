@@ -1,5 +1,6 @@
 
 def write2file(path, output):
+    print(output)
     thefile = open(path, 'a')
     thefile.write("%s\n" % output)
     thefile.close()

@@ -105,7 +105,6 @@ if __name__ == '__main__':
     train, testRatings, testNegatives = dataset.trainMatrix, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (time() - t1, uNum, iNum, train.nnz, len(testRatings))
-    print(stat)
 
     # Initialise Model
 
@@ -162,7 +161,6 @@ if __name__ == '__main__':
                                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     write2file(path + "out/" + runName + ".out", stat)
-    print(runName)
     write2file(path + "out/" + runName + ".out", runName)
 
     # Init performance
@@ -172,7 +170,6 @@ if __name__ == '__main__':
     output = 'Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + runName + ".out", output)
-
 
 
     start = time()
@@ -192,7 +189,6 @@ if __name__ == '__main__':
 
         output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
-        print(output)
         write2file(path + "out/" + runName + ".out", output)
 
         # TODO each mode save
@@ -205,7 +201,6 @@ if __name__ == '__main__':
         prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
-    print(output)
     write2file(path + "out/" + runName + ".out", output)
 
 
