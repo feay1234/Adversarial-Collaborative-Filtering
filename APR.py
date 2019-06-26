@@ -69,15 +69,12 @@ class APR(BPR):
 
             # TODO may not need these because normalisation has already applied in tf.gradients
             # Normalise
-            # _ud = np.sum((_ud / np.linalg.norm(_ud)) * self.eps, axis=-1)
-            # _pd = np.sum((_pd / np.linalg.norm(_pd)) * self.eps, axis=-1)
-            # _nd = np.sum((_nd / np.linalg.norm(_nd)) * self.eps, axis=-1)
-            # _ud = (_ud / np.linalg.norm(_ud)) * self.eps
-            # _pd = (_pd / np.linalg.norm(_pd)) * self.eps
-            # _nd = (_nd / np.linalg.norm(_nd)) * self.eps
-            _ud = np.sign(_ud) * self.eps
-            _pd = np.sign(_pd) * self.eps
-            _nd = np.sign(_nd) * self.eps
+            # _ud = np.sum(np.linalg.norm(_ud) * self.eps, axis=-1)
+            # _pd = np.sum(np.linalg.norm(_pd) * self.eps, axis=-1)
+            # _nd = np.sum(np.linalg.norm(_nd) * self.eps, axis=-1)
+            _ud = (_ud / np.linalg.norm(_ud)) * self.eps
+            _pd = (_pd / np.linalg.norm(_pd)) * self.eps
+            _nd = (_nd / np.linalg.norm(_nd)) * self.eps
 
 
             x = [_u, _p, _n, _ud, _pd, _nd]
@@ -118,7 +115,7 @@ class APR(BPR):
 
 
         diff = Subtract()([pDot, nDot])
-        diff = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diff)
+        # diff = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diff)
         loss = Activation("sigmoid")(diff)
 
         uPerturbedEmb = Add()([uEmb, uDelEmb])
@@ -133,7 +130,7 @@ class APR(BPR):
         nPerturbedDot = Dot(axes=-1)([uPerturbedEmb, nPerturbedEmb])
 
         diffPerturbed = Subtract()([pPerturbedDot, nPerturbedDot])
-        diffPerturbed = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diffPerturbed)
+        # diffPerturbed = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diffPerturbed)
         lossPerturbed = Activation("sigmoid")(diffPerturbed)
 
         # combine_loss = Add()([loss, lossPerturbed])
@@ -205,6 +202,10 @@ uNum = 5
 iNum = 4
 dim = 3
 size = 10
+
+a = np.random.rand(10,10)
+b = np.random.rand(10)
+# print(a/b)
 #
 # apr = APR(uNum, iNum, dim)
 #
