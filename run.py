@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="yelp")
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
     # pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
     # pre = "ml-1m_bpr_d64_06-25-2019_22-37-26.h5"
+    pre = "yelp_bpr_d10_06-26-2019_20-42-29.h5"
 
     # num_negatives = 1
     topK = 10
@@ -196,13 +197,13 @@ if __name__ == '__main__':
         # TODO each mode save
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
-            # ranker.save(path + "h5/" + runName + ".h5")
+            ranker.save(path + "h5/" + runName + ".best.h5")
 
         # only save result file for the best model
         prediction2file(path + "out/" + runName + ".hr", hits)
         prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
     # save last one
-    ranker.save(path + "h5/" + runName + ".h5")
+    ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     write2file(path + "out/" + runName + ".out", output)
