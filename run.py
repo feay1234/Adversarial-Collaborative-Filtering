@@ -202,8 +202,8 @@ if __name__ == '__main__':
         # only save result file for the best model
         prediction2file(path + "out/" + runName + ".hr", hits)
         prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
-    # save last one
-    ranker.save(path + "h5/" + runName + ".last.h5")
+        # save current one
+        ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     write2file(path + "out/" + runName + ".out", output)
