@@ -151,6 +151,8 @@ if __name__ == '__main__':
 
     elif modelName == "apr":
         ranker = APR(uNum, iNum, dim)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # load pretrained
     # TODO only support BPR-based models

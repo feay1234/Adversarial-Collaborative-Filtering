@@ -20,58 +20,63 @@ class APR(BPR):
         self.dim = dim
         self.eps = eps
 
-        self.model, self.predictor, self.uEncoder, self.iEncoder, self.get_gradients = self.generate_apr()
+        self.normal_train_count = 10
+
+        self.model, self.predictor, self.uEncoder, self.iEncoder, self.get_gradients, self.bpr = self.generate_apr()
         self.adv_noise_model, self.get_agradients = self.generate_adv_noise()
 
     def train(self, x_train, y_train, batch_size):
-        # train discriminator
-        for i in range(math.ceil(len(y_train) / batch_size)):
-            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-            _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
-            _batch_size = _u.shape[0]
+        self.normal_train_count -= 1
+        if self.normal_train_count > 0:
+            hist = self.bpr.fit(x_train, y_train, batch_size=batch_size, verbose=0)
+        else:
+            print("here")
+            # train discriminator
+            for i in range(math.ceil(len(y_train) / batch_size)):
+                _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+                _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+                _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+                _batch_size = _u.shape[0]
 
-            # Embedding
-            _ue = self.uEncoder.predict(_u)
-            _pe = self.iEncoder.predict(_p)
-            _ne = self.iEncoder.predict(_n)
+                # Embedding
+                # _ue = self.uEncoder.predict(_u)
+                # _pe = self.iEncoder.predict(_p)
+                # _ne = self.iEncoder.predict(_n)
 
-            x = [_u, _p, _n]
-            y = np.ones(_batch_size)
-            uDelta, iDelta = self.get_gradients(x + [y, y, 0])
+                x = [_u, _p, _n]
+                y = [np.ones(_batch_size)] * 2
+                uDelta, iDelta = self.get_gradients(x + [y, y, 1])
 
 
-            # x = [_u, _p, _n, _ue, _pe, _ne]
-            # y = np.ones(_batch_size)
-            # uDelta, iDelta = self.get_gradients(x + [y, y, 0])
+                # x = [_u, _p, _n, _ue, _pe, _ne]
+                # y = np.ones(_batch_size)
+                # uDelta, iDelta = self.get_gradients(x + [y, y, 0])
 
-            # self.adv_noise_model.train_on_batch(x, y)
+                # self.adv_noise_model.train_on_batch(x, y)
+                # hist = self.adv_noise_model.fit(x, y, batch_size=_batch_size, verbose=0)
 
-            # split iDelta to pos and neg item grads
-            pDelta = iDelta[:_batch_size]
-            nDelta = iDelta[_batch_size:]
+                # split iDelta to pos and neg item grads
+                pDelta = iDelta[:_batch_size]
+                nDelta = iDelta[_batch_size:]
 
-            # Delta
-            _ud = uDelta
-            _pd = pDelta
-            _nd = nDelta
+                # Delta
+                _ud = uDelta
+                _pd = pDelta
+                _nd = nDelta
 
-            # TODO may not need these because normalisation has already applied in tf.gradients
-            # Normalise
-            _ud = np.sum((_ud / np.linalg.norm(_ud)) * self.eps, axis=-1)
-            _pd = np.sum((_pd / np.linalg.norm(_pd)) * self.eps, axis=-1)
-            _nd = np.sum((_nd / np.linalg.norm(_nd)) * self.eps, axis=-1)
-            # print(_ud)
-            # print(_pd)
-            print(_nd==_pd)
-            print()
+                # TODO may not need these because normalisation has already applied in tf.gradients
+                # Normalise
+                _ud = np.sum((_ud / np.linalg.norm(_ud)) * self.eps, axis=-1)
+                _pd = np.sum((_pd / np.linalg.norm(_pd)) * self.eps, axis=-1)
+                _nd = np.sum((_nd / np.linalg.norm(_nd)) * self.eps, axis=-1)
 
-            x = [_u, _p, _n, _ud, _pd, _nd]
-            y = np.ones(_batch_size)
+                x = [_u, _p, _n, _ud, _pd, _nd]
+                y = np.ones(_batch_size)
 
-            hist = self.model.fit(x, y, batch_size=_batch_size, verbose=0, epochs=1, shuffle=False)
+                hist = self.model.fit(x, y, batch_size=_batch_size, verbose=0, epochs=1, shuffle=False)
 
-            break
+                print(self.model.predict(x))
+
 
         return hist
 
@@ -117,11 +122,14 @@ class APR(BPR):
         diffPerturbed = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diffPerturbed)
         lossPerturbed = Activation("sigmoid")(diffPerturbed)
 
-        combine_loss = Add()([loss, lossPerturbed])
+        # combine_loss = Add()([loss, lossPerturbed])
 
-        model = Model(inputs=[userInput, itemPosInput, itemNegInput, uDelEmb, pDelEmb, nDelEmb], outputs=combine_loss)
+        model = Model(inputs=[userInput, itemPosInput, itemNegInput, uDelEmb, pDelEmb, nDelEmb], outputs=[loss, lossPerturbed])
         # model.compile(optimizer=Adagrad(0.05), loss="binary_crossentropy")
         model.compile(optimizer="adam", loss="binary_crossentropy")
+
+        bpr = Model([userInput, itemPosInput, itemNegInput], loss)
+        bpr.compile(optimizer="adam", loss="binary_crossentropy")
 
         predictor = Model([userInput, itemPosInput], pDot)
         uEncoder = Model(userInput, uEmb)
@@ -133,7 +141,7 @@ class APR(BPR):
             K.learning_phase()]
         get_gradients = K.function(inputs=input_tensors, outputs=gradients)
 
-        return model, predictor, uEncoder, iEncoder, get_gradients
+        return model, predictor, uEncoder, iEncoder, get_gradients, bpr
 
     def generate_adv_noise(self):
         userInput = Input(shape=(1,), dtype="int32", name="uInput")
