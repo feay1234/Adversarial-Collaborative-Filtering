@@ -82,8 +82,10 @@ class APR(BPR):
         pDot = Dot(axes=-1)([uEmb, pEmb])
         nDot = Dot(axes=-1)([uEmb, nEmb])
 
+
         diff = Subtract()([pDot, nDot])
-        loss = Activation("sigmoid")(diff)
+        diff = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diff)
+        loss = Activation("softplus")(diff)
 
         uPerturbedEmb = Add()([uEmb, uDelEmb])
         pPerturbedEmb = Add()([pEmb, pDelEmb])
@@ -93,7 +95,8 @@ class APR(BPR):
         nPerturbedDot = Dot(axes=-1)([uPerturbedEmb, nPerturbedEmb])
 
         diffPerturbed = Subtract()([pPerturbedDot, nPerturbedDot])
-        lossPerturbed = Activation("sigmoid")(diffPerturbed)
+        diffPerturbed = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diffPerturbed)
+        lossPerturbed = Activation("softplus")(diffPerturbed)
 
         combine_loss = Add()([loss, lossPerturbed])
 

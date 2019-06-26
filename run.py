@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-1m")
 
-    parser.add_argument('--d', type=int, default=64,
+    parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
     parser.add_argument('--epochs', type=int, default=100,
@@ -66,8 +66,8 @@ if __name__ == '__main__':
     epochs = args.epochs
     pre = args.pre
     # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
-    # pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
-    pre = "ml-1m_bpr_d64_06-25-2019_22-37-26.h5"
+    pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
+    # pre = "ml-1m_bpr_d64_06-25-2019_22-37-26.h5"
 
     # num_negatives = 1
     topK = 10
