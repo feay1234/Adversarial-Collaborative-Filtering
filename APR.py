@@ -1,4 +1,5 @@
 from keras.engine.saving import load_model
+from keras.initializers import Zeros
 from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda, Add
 from keras.models import Model
 from keras.optimizers import Adagrad
@@ -20,7 +21,7 @@ class APR(BPR):
         self.eps = eps
 
         self.model, self.predictor, self.uEncoder, self.iEncoder, self.get_gradients = self.generate_apr()
-        self.adv_noise_model = self.generate_adv_noise()
+        self.adv_noise_model, self.get_agradients = self.generate_adv_noise()
 
     def train(self, x_train, y_train, batch_size):
         # train discriminator
@@ -31,16 +32,21 @@ class APR(BPR):
             _batch_size = _u.shape[0]
 
             # Embedding
-            # _ue = self.uEncoder.predict(_u)
-            # _pe = self.iEncoder.predict(_p)
-            # _ne = self.iEncoder.predict(_n)
+            _ue = self.uEncoder.predict(_u)
+            _pe = self.iEncoder.predict(_p)
+            _ne = self.iEncoder.predict(_n)
 
             x = [_u, _p, _n]
             y = np.ones(_batch_size)
+            uDelta, iDelta = self.get_gradients(x + [y, y, 0])
+
+
+            # x = [_u, _p, _n, _ue, _pe, _ne]
+            # y = np.ones(_batch_size)
+            # uDelta, iDelta = self.get_gradients(x + [y, y, 0])
 
             # self.adv_noise_model.train_on_batch(x, y)
 
-            uDelta, iDelta = self.get_gradients(x + [y, y, 0])
             # split iDelta to pos and neg item grads
             pDelta = iDelta[:_batch_size]
             nDelta = iDelta[_batch_size:]
@@ -52,14 +58,20 @@ class APR(BPR):
 
             # TODO may not need these because normalisation has already applied in tf.gradients
             # Normalise
-            _ud = (_ud / np.linalg.norm(_ud)) * self.eps
-            _pd = (_pd / np.linalg.norm(_pd)) * self.eps
-            _nd = (_nd / np.linalg.norm(_nd)) * self.eps
+            _ud = np.sum((_ud / np.linalg.norm(_ud)) * self.eps, axis=-1)
+            _pd = np.sum((_pd / np.linalg.norm(_pd)) * self.eps, axis=-1)
+            _nd = np.sum((_nd / np.linalg.norm(_nd)) * self.eps, axis=-1)
+            # print(_ud)
+            # print(_pd)
+            print(_nd==_pd)
+            print()
 
             x = [_u, _p, _n, _ud, _pd, _nd]
             y = np.ones(_batch_size)
 
-            hist = self.model.fit(x, y, batch_size=_batch_size, verbose=0)
+            hist = self.model.fit(x, y, batch_size=_batch_size, verbose=0, epochs=1, shuffle=False)
+
+            break
 
         return hist
 
@@ -68,9 +80,12 @@ class APR(BPR):
         itemPosInput = Input(shape=(1,), dtype="int32")
         itemNegInput = Input(shape=(1,), dtype="int32")
 
-        uDelEmb = Input(shape=(self.dim,))
-        pDelEmb = Input(shape=(self.dim,))
-        nDelEmb = Input(shape=(self.dim,))
+        # uDelEmb = Input(shape=(self.dim,))
+        # pDelEmb = Input(shape=(self.dim,))
+        # nDelEmb = Input(shape=(self.dim,))
+        uDelEmb = Input(shape=(1,))
+        pDelEmb = Input(shape=(1,))
+        nDelEmb = Input(shape=(1,))
 
         userEmbeddingLayer = Embedding(input_dim=self.uNum, output_dim=self.dim, name="uEmb")
         itemEmbeddingLayer = Embedding(input_dim=self.iNum, output_dim=self.dim, name="iEmb")
@@ -85,18 +100,22 @@ class APR(BPR):
 
         diff = Subtract()([pDot, nDot])
         diff = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diff)
-        loss = Activation("softplus")(diff)
+        loss = Activation("sigmoid")(diff)
 
-        uPerturbedEmb = Add()([uEmb, uDelEmb])
-        pPerturbedEmb = Add()([pEmb, pDelEmb])
-        nPerturbedEmb = Add()([nEmb, nDelEmb])
+        # uPerturbedEmb = Add()([uEmb, uDelEmb])
+        # pPerturbedEmb = Add()([pEmb, pDelEmb])
+        # nPerturbedEmb = Add()([nEmb, nDelEmb])
+
+        uPerturbedEmb = Lambda(lambda x: x + uDelEmb)(uEmb)
+        pPerturbedEmb = Lambda(lambda x: x + pDelEmb)(pEmb)
+        nPerturbedEmb = Lambda(lambda x: x + nDelEmb)(nEmb)
 
         pPerturbedDot = Dot(axes=-1)([uPerturbedEmb, pPerturbedEmb])
         nPerturbedDot = Dot(axes=-1)([uPerturbedEmb, nPerturbedEmb])
 
         diffPerturbed = Subtract()([pPerturbedDot, nPerturbedDot])
         diffPerturbed = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diffPerturbed)
-        lossPerturbed = Activation("softplus")(diffPerturbed)
+        lossPerturbed = Activation("sigmoid")(diffPerturbed)
 
         combine_loss = Add()([loss, lossPerturbed])
 
@@ -125,8 +144,8 @@ class APR(BPR):
         pRealEmb = Input(shape=(self.dim,), name="pRInput")
         nRealEmb = Input(shape=(self.dim,), name="nRInput")
 
-        userDeltaEmbeddingLayer = Embedding(input_dim=self.uNum, output_dim=self.dim, name="uDeltaEmb")
-        itemDeltaEmbeddingLayer = Embedding(input_dim=self.iNum, output_dim=self.dim, name="iDeltaEmb")
+        userDeltaEmbeddingLayer = Embedding(input_dim=self.uNum, output_dim=self.dim, name="uDeltaEmb", embeddings_initializer="zero")
+        itemDeltaEmbeddingLayer = Embedding(input_dim=self.iNum, output_dim=self.dim, name="iDeltaEmb", embeddings_initializer="zero")
 
         uDelEmb = Flatten()(userDeltaEmbeddingLayer(userInput))
         pDelEmb = Flatten()(itemDeltaEmbeddingLayer(itemPosInput))
@@ -148,17 +167,28 @@ class APR(BPR):
         model.compile(optimizer="adam", loss="binary_crossentropy")
         # model.trainable = False
 
+        weights = model.trainable_weights  # weight tensors
+        gradients = model.optimizer.get_gradients(pred, weights)  # gradient tensors
+        input_tensors = [userInput, itemPosInput, itemNegInput] + model.sample_weights + model.targets + [
+            K.learning_phase()]
+        get_gradients = K.function(inputs=input_tensors, outputs=gradients)
 
 
-        return model
+        return model, get_gradients
 
-# uNum = 5
-# iNum = 4
-# dim = 3
-# size = 10
+
+
+
+uNum = 5
+iNum = 4
+dim = 3
+size = 10
 #
 # apr = APR(uNum, iNum, dim)
 #
+
+# a = np.random.rand(size, dim)
+# print(a.shape)
 # u = np.random.randint(0, uNum, size)
 # p = np.random.randint(0, iNum, size)
 # n = np.random.randint(0, iNum, size)

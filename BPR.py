@@ -51,7 +51,14 @@ class BPR():
         return self.predictor.predict([users, items], batch_size=100, verbose=0)
 
     def train(self, x_train, y_train, batch_size):
-        hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0)
+        # for i in range(math.ceil(len(y_train) / batch_size)):
+        #     _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+        #     _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+        #     _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+        #     _batch_size = _u.shape[0]
+        #     y = np.ones(_batch_size)
+        #     hist = self.model.fit([_u, _p, _n], y, batch_size=_batch_size, epochs=1, verbose=0)
+        hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=False)
         return hist
 
     def get_train_instances(self, train):
@@ -67,7 +74,11 @@ class BPR():
             neg_item_input.append(j)
             labels.append(1)
 
-        return [np.array(user_input), np.array(pos_item_input), np.array(neg_item_input)], np.array(labels)
+        idx = np.arange(len(user_input))
+        np.random.shuffle(idx)
+
+        return [np.array(user_input)[idx], np.array(pos_item_input)[idx], np.array(neg_item_input)[idx]], np.array(labels)
+
 
 
 class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
