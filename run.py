@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="pinterest-20")
@@ -146,8 +146,10 @@ if __name__ == '__main__':
 
     elif modelName == "apr":
         # get APR's default params
-        ranker = APR(uNum, iNum)
+        ranker = APR(uNum, iNum, dim)
         ranker.build_graph()
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # load pretrained
     # TODO only support BPR-based models
@@ -186,7 +188,7 @@ if __name__ == '__main__':
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
 
-        # TODO each mode save
+        # TODO each mode save, TF and Keras
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
             ranker.save(path + "h5/" + runName + ".best.h5")

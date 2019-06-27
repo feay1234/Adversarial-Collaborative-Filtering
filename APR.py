@@ -76,16 +76,15 @@ class APR(BPR):
             self.opt_loss = self.loss + self.reg * tf.reduce_mean(
                 tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
 
-            if self.adver:
-                # loss for L(Theta + adv_Delta)
-                self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
-                self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
-                self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
-                # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
-                self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
-                self.opt_loss += self.reg_adv * self.loss_adv + \
-                                 self.reg * tf.reduce_mean(
-                                     tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
+            # loss for L(Theta + adv_Delta)
+            self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
+            self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
+            self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
+            # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
+            self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
+            self.opt_loss += self.reg_adv * self.loss_adv + \
+                             self.reg * tf.reduce_mean(
+                                 tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
 
     def _create_adversarial(self):
         with tf.name_scope("adversarial"):
@@ -125,11 +124,11 @@ class APR(BPR):
         self._create_adversarial()
         # start session
         self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
     def load_pre_train(self, path):
         pretrainModel = load_model(path)
 
-        self.sess.run(tf.global_variables_initializer())
         assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
         assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
         self.sess.run([assign_P, assign_Q])

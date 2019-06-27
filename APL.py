@@ -45,7 +45,7 @@ def gumbel_softmax(logits, temperature=0.2):
 
 
 class APL(BPR):
-    def __init__(self, uNum, iNum, dim, args):
+    def __init__(self, uNum, iNum, dim):
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
@@ -215,10 +215,10 @@ class APL(BPR):
     def train(self, x_train, y_train, batch_size):
         losses = []
         for i in range(math.ceil(len(y_train) / batch_size)):
-            print(i)
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _batch_size = len(_u)
+            print(_u)
             # _u = np.expand_dims(_u, -1)
             # _p = np.expand_dims(_p, -1)
             # _n = np.expand_dims(_n, -1)
@@ -228,7 +228,6 @@ class APL(BPR):
             _ = self.sess.run([self.critic_updates],
                           feed_dict={self.u: _u, self.i: _i, self.training_flag: False})
 
-            print(_)
             # print("training time of critic: %fs" % (time.time() - start_time))
 
             p_aux = np.zeros([_batch_size, self.iNum])
@@ -238,8 +237,6 @@ class APL(BPR):
             _ = self.sess.run([self.gen_updates],
                                  feed_dict={self.u: _u, self.i: _i,
                                             self.gen_p_aux: p_aux, self.training_flag: True})
-            print(_)
-            print()
 
             # print("training time of generator: %fs" % (time.time() - start_time))
 
@@ -289,10 +286,3 @@ class APL(BPR):
                 pickle.dump(params, open(self.save_model_dir + "%03d_gen_model.pkl" % epoch, "wb"))
         return
 
-
-#
-# if __name__ == "__main__":
-#     args = parse_apl_args()
-#     apl = APL(10, 5 ,6, args)
-#
-#     # apl.training()
