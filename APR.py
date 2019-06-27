@@ -12,8 +12,6 @@ def parse_apr_args():
     parser = argparse.ArgumentParser(description="Run AMF.")
     parser.add_argument('--path', nargs='?', default='Data/',
                         help='Input data path.')
-    parser.add_argument('--dataset', nargs='?', default='pinterest-20',
-                        help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -22,8 +20,6 @@ def parse_apr_args():
                         help='Number of epochs.')
     parser.add_argument('--embed_size', type=int, default=10,
                         help='Embedding size.')
-    parser.add_argument('--dns', type=int, default=1,
-                        help='number of negative sample for each positive in dns.')
     parser.add_argument('--reg', type=float, default=0,
                         help='Regularization for user and item embeddings.')
     parser.add_argument('--lr', type=float, default=0.05,
@@ -53,7 +49,6 @@ class APR(BPR):
         self.embedding_size = args.embed_size
         self.learning_rate = args.lr
         self.reg = args.reg
-        self.dns = args.dns
         self.adv = args.adv
         self.eps = args.eps
         self.adver = args.adver
@@ -178,7 +173,6 @@ class APR(BPR):
         assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
         assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
         self.sess.run([assign_P, assign_Q])
-        # self.sess.run(assign_op)
 
     def rank(self, users, items):
         users = np.expand_dims(users, -1)

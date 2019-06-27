@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from APR import APR, parse_apr_args
-from APL import APL
+from APL import APL, parse_apl_args
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr_ori")
+                        help='Model Name: lstm', default="apl")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="pinterest-20")
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
+    pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
 
     # num_negatives = 1
     topK = 10
@@ -138,7 +138,8 @@ if __name__ == '__main__':
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "apl":
-        ranker = APL(uNum, iNum, dim)
+        args = parse_apl_args()
+        ranker = APL(uNum, iNum, dim, args)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         ranker.init(train)

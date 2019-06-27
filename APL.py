@@ -1,182 +1,202 @@
-from keras.engine import Layer
-from keras.engine.saving import load_model
-from keras.layers import Input, Embedding, Dot, Subtract, Activation, Flatten, Lambda
-from keras.models import Model
-from keras import backend as K
+import os
+import time
+import pickle
+import argparse
 import numpy as np
+import tensorflow as tf
 import math
-from keras.utils import to_categorical
-from scipy.special import softmax
+
+from keras.engine.saving import load_model
+
+from BPR import BPR
 
 
-class OnehotEmbedding(Layer):
-    def __init__(self, input_num, output_num, **kwargs):
-        self.input_num = input_num
-        self.output_num = output_num
-        super(OnehotEmbedding, self).__init__(**kwargs)
+def parse_apl_args():
+    parser = argparse.ArgumentParser(description="Run APL.")
+    parser.add_argument('--input_path', nargs='?', default='./data/',
+                        help='Input data path.')
+    parser.add_argument('--loss_function', nargs='?', default='log',
+                        help='Choose a loss function from "log", "wgan" or "hinge".')
+    parser.add_argument('--epochs', type=int, default=200,
+                        help='Number of epochs.')
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='Batch size.')
+    parser.add_argument('--factors_num', type=int, default=20,
+                        help='Embedding size.')
+    parser.add_argument('--regs', nargs='?', default='[0, 0.05]',
+                        help="Regularization for generator and critic.")
+    parser.add_argument('--lr', type=float, default=0.05,
+                        help='Learning rate.')
+    parser.add_argument('--save_model', type=int, default=0,
+                        help='Whether to save the trained model.')
+    return parser.parse_args()
 
-    def build(self, input_shape):
-        # Create a trainable weight variable for this layer.
-        self.kernel = self.add_weight(name='kernel',
-                                      shape=(self.input_num, self.output_num),
-                                      initializer='uniform',
-                                      trainable=True)
-        super(OnehotEmbedding, self).build(input_shape)  # Be sure to call this at the end
 
-    def call(self, x):
-        return K.dot(x, self.kernel)
-
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], self.output_num)
+def init_param(shape):
+    return tf.random_uniform([shape[0], shape[1]],
+                             minval=-0.05, maxval=0.05, dtype=tf.float32)
 
 
-class APL():
-    def __init__(self, uNum, iNum, dim, trainGeneratorOnly=False):
+def gumbel_softmax(logits, temperature=0.2):
+    eps = 1e-20
+    u = tf.random_uniform(tf.shape(logits), minval=0, maxval=1)
+    gumbel_noise = -tf.log(-tf.log(u + eps) + eps)
+    y = tf.log(logits + eps) + gumbel_noise
+    return tf.nn.softmax(y / temperature)
 
+
+class APL(BPR):
+    def __init__(self, uNum, iNum, dim, args):
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
-        self.trainGeneratorOnly = trainGeneratorOnly
+        self.users_num = uNum
+        self.items_num = iNum
+        self.factors_num = dim
+        self.lr = args.lr
+        self.regs = eval(args.regs)
+        self.loss_function = args.loss_function
+        self.all_items = set(range(self.items_num))
 
-        def generator_gumbel_softmax(x):
-            logits, aux = x
-            logits = K.softmax(logits)
-            logits = (1 - 0.2) * logits + aux
+        np.random.seed(2018)
+        tf.set_random_seed(2018)
 
-            # This one works
-            # tau = K.variable(0.2, name="temperature")
-            # eps = 1e-20
-            # U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            # y = logits - K.log(-K.log(U + eps) + eps)
-            # y = K.softmax(y / tau)
-            # return y
-            # TODO
-            tau = 0.2
-            eps = 1e-20
-            u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            gumbel_noise = -K.log(-K.log(u + eps) + eps)
-            y = K.log(logits + eps) + gumbel_noise
-            return K.softmax(y / tau)
-
-        def discriminator_gumbel_softmax(logits):
-            # tau = K.variable(0.2, name="temperature")
-            # eps = 1e-20
-            # U = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            # y = logits - K.log(-K.log(U + eps) + eps)
-            # y = K.softmax(y / tau)
-            # return y
-
-        # TODO
-        #   Original
-            tau = 0.2
-            eps = 1e-20
-            u = K.random_uniform(K.shape(logits), minval=0, maxval=1)
-            gumbel_noise = -K.log(-K.log(u + eps) + eps)
-            y = K.log(logits + eps) + gumbel_noise
-            return K.softmax(y / tau)
-
-        def gumbel_shape(x):
-            return x[0], iNum
+        self.u = tf.placeholder(tf.int32, name="user_holder")
+        self.i = tf.placeholder(tf.int32, name="item_holder")
+        self.g_params, self.c_params = self._def_params(None)
+        self._build_graph()
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
 
-        userInput = Input(shape=(1,))
-        posItemInput = Input(shape=(iNum,), name="pos_item")
-        negItemInput = Input(shape=(iNum,), name="neg_item")
 
-        userDEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uDEmb")
-        itemDEmbeddingLayer = OnehotEmbedding(iNum, dim, name="iDEmb")
 
-        uEmb = Flatten()(userDEmbeddingLayer(userInput))
-        piEmb = itemDEmbeddingLayer(posItemInput)
-        niEmb = itemDEmbeddingLayer(negItemInput)
+    def load_pre_train(self, path):
 
-        pDot = Dot(axes=-1)([uEmb, piEmb])
-        nDot = Dot(axes=-1)([uEmb, niEmb])
-        diff = Subtract()([pDot, nDot])
-        # Pass difference through sigmoid function.
-        pred = Activation("sigmoid")(diff)
+        # pretrainModel = load_model(path)
+        # assign_P = self.g_params[0].assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        # assign_Q = self.g_params[1].assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        # self.sess.run([assign_P, assign_Q])
+        pass
 
-        self.discriminator = Model([userInput, posItemInput, negItemInput], pred)
-        self.discriminator.compile(optimizer="adam", loss="binary_crossentropy")
-        self.discriminator.trainable = False
+    def _def_params(self, g_init_param=None):
+        with tf.variable_scope("g_params"):
+            if g_init_param is None:
+                user_embeddings = tf.get_variable("g_user_embs",
+                                                  initializer=init_param([self.users_num, self.factors_num]))
+                item_embeddings = tf.get_variable("g_item_embs",
+                                                  initializer=init_param([self.items_num, self.factors_num]))
+            else:
+                user_embeddings = tf.get_variable("g_user_embs", initializer=g_init_param[0])
+                item_embeddings = tf.get_variable("g_item_embs", initializer=g_init_param[1])
+        g_params = [user_embeddings, item_embeddings]
 
-        fakeItemInput = Input(shape=(iNum,))
-        gumbel_out = Lambda(discriminator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(
-            fakeItemInput)
-        self.discriminator_gumbel_sampler = Model(fakeItemInput, gumbel_out)
+        with tf.variable_scope("c_params"):
+            user_embeddings = tf.get_variable("c_user_embs",
+                                              initializer=init_param([self.users_num, self.factors_num]))
+            item_embeddings = tf.get_variable("c_item_embs",
+                                              initializer=init_param([self.items_num, self.factors_num]))
+        c_params = [user_embeddings, item_embeddings]
+        return g_params, c_params
 
-        userGInput = Input(shape=(1,))
-        realItemGInput = Input(shape=(iNum,))
-        auxGInput = Input(shape=(iNum,))
 
-        userGEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
-        itemGEmbeddingLayer = OnehotEmbedding(dim, iNum, name="iEmb")
-        Gout = Flatten()(itemGEmbeddingLayer(userGEmbeddingLayer(userGInput)))
+    def _build_graph(self):
+        with tf.name_scope("generator"):
+            with tf.variable_scope("g_params", reuse=True):
+                user_embeddings = tf.get_variable(name="g_user_embs")
+                item_embeddings = tf.get_variable(name="g_item_embs")
 
-        fakeInput = Lambda(generator_gumbel_softmax, output_shape=gumbel_shape, name="gumbel_softmax")(
-            [Gout, auxGInput])
+            with tf.name_scope("g_latent_vectors"):
+                u_embedding = tf.nn.embedding_lookup(user_embeddings, self.u)
 
-        validity = self.discriminator([userGInput, realItemGInput, fakeInput])
+            with tf.name_scope("g_mf"):
+                self.g_all_logits = tf.matmul(u_embedding, item_embeddings, transpose_b=True)
+            self.g_l2_loss = tf.nn.l2_loss(u_embedding) + tf.nn.l2_loss(item_embeddings)
 
-        self.generator = Model([userGInput, realItemGInput, auxGInput], validity)
-        self.generator.compile(optimizer="adam", loss="binary_crossentropy")
+        with tf.name_scope("critic"):
+            with tf.variable_scope("c_params", reuse=True):
+                user_embeddings = tf.get_variable(name="c_user_embs")
+                item_embeddings = tf.get_variable(name="c_item_embs")
 
-        self.predictor = Model([userGInput], [Gout])
+            with tf.name_scope("real_item"):
+                u_embedding = tf.nn.embedding_lookup(user_embeddings, self.u)
+                i_embedding = tf.nn.embedding_lookup(item_embeddings, self.i)
+                with tf.name_scope("real_mf"):
+                    real_logits = tf.reduce_sum(tf.multiply(u_embedding, i_embedding), 1)
+                self.c_l2_loss = tf.nn.l2_loss(u_embedding) + tf.nn.l2_loss(i_embedding)
+
+            with tf.name_scope("fake_item"):
+                u_embedding = tf.nn.embedding_lookup(user_embeddings, self.u)
+                fake_one_hot = self.sampling()
+                i_embedding = tf.matmul(fake_one_hot, item_embeddings)
+                with tf.name_scope("fake_mf"):
+                    fake_logits = tf.reduce_sum(tf.multiply(u_embedding, i_embedding), 1)
+                self.c_l2_loss += tf.nn.l2_loss(u_embedding) + tf.nn.l2_loss(i_embedding)
+
+        self.gen_loss, self.critic_loss = self._get_loss(real_logits, fake_logits)
+
+        g_opt = tf.train.GradientDescentOptimizer(self.lr)
+        self.gen_updates = g_opt.minimize(self.gen_loss, var_list=self.g_params)
+
+        d_opt = tf.train.GradientDescentOptimizer(self.lr)
+        self.critic_updates = d_opt.minimize(self.critic_loss, var_list=self.c_params)
+
+        if self.loss_function == "wgan":
+            with tf.control_dependencies([self.critic_updates]):
+                with tf.name_scope("wgan_clip"):
+                    self.critic_updates = [var.assign(tf.clip_by_value(var, -0.05, 0.05))
+                                           for var in self.c_params]
+        return
+
+    def _get_loss(self, real_logits, fake_logits):
+        y_ij = real_logits - fake_logits
+        with tf.name_scope("g_loss"):
+            gen_wgan_loss = -tf.reduce_mean(fake_logits) + self.regs[0] * self.g_l2_loss
+            gen_log_loss = tf.reduce_mean(tf.log(tf.sigmoid(y_ij))) + self.regs[0] * self.g_l2_loss
+            gen_hinge_loss = -tf.reduce_mean(tf.maximum(1 - y_ij, 0)) + self.regs[0] * self.g_l2_loss
+        with tf.name_scope("c_loss"):
+            critic_wgan_loss = tf.reduce_mean(-y_ij)
+            critic_log_loss = -tf.reduce_mean(tf.log(tf.sigmoid(y_ij))) + self.regs[1] * self.c_l2_loss
+            critic_hinge_loss = tf.reduce_mean(tf.maximum(1 - y_ij, 0)) + self.regs[1] * self.c_l2_loss
+
+        loss_dict = {"log": (critic_log_loss, gen_log_loss),
+                     "wgan": (critic_wgan_loss, gen_wgan_loss),
+                     "hinge": (critic_hinge_loss, gen_hinge_loss)}
+        if self.loss_function in loss_dict:
+            c_loss, gen_loss = loss_dict[self.loss_function]
+        else:
+            print("The %s loss is invalid, log loss has been used!" % self.loss_function)
+            c_loss, gen_loss = critic_log_loss, gen_log_loss
+        return gen_loss, c_loss
+
+    def sampling(self):
+        self.training_flag = tf.placeholder(tf.bool)
+        fake_one_hot = tf.cond(self.training_flag,
+                               true_fn=self._gen_sampling,
+                               false_fn=self._critic_sampling)
+        return fake_one_hot
+
+    def _gen_sampling(self):
+        self.gen_p_aux = tf.placeholder(tf.float32)
+        logits = tf.nn.softmax(self.g_all_logits)
+        logits = (1 - 0.2) * logits + self.gen_p_aux
+        logits = gumbel_softmax(logits, 0.2)
+        return logits
+
+    def _critic_sampling(self):
+        logits = tf.nn.softmax(self.g_all_logits / 0.2)
+        logits = gumbel_softmax(logits, 0.2)
+        return logits
+
+
+
 
     def rank(self, users, items):
+        pred = self.sess.run(self.g_all_logits, feed_dict={self.u: [users[0]]})
+        return pred[0][items]
 
-        ranks = self.predictor.predict(users[:1], batch_size=1, verbose=0)
-        return ranks[0][items]
-
-    def load_pre_train(self, pre):
-        pretrainModel = load_model(pre)
-        self.predictor.get_layer("uEmb").set_weights(pretrainModel.get_layer("uEmb").get_weights())
-        weight = np.transpose(pretrainModel.get_layer("iEmb").get_weights()[0])
-        self.predictor.get_layer("iEmb").set_weights([weight])
-
-    # TODO
     def save(self, path):
-        a = 0
-
-    def train(self, x_train, y_train, batch_size=32):
-
-        # train discriminator
-        for i in range(math.ceil(len(y_train) / batch_size)):
-            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-            real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            # _labels = y_train[i * batch_size: (i * batch_size) + batch_size]
-            _batch_size = _u.shape[0]
-            _labels = np.zeros(_batch_size)
-            # sample fake instances
-            fake = self.predictor.predict(_u)
-            fake = softmax(fake / 0.2)
-            fake = self.discriminator_gumbel_sampler.predict(fake)
-
-            real = to_categorical(real, self.iNum)
-
-            self.discriminator.train_on_batch([_u, real, fake], _labels)
-
-        # train generator
-        for i in range(math.ceil(len(y_train) / batch_size)):
-            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-            real = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            _batch_size = _u.shape[0]
-            # swap label to confuse discriminator
-            _labels = np.ones(_batch_size)
-
-            aux = np.zeros([_batch_size, self.iNum])
-            for j in range(_batch_size):
-                pos_items = self.user_pos_item[_u[j]]
-                if len(pos_items) > 0:
-                    aux[j][pos_items] = 0.2 / len(pos_items)
-
-            # sample fake instances
-
-            real = to_categorical(real, self.iNum)
-
-            hist = self.generator.fit([_u, real, aux], _labels, batch_size=_batch_size, verbose=0)
-        return hist
-
+        pass
 
     def init(self, train):
 
@@ -187,41 +207,91 @@ class APL():
             user_input.append(u)
             pos_item_input.append(i)
             labels.append(1)
+
         self.x_train = [np.array(user_input), np.array(pos_item_input)]
         self.y_train = np.array(labels)
 
     def get_train_instances(self, train):
-        return self.x_train, self.y_train
+        idx = np.arange(len(self.x_train))
+        np.random.shuffle(idx)
+        return [self.x_train[0][idx], self.x_train[1][idx]], self.y_train
+
+    def train(self, x_train, y_train, batch_size):
+        losses = []
+        for i in range(math.ceil(len(y_train) / batch_size)):
+            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+            _batch_size = len(_u)
+            # _u = np.expand_dims(_u, -1)
+            # _p = np.expand_dims(_p, -1)
+            # _n = np.expand_dims(_n, -1)
 
 
-# from keras.datasets import mnist
-# (x_train, y_train), (x_test, y_test) = mnist.load_data()
-# print(x_train.shape)
+            start_time = time.time()
+            self.sess.run([self.critic_updates],
+                          feed_dict={self.u: _u, self.i: _i, self.training_flag: False})
 
-# uNum = 5000
-# iNum = 5
-# dim = 10
-#
-# apl = APL(uNum, iNum, dim)
-#
-# u = np.random.randint(0, uNum, size=2)
-# i = np.random.randint(0, iNum, size=(2, iNum, 1))
-# print(apl.rank(np.array([1]), [1,2,4]))
-# print(apl.predictor.predict(np.array([1])).shape)
-#
-# print(apl.generator.predict(u).shape)
-# print(apl.generator.predict(u))
+            # print("training time of critic: %fs" % (time.time() - start_time))
 
-# print(apl.advModel.predict([u,i]))
+            p_aux = np.zeros([_batch_size, self.iNum])
+            for uid in range(len(_u)):
+                p_aux[uid][self.user_pos_item[_u[uid]]] = 0.2 / len(self.user_pos_item[_u[uid]])
 
-# i = np.random.randint(0,7, size=(2,7,1))
-# y = np.random.randint(0,5, size=(2))
-# y2 = np.random.randint(0,7, size=(2,7))
-# y3 = np.random.randint(0,7, size=(2,7))
-# print(apl.model.predict([u,i]).shape)
-# # apl.model.fit([u,i], [y2, y3], batch_size=2)
-# apl.model.fit([u,i], [y], batch_size=2)
-# #
-# # print(apl.model.predict([u,i])[1].shape)
-# #
-# #
+            self.sess.run([self.gen_updates],
+                                 feed_dict={self.u: _u, self.i: _i,
+                                            self.gen_p_aux: p_aux, self.training_flag: True})
+
+            # print("training time of generator: %fs" % (time.time() - start_time))
+
+            # losses.append(loss)
+
+        # return np.mean(losses)
+        return 0
+
+    def training(self):
+
+        print("Dataset: %s\nUsers number: %d\nItems number: %d" % (self.data_set, self.users_num, self.items_num))
+        print("Metric:\t\tPrecision@10\t\tRecall@10\t\tMAP@10\t\tNDCG@10")
+        result = self.eval()
+        buf = '\t'.join([str(x) for x in result])
+        print("pre_trained:\t%s" % buf)
+
+        for epoch in range(self.epochs):
+            np.random.shuffle(self.data)
+            print("epoch: %d" % epoch)
+
+            train_size = len(self.data)
+            index = 0
+
+            train_size = len(self.data)
+            index = 0
+            start_time = time.time()
+            while index + self.batch_size < train_size:
+                input_user, input_item = get_batch_data(self.data, index, self.batch_size)
+
+                p_aux = np.zeros([self.batch_size, self.items_num])
+                for uid in range(len(input_user)):
+                    p_aux[uid][self.user_pos_train[input_user[uid]]] = 0.2 / len(self.user_pos_train[input_user[uid]])
+
+                index += self.batch_size
+                self.sess.run([self.gen_updates],
+                              feed_dict={self.u: input_user, self.i: input_item,
+                                         self.gen_p_aux: p_aux, self.training_flag: True})
+
+            print("training time of generator: %fs" % (time.time() - start_time))
+            if epoch % 5 == 0:
+                result = self.eval()
+                buf = '\t'.join([str(x) for x in result])
+                print("epoch %d: %s" % (epoch, buf))
+
+            if self.save_model:
+                params = self.sess.run(self.g_params)
+                pickle.dump(params, open(self.save_model_dir + "%03d_gen_model.pkl" % epoch, "wb"))
+        return
+
+
+
+# if __name__ == "__main__":
+#     args = parse_args()
+#     apl = APL(args)
+#     apl.training()
