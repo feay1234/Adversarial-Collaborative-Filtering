@@ -11,6 +11,9 @@ import logging
 from time import time
 from time import strftime
 from time import localtime
+
+from keras.engine.saving import load_model
+
 from Dataset import Dataset
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -24,6 +27,45 @@ _dataset = None
 _K = None
 _feed_dict = None
 _output = None
+
+
+def parse_amf_args():
+    parser = argparse.ArgumentParser(description="Run AMF.")
+    parser.add_argument('--path', nargs='?', default='Data/',
+                        help='Input data path.')
+    parser.add_argument('--dataset', nargs='?', default='pinterest-20',
+                        help='Choose a dataset.')
+    parser.add_argument('--verbose', type=int, default=1,
+                        help='Evaluate per X epochs.')
+    parser.add_argument('--batch_size', type=int, default=512,
+                        help='batch_size')
+    parser.add_argument('--epochs', type=int, default=2000,
+                        help='Number of epochs.')
+    parser.add_argument('--embed_size', type=int, default=10,
+                        help='Embedding size.')
+    parser.add_argument('--dns', type=int, default=1,
+                        help='number of negative sample for each positive in dns.')
+    parser.add_argument('--reg', type=float, default=0,
+                        help='Regularization for user and item embeddings.')
+    parser.add_argument('--lr', type=float, default=0.05,
+                        help='Learning rate.')
+    parser.add_argument('--reg_adv', type=float, default=1,
+                        help='Regularization for adversarial loss')
+    parser.add_argument('--restore', type=str, default=None,
+                        help='The restore time_stamp for weights in \Pretrain')
+    parser.add_argument('--ckpt', type=int, default=100,
+                        help='Save the model per X epochs.')
+    parser.add_argument('--task', nargs='?', default='',
+                        help='Add the task name for launching experiments')
+    parser.add_argument('--adv_epoch', type=int, default=0,
+                        help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
+                             'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
+    parser.add_argument('--adv', nargs='?', default='grad',
+                        help='Generate the adversarial sample by gradient method or random method')
+    parser.add_argument('--eps', type=float, default=0.5,
+                        help='Epsilon for adversarial weights.')
+    return parser.parse_args()
+
 
 
 # data sampling and shuffling
@@ -98,6 +140,10 @@ class AMF:
         self.adver = args.adver
         self.reg_adv = args.reg_adv
         self.epochs = args.epochs
+
+        self.uNum = num_users
+        self.iNum = num_items
+        self.dim = args.embed_size
 
     def _create_placeholders(self):
         with tf.name_scope("input_data"):
@@ -200,6 +246,23 @@ class AMF:
         self._create_loss()
         self._create_optimizer()
         self._create_adversarial()
+        self.sess = tf.Session()
+
+    def load_pre_train(self, path):
+        pretrainModel = load_model(path)
+
+        self.sess.run(tf.global_variables_initializer())
+        assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        self.sess.run([assign_P, assign_Q])
+        # self.sess.run(assign_op)
+
+    def rank(self, users, items):
+        users = np.expand_dims(users, -1)
+        items = np.expand_dims(items, -1)
+        feed_dict = {self.user_input: users, self.item_input_pos: items}
+        return self.sess.run(self.output, feed_dict)
+
 
 
 # training
@@ -300,8 +363,6 @@ def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_
     res = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
           (epoch_count, batch_time, train_time, hr, ndcg, prev_acc,
            post_acc, eval_time, np.linalg.norm(embedding_P), np.linalg.norm(embedding_Q))
-
-    print(res)
 
     return post_acc, ndcg, result
 
@@ -468,7 +529,7 @@ if __name__ == '__main__':
     # time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
     #
     # # initilize arguments and logging
-    # args = parse_args()
+    args = parse_amf_args()
     # init_logging(args, time_stamp)
     #
     # # initialize dataset
@@ -484,10 +545,15 @@ if __name__ == '__main__':
     # # start training
     # training(MF_BPR, dataset, args, epoch_start=0, epoch_end=args.adv_epoch-1, time_stamp=time_stamp)
     #
-    # args.adver = 1
+    args.adver = 1
     # # instialize AMF model
-    # AMF = MF(dataset.num_users, dataset.num_items, args)
-    # AMF.build_graph()
+    AMF = AMF(5, 4, args)
+    AMF.build_graph()
+
+    # print(AMF.embedding_P.setWeights(np.random.rand(5,10)))
+    with tf.Session() as sess:
+        print(AMF.embedding_P)
+
     #
     # print("Initialize AMF")
     #

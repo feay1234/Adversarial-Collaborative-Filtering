@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from AMF import AMF
+from AMF import AMF, parse_amf_args
 from APL import APL
 from APR import APR
 from BPR import BPR, AdversarialBPR
@@ -18,7 +18,7 @@ from FastAdversarialMF import FastAdversarialMF
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
 from evaluation import evaluate_model
-from utils import write2file, prediction2file, parse_amf_args
+from utils import write2file, prediction2file
 
 
 def parse_args():
@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr")
+                        help='Model Name: lstm', default="apr_ori")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="pinterest-20")
@@ -159,7 +159,9 @@ if __name__ == '__main__':
 
     elif modelName == "apr_ori":
         args = parse_amf_args()
+        args.adver = 1
         ranker = AMF(uNum, iNum, args)
+        ranker.build_graph()
 
     # load pretrained
     # TODO only support BPR-based models
