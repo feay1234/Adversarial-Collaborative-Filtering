@@ -27,7 +27,8 @@ class MatrixFactorization:
 
     def train(self, x_train, y_train, batch_size):
         hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
-        return hist
+        loss = hist.history['loss'][0]
+        return loss
 
     def rank(self, users, items):
         return self.model.predict([users, items], batch_size=100, verbose=0)

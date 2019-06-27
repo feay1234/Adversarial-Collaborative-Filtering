@@ -5,7 +5,7 @@ from keras import backend as K
 import numpy as np
 
 import math
-from MatrixFactorisation import AdversarialMatrixFactorisation
+from MF import AdversarialMatrixFactorisation
 
 
 class BPR():
@@ -59,7 +59,9 @@ class BPR():
         #     y = np.ones(_batch_size)
         #     hist = self.model.fit([_u, _p, _n], y, batch_size=_batch_size, epochs=1, verbose=0)
         hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=False)
-        return hist
+        loss = hist.history['loss'][0]
+
+        return loss
 
     def get_train_instances(self, train):
         user_input, pos_item_input, neg_item_input, labels = [], [], [], []

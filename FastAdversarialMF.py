@@ -3,7 +3,7 @@ from keras.models import Model;
 import numpy as np
 from keras.optimizers import Adam
 
-from MatrixFactorisation import MatrixFactorization
+from MF import MatrixFactorization
 
 from keras_adversarial import AdversarialModel, fix_names, n_choice
 from keras_adversarial import AdversarialOptimizerSimultaneous, normal_latent_sampling, AdversarialOptimizerScheduled, \

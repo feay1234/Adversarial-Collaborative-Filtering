@@ -13,7 +13,3 @@ def prediction2file(path, pred):
         thefile.write("%f\n" % item)
     thefile.close()
 
-
-class History():
-    def __init__(self, loss):
-        self.history = {'loss':[loss]}

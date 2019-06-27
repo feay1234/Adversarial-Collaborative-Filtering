@@ -1,227 +1,217 @@
-from keras.engine.saving import load_model
-from keras.initializers import Zeros
-from keras.layers import Input, Embedding, Dot, Subtract, Activation, SimpleRNN, Flatten, Lambda, Add
-from keras.models import Model
-from keras.optimizers import Adagrad
-from keras import backend as K
-import numpy as np
-
 import math
+import numpy as np
+import tensorflow as tf
+import argparse
+
+from keras.engine.saving import load_model
 
 from BPR import BPR
 
-# Adversarial Personalized Ranking for Recommendation SIGIR 201
+
+def parse_apr_args():
+    parser = argparse.ArgumentParser(description="Run AMF.")
+    parser.add_argument('--path', nargs='?', default='Data/',
+                        help='Input data path.')
+    parser.add_argument('--dataset', nargs='?', default='pinterest-20',
+                        help='Choose a dataset.')
+    parser.add_argument('--verbose', type=int, default=1,
+                        help='Evaluate per X epochs.')
+    parser.add_argument('--batch_size', type=int, default=512,
+                        help='batch_size')
+    parser.add_argument('--epochs', type=int, default=2000,
+                        help='Number of epochs.')
+    parser.add_argument('--embed_size', type=int, default=10,
+                        help='Embedding size.')
+    parser.add_argument('--dns', type=int, default=1,
+                        help='number of negative sample for each positive in dns.')
+    parser.add_argument('--reg', type=float, default=0,
+                        help='Regularization for user and item embeddings.')
+    parser.add_argument('--lr', type=float, default=0.05,
+                        help='Learning rate.')
+    parser.add_argument('--reg_adv', type=float, default=1,
+                        help='Regularization for adversarial loss')
+    parser.add_argument('--restore', type=str, default=None,
+                        help='The restore time_stamp for weights in \Pretrain')
+    parser.add_argument('--ckpt', type=int, default=100,
+                        help='Save the model per X epochs.')
+    parser.add_argument('--task', nargs='?', default='',
+                        help='Add the task name for launching experiments')
+    parser.add_argument('--adv_epoch', type=int, default=0,
+                        help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
+                             'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
+    parser.add_argument('--adv', nargs='?', default='grad',
+                        help='Generate the adversarial sample by gradient method or random method')
+    parser.add_argument('--eps', type=float, default=0.5,
+                        help='Epsilon for adversarial weights.')
+    return parser.parse_args()
+
+
 class APR(BPR):
-    def __init__(self, uNum, iNum, dim, eps=0.5):
-        self.uNum = uNum
-        self.iNum = iNum
-        self.dim = dim
-        self.eps = eps
+    def __init__(self, num_users, num_items, args):
+        self.num_items = num_items
+        self.num_users = num_users
+        self.embedding_size = args.embed_size
+        self.learning_rate = args.lr
+        self.reg = args.reg
+        self.dns = args.dns
+        self.adv = args.adv
+        self.eps = args.eps
+        self.adver = args.adver
+        self.reg_adv = args.reg_adv
+        self.epochs = args.epochs
 
-        self.normal_train_count = 10
+        self.uNum = num_users
+        self.iNum = num_items
+        self.dim = args.embed_size
 
-        self.model, self.predictor, self.uEncoder, self.iEncoder, self.get_gradients, self.bpr = self.generate_apr()
-        self.adv_noise_model, self.get_agradients = self.generate_adv_noise()
+    def _create_placeholders(self):
+        with tf.name_scope("input_data"):
+            self.user_input = tf.placeholder(tf.int32, shape=[None, 1], name="user_input")
+            self.item_input_pos = tf.placeholder(tf.int32, shape=[None, 1], name="item_input_pos")
+            self.item_input_neg = tf.placeholder(tf.int32, shape=[None, 1], name="item_input_neg")
+
+    def _create_variables(self):
+        with tf.name_scope("embedding"):
+            self.embedding_P = tf.Variable(
+                tf.truncated_normal(shape=[self.num_users, self.embedding_size], mean=0.0, stddev=0.01),
+                name='embedding_P', dtype=tf.float32)  # (users, embedding_size)
+            self.embedding_Q = tf.Variable(
+                tf.truncated_normal(shape=[self.num_items, self.embedding_size], mean=0.0, stddev=0.01),
+                name='embedding_Q', dtype=tf.float32)  # (items, embedding_size)
+
+            self.delta_P = tf.Variable(tf.zeros(shape=[self.num_users, self.embedding_size]),
+                                       name='delta_P', dtype=tf.float32, trainable=False)  # (users, embedding_size)
+            self.delta_Q = tf.Variable(tf.zeros(shape=[self.num_items, self.embedding_size]),
+                                       name='delta_Q', dtype=tf.float32, trainable=False)  # (items, embedding_size)
+
+            self.h = tf.constant(1.0, tf.float32, [self.embedding_size, 1], name="h")
+
+    def _create_inference(self, item_input):
+        with tf.name_scope("inference"):
+            # embedding look up
+            self.embedding_p = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_P, self.user_input), 1)
+            self.embedding_q = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_Q, item_input),
+                                             1)  # (b, embedding_size)
+            return tf.matmul(self.embedding_p * self.embedding_q,
+                             self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
+
+    def _create_inference_adv(self, item_input):
+        with tf.name_scope("inference_adv"):
+            # embedding look up
+            self.embedding_p = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_P, self.user_input), 1)
+            self.embedding_q = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_Q, item_input),
+                                             1)  # (b, embedding_size)
+            # add adversarial noise
+            self.P_plus_delta = self.embedding_p + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_P, self.user_input),
+                                                                 1)
+            self.Q_plus_delta = self.embedding_q + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_Q, item_input), 1)
+            return tf.matmul(self.P_plus_delta * self.Q_plus_delta,
+                             self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
+
+    def _create_loss(self):
+        with tf.name_scope("loss"):
+            # loss for L(Theta)
+            self.output, embed_p_pos, embed_q_pos = self._create_inference(self.item_input_pos)
+            self.output_neg, embed_p_neg, embed_q_neg = self._create_inference(self.item_input_neg)
+            self.result = tf.clip_by_value(self.output - self.output_neg, -80.0, 1e8)
+            # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
+            self.loss = tf.reduce_sum(tf.nn.softplus(-self.result))
+
+            # loss to be omptimized
+            self.opt_loss = self.loss + self.reg * tf.reduce_mean(
+                tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
+
+            if self.adver:
+                # loss for L(Theta + adv_Delta)
+                self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
+                self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
+                self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
+                # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
+                self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
+                self.opt_loss += self.reg_adv * self.loss_adv + \
+                                 self.reg * tf.reduce_mean(
+                                     tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
+
+    def _create_adversarial(self):
+        with tf.name_scope("adversarial"):
+            # generate the adversarial weights by random method
+            if self.adv == "random":
+                # generation
+                self.adv_P = tf.truncated_normal(shape=[self.num_users, self.embedding_size], mean=0.0, stddev=0.01)
+                self.adv_Q = tf.truncated_normal(shape=[self.num_items, self.embedding_size], mean=0.0, stddev=0.01)
+
+                # normalization and multiply epsilon
+                self.update_P = self.delta_P.assign(tf.nn.l2_normalize(self.adv_P, 1) * self.eps)
+                self.update_Q = self.delta_Q.assign(tf.nn.l2_normalize(self.adv_Q, 1) * self.eps)
+
+            # generate the adversarial weights by gradient-based method
+            elif self.adv == "grad":
+                # return the IndexedSlice Data: [(values, indices, dense_shape)]
+                # grad_var_P: [grad,var], grad_var_Q: [grad, var]
+                self.grad_P, self.grad_Q = tf.gradients(self.loss, [self.embedding_P, self.embedding_Q])
+
+                # convert the IndexedSlice Data to Dense Tensor
+                self.grad_P_dense = tf.stop_gradient(self.grad_P)
+                self.grad_Q_dense = tf.stop_gradient(self.grad_Q)
+
+                # normalization: new_grad = (grad / |grad|) * eps
+                self.update_P = self.delta_P.assign(tf.nn.l2_normalize(self.grad_P_dense, 1) * self.eps)
+                self.update_Q = self.delta_Q.assign(tf.nn.l2_normalize(self.grad_Q_dense, 1) * self.eps)
+
+    def _create_optimizer(self):
+        with tf.name_scope("optimizer"):
+            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
+
+    def build_graph(self):
+        self._create_placeholders()
+        self._create_variables()
+        self._create_loss()
+        self._create_optimizer()
+        self._create_adversarial()
+        # start session
+        self.sess = tf.Session()
+
+    def load_pre_train(self, path):
+        pretrainModel = load_model(path)
+
+        self.sess.run(tf.global_variables_initializer())
+        assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        self.sess.run([assign_P, assign_Q])
+        # self.sess.run(assign_op)
+
+    def rank(self, users, items):
+        users = np.expand_dims(users, -1)
+        items = np.expand_dims(items, -1)
+        feed_dict = {self.user_input: users, self.item_input_pos: items}
+        return self.sess.run(self.output, feed_dict)
+
+    def save(self, path):
+        pass
 
     def train(self, x_train, y_train, batch_size):
-        # self.normal_train_count -= 1
-        # if self.normal_train_count > 0:
-        #     hist = self.bpr.fit(x_train, y_train, batch_size=batch_size, verbose=0)
-        # else:
-        # train discriminator
-        loss, adv_loss = [], []
+        losses = []
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
-            _batch_size = _u.shape[0]
 
-            # Embedding
-            # _ue = self.uEncoder.predict(_u)
-            # _pe = self.iEncoder.predict(_p)
-            # _ne = self.iEncoder.predict(_n)
+            _u = np.expand_dims(_u, -1)
+            _p = np.expand_dims(_p, -1)
+            _n = np.expand_dims(_n, -1)
 
-            x = [_u, _p, _n]
-            y = [np.ones(_batch_size)]
-            uDelta, iDelta = self.get_gradients(x + [y, y, 0])
+            feed_dict = {self.user_input: _u,
+                         self.item_input_pos: _p,
+                         self.item_input_neg: _n}
 
-            # K.stop_gradient()
+            # generate noise
+            self.sess.run([self.update_P, self.update_Q], feed_dict)
+            # train main model
+            loss, _ = self.sess.run([self.loss_adv, self.optimizer], feed_dict)
 
-            # x = [_u, _p, _n, _ue, _pe, _ne]
-            # y = np.ones(_batch_size)
-            # uDelta, iDelta = self.get_gradients(x + [y, y, 0])
+            losses.append(loss)
 
-            # self.adv_noise_model.train_on_batch(x, y)
-            # hist = self.adv_noise_model.fit(x, y, batch_size=_batch_size, verbose=0)
-
-            # split iDelta to pos and neg item grads
-            pDelta = iDelta[:_batch_size]
-            nDelta = iDelta[_batch_size:]
-
-            # uDelta = K.stop_gradient(uDelta)
-            # pDelta = K.stop_gradient(pDelta)
-            # nDelta = K.stop_gradient(nDelta)
-
-            # Delta
-            _ud = uDelta
-            _pd = pDelta
-            _nd = nDelta
-
-            # TODO may not need these because normalisation has already applied in tf.gradients
-            # Normalise
-            # _ud = np.sum(np.linalg.norm(_ud) * self.eps, axis=-1)
-            # _pd = np.sum(np.linalg.norm(_pd) * self.eps, axis=-1)
-            # _nd = np.sum(np.linalg.norm(_nd) * self.eps, axis=-1)
-            _ud = (_ud / np.linalg.norm(_ud)) * self.eps
-            _pd = (_pd / np.linalg.norm(_pd)) * self.eps
-            _nd = (_nd / np.linalg.norm(_nd)) * self.eps
-
-
-            x = [_u, _p, _n, _ud, _pd, _nd]
-            y = [np.ones(_batch_size)] * 2
-
-            hist = self.model.fit(x, y, batch_size=_batch_size, verbose=0, epochs=1, shuffle=False)
-
-            loss.append(hist.history['activation_1_loss'])
-            adv_loss.append(hist.history['activation_2_loss'])
-
-            # print(self.model.predict(x))
-
-        print(np.mean(loss), np.mean(adv_loss))
-
-        return hist
-
-    def generate_apr(self):
-        userInput = Input(shape=(1,), dtype="int32")
-        itemPosInput = Input(shape=(1,), dtype="int32")
-        itemNegInput = Input(shape=(1,), dtype="int32")
-
-        uDelEmb = Input(shape=(self.dim,))
-        pDelEmb = Input(shape=(self.dim,))
-        nDelEmb = Input(shape=(self.dim,))
-        # uDelEmb = Input(shape=(1,))
-        # pDelEmb = Input(shape=(1,))
-        # nDelEmb = Input(shape=(1,))
-
-        userEmbeddingLayer = Embedding(input_dim=self.uNum, output_dim=self.dim, name="uEmb")
-        itemEmbeddingLayer = Embedding(input_dim=self.iNum, output_dim=self.dim, name="iEmb")
-
-        uEmb = Flatten()(userEmbeddingLayer(userInput))
-        pEmb = Flatten()(itemEmbeddingLayer(itemPosInput))
-        nEmb = Flatten()(itemEmbeddingLayer(itemNegInput))
-
-        pDot = Dot(axes=-1)([uEmb, pEmb])
-        nDot = Dot(axes=-1)([uEmb, nEmb])
-
-
-        diff = Subtract()([pDot, nDot])
-        # diff = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diff)
-        loss = Activation("sigmoid")(diff)
-
-        uPerturbedEmb = Add()([uEmb, uDelEmb])
-        pPerturbedEmb = Add()([pEmb, pDelEmb])
-        nPerturbedEmb = Add()([nEmb, nDelEmb])
-        #
-        # uPerturbedEmb = Lambda(lambda x: x + uDelEmb)(uEmb)
-        # pPerturbedEmb = Lambda(lambda x: x + pDelEmb)(pEmb)
-        # nPerturbedEmb = Lambda(lambda x: x + nDelEmb)(nEmb)
-
-        pPerturbedDot = Dot(axes=-1)([uPerturbedEmb, pPerturbedEmb])
-        nPerturbedDot = Dot(axes=-1)([uPerturbedEmb, nPerturbedEmb])
-
-        diffPerturbed = Subtract()([pPerturbedDot, nPerturbedDot])
-        # diffPerturbed = Lambda(lambda x: K.clip(x, -80.0, 1e8))(diffPerturbed)
-        lossPerturbed = Activation("sigmoid")(diffPerturbed)
-
-        # combine_loss = Add()([loss, lossPerturbed])
-
-        model = Model(inputs=[userInput, itemPosInput, itemNegInput, uDelEmb, pDelEmb, nDelEmb], outputs=[loss, lossPerturbed])
-        # model.compile(optimizer=Adagrad(0.05), loss="binary_crossentropy")
-        model.compile(optimizer="adam", loss="binary_crossentropy")
-
-        bpr = Model([userInput, itemPosInput, itemNegInput], loss)
-        bpr.compile(optimizer="adam", loss="binary_crossentropy")
-
-        predictor = Model([userInput, itemPosInput], pDot)
-        uEncoder = Model(userInput, uEmb)
-        iEncoder = Model(itemPosInput, pEmb)
-
-        weights = model.trainable_weights  # weight tensors
-        gradients = model.optimizer.get_gradients(loss, weights)  # gradient tensors
-        input_tensors = [userInput, itemPosInput, itemNegInput] + model.sample_weights + model.targets + [
-            K.learning_phase()]
-        get_gradients = K.function(inputs=input_tensors, outputs=gradients)
-
-        return model, predictor, uEncoder, iEncoder, get_gradients, bpr
-
-    def generate_adv_noise(self):
-        userInput = Input(shape=(1,), dtype="int32", name="uInput")
-        itemPosInput = Input(shape=(1,), dtype="int32", name="pInput")
-        itemNegInput = Input(shape=(1,), dtype="int32", name="nInput")
-
-        uRealEmb = Input(shape=(self.dim,), name="uRInput")
-        pRealEmb = Input(shape=(self.dim,), name="pRInput")
-        nRealEmb = Input(shape=(self.dim,), name="nRInput")
-
-        userDeltaEmbeddingLayer = Embedding(input_dim=self.uNum, output_dim=self.dim, name="uDeltaEmb", embeddings_initializer="zero")
-        itemDeltaEmbeddingLayer = Embedding(input_dim=self.iNum, output_dim=self.dim, name="iDeltaEmb", embeddings_initializer="zero")
-
-        uDelEmb = Flatten()(userDeltaEmbeddingLayer(userInput))
-        pDelEmb = Flatten()(itemDeltaEmbeddingLayer(itemPosInput))
-        nDelEmb = Flatten()(itemDeltaEmbeddingLayer(itemNegInput))
-
-        uEmb = Add()([uRealEmb, uDelEmb])
-        pEmb = Add()([pRealEmb, pDelEmb])
-        nEmb = Add()([nRealEmb, nDelEmb])
-
-        pDot = Dot(axes=-1)([uEmb, pEmb])
-        nDot = Dot(axes=-1)([uEmb, nEmb])
-
-        diff = Subtract()([pDot, nDot])
-
-        # Pass difference through sigmoid function.
-        pred = Activation("sigmoid", name="sigmoid")(diff)
-
-        model = Model(inputs=[userInput, itemPosInput, itemNegInput, uRealEmb, pRealEmb, nRealEmb], outputs=pred)
-        model.compile(optimizer="adam", loss="binary_crossentropy")
-        # model.trainable = False
-
-        weights = model.trainable_weights  # weight tensors
-        gradients = model.optimizer.get_gradients(pred, weights)  # gradient tensors
-        input_tensors = [userInput, itemPosInput, itemNegInput] + model.sample_weights + model.targets + [
-            K.learning_phase()]
-        get_gradients = K.function(inputs=input_tensors, outputs=gradients)
-
-
-        return model, get_gradients
+        return np.mean(losses)
 
 
 
-
-uNum = 5
-iNum = 4
-dim = 3
-size = 10
-
-a = np.random.rand(10,10)
-b = np.random.rand(10)
-# print(a/b)
-#
-# apr = APR(uNum, iNum, dim)
-#
-
-# a = np.random.rand(size, dim)
-# print(a.shape)
-# u = np.random.randint(0, uNum, size)
-# p = np.random.randint(0, iNum, size)
-# n = np.random.randint(0, iNum, size)
-#
-# ue = np.random.rand(size, dim)
-# pe = np.random.rand(size, dim)
-# ne = np.random.rand(size, dim)
-#
-# x = [u, p, n, ue, pe, ne]
-# inputs = x + [np.ones(len(u)), np.ones(len(u)), 0]
-# grads = apr.get_gradients(inputs)
-# print(grads[0])
-# print(grads[0][[1,-1,1]])

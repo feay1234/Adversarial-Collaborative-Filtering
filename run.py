@@ -1,21 +1,15 @@
 import argparse
-import math
 from datetime import datetime
 from time import time
-from keras.models import load_model
-
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from tqdm import tqdm
 
-from AMF import AMF, parse_amf_args
+from APR import APR, parse_apr_args
 from APL import APL
-from APR import APR
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
-from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
+from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
 from evaluation import evaluate_model
 from utils import write2file, prediction2file
@@ -67,10 +61,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
-    # pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
-    # pre = "ml-1m_bpr_d64_06-25-2019_22-37-26.h5"
-    pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
+    # pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
 
     # num_negatives = 1
     topK = 10
@@ -153,23 +144,16 @@ if __name__ == '__main__':
         ranker.init(train)
 
     elif modelName == "apr":
-        ranker = APR(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-
-    elif modelName == "apr_ori":
-        args = parse_amf_args()
-        args.adver = 1
-        ranker = AMF(uNum, iNum, args)
+        # get APR's default params
+        args = parse_apr_args()
+        ranker = APR(uNum, iNum, args)
         ranker.build_graph()
 
     # load pretrained
     # TODO only support BPR-based models
     if pre != "":
-        # pretrainModel = load_model(pre)
         ranker.load_pre_train(path+"h5/"+pre)
-        runName = "%s_%s_pre_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
-                                                 datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        runName = "%s_%s_pre_d%d_%s" % (data, modelName, dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     write2file(path + "out/" + runName + ".out", stat)
     write2file(path + "out/" + runName + ".out", runName)
@@ -190,12 +174,12 @@ if __name__ == '__main__':
         # Generate training instances
         x_train, y_train = ranker.get_train_instances(train)
 
-        hist = ranker.train(x_train, y_train, batch_size)
+        loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
         (hits, ndcgs) = evaluate_model(ranker, testRatings,
                                        testNegatives, topK, evaluation_threads)
-        hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
+        hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
         # hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist[0]
 
         output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (

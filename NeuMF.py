@@ -6,7 +6,7 @@ from keras.layers.core import Dense, Lambda, Activation
 from keras.layers import Embedding, Input, Dense, merge,  Flatten, Dropout, Multiply, Concatenate
 import numpy as np
 
-from MatrixFactorisation import AdversarialMatrixFactorisation, MatrixFactorization
+from MF import AdversarialMatrixFactorisation, MatrixFactorization
 
 
 class NeuMF(MatrixFactorization):
