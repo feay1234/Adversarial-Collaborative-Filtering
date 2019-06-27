@@ -10,25 +10,25 @@ from keras.engine.saving import load_model
 from BPR import BPR
 
 
-def parse_apl_args():
-    parser = argparse.ArgumentParser(description="Run APL.")
-    parser.add_argument('--input_path', nargs='?', default='./data/',
-                        help='Input data path.')
-    parser.add_argument('--loss_function', nargs='?', default='log',
-                        help='Choose a loss function from "log", "wgan" or "hinge".')
-    parser.add_argument('--epochs', type=int, default=200,
-                        help='Number of epochs.')
-    parser.add_argument('--batch_size', type=int, default=32,
-                        help='Batch size.')
-    parser.add_argument('--factors_num', type=int, default=20,
-                        help='Embedding size.')
-    parser.add_argument('--regs', nargs='?', default='[0, 0.05]',
-                        help="Regularization for generator and critic.")
-    parser.add_argument('--lr', type=float, default=0.05,
-                        help='Learning rate.')
-    parser.add_argument('--save_model', type=int, default=0,
-                        help='Whether to save the trained model.')
-    return parser.parse_args()
+# def parse_apl_args():
+#     parser = argparse.ArgumentParser(description="Run APL.")
+#     parser.add_argument('--input_path', nargs='?', default='./data/',
+#                         help='Input data path.')
+#     parser.add_argument('--loss_function', nargs='?', default='log',
+#                         help='Choose a loss function from "log", "wgan" or "hinge".')
+#     parser.add_argument('--epochs', type=int, default=200,
+#                         help='Number of epochs.')
+#     parser.add_argument('--batch_size', type=int, default=32,
+#                         help='Batch size.')
+#     parser.add_argument('--factors_num', type=int, default=20,
+#                         help='Embedding size.')
+#     parser.add_argument('--regs', nargs='?', default='[0, 0.05]',
+#                         help="Regularization for generator and critic.")
+#     parser.add_argument('--lr', type=float, default=0.05,
+#                         help='Learning rate.')
+#     parser.add_argument('--save_model', type=int, default=0,
+#                         help='Whether to save the trained model.')
+#     return parser.parse_args()
 
 
 def init_param(shape):
@@ -52,9 +52,9 @@ class APL(BPR):
         self.users_num = uNum
         self.items_num = iNum
         self.factors_num = dim
-        self.lr = args.lr
-        self.regs = eval(args.regs)
-        self.loss_function = args.loss_function
+        self.lr = 0.05
+        self.regs = eval('[0, 0.05]',)
+        self.loss_function = 'log' #'Choose a loss function from "log", "wgan" or "hinge".')
         self.all_items = set(range(self.items_num))
 
         np.random.seed(2018)
@@ -66,9 +66,6 @@ class APL(BPR):
         self._build_graph()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
-
-
-
 
     def load_pre_train(self, path):
 
@@ -218,6 +215,7 @@ class APL(BPR):
     def train(self, x_train, y_train, batch_size):
         losses = []
         for i in range(math.ceil(len(y_train) / batch_size)):
+            print(i)
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _batch_size = len(_u)
@@ -227,18 +225,21 @@ class APL(BPR):
 
 
             start_time = time.time()
-            self.sess.run([self.critic_updates],
+            _ = self.sess.run([self.critic_updates],
                           feed_dict={self.u: _u, self.i: _i, self.training_flag: False})
 
+            print(_)
             # print("training time of critic: %fs" % (time.time() - start_time))
 
             p_aux = np.zeros([_batch_size, self.iNum])
             for uid in range(len(_u)):
                 p_aux[uid][self.user_pos_item[_u[uid]]] = 0.2 / len(self.user_pos_item[_u[uid]])
 
-            self.sess.run([self.gen_updates],
+            _ = self.sess.run([self.gen_updates],
                                  feed_dict={self.u: _u, self.i: _i,
                                             self.gen_p_aux: p_aux, self.training_flag: True})
+            print(_)
+            print()
 
             # print("training time of generator: %fs" % (time.time() - start_time))
 
@@ -289,9 +290,9 @@ class APL(BPR):
         return
 
 
-
-if __name__ == "__main__":
-    args = parse_apl_args()
-    apl = APL(10, 5 ,6, args)
-
-    # apl.training()
+#
+# if __name__ == "__main__":
+#     args = parse_apl_args()
+#     apl = APL(10, 5 ,6, args)
+#
+#     # apl.training()

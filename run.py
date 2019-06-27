@@ -4,8 +4,8 @@ from time import time
 import numpy as np
 import pandas as pd
 
-from APR import APR, parse_apr_args
-from APL import APL, parse_apl_args
+from APR import APR
+from APL import APL
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
@@ -138,8 +138,8 @@ if __name__ == '__main__':
                                              datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "apl":
-        args = parse_apl_args()
-        ranker = APL(uNum, iNum, dim, args)
+        # args = parse_apl_args()
+        ranker = APL(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         ranker.init(train)
