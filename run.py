@@ -25,15 +25,15 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="yelp")
+                        help='Dataset name', default="pinterest-20")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=200,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -42,7 +42,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=256,
+    parser.add_argument('--bs', type=int, default=512,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",
