@@ -53,8 +53,9 @@ class APL(BPR):
         self.items_num = iNum
         self.factors_num = dim
         self.lr = 0.05
-        self.regs = eval('[0, 0.05]',)
-        self.loss_function = 'log' #'Choose a loss function from "log", "wgan" or "hinge".')
+        # self.lr = 10
+        self.regs = eval('[0, 0.05]', )
+        self.loss_function = 'log'  # 'Choose a loss function from "log", "wgan" or "hinge".')
         self.all_items = set(range(self.items_num))
 
         np.random.seed(2018)
@@ -94,7 +95,6 @@ class APL(BPR):
                                               initializer=init_param([self.items_num, self.factors_num]))
         c_params = [user_embeddings, item_embeddings]
         return g_params, c_params
-
 
     def _build_graph(self):
         with tf.name_scope("generator"):
@@ -184,9 +184,6 @@ class APL(BPR):
         logits = gumbel_softmax(logits, 0.2)
         return logits
 
-
-
-
     def rank(self, users, items):
         pred = self.sess.run(self.g_all_logits, feed_dict={self.u: [users[0]]})
         return pred[0][items]
@@ -197,46 +194,39 @@ class APL(BPR):
     def init(self, train):
 
         self.user_pos_item = {i: [] for i in range(self.uNum)}
-        user_input, pos_item_input, labels = [], [], []
+        users, items, labels = [], [], []
         for (u, i) in train.keys():
             self.user_pos_item[u].append(i)
-            user_input.append(u)
-            pos_item_input.append(i)
+            users.append(u)
+            items.append(i)
             labels.append(1)
 
-        self.x_train = [np.array(user_input), np.array(pos_item_input)]
+        self.x_train = [np.array(users), np.array(items)]
         self.y_train = np.array(labels)
 
     def get_train_instances(self, train):
-        idx = np.arange(len(self.x_train))
+        idx = np.arange(len(self.x_train[0]))
         np.random.shuffle(idx)
         return [self.x_train[0][idx], self.x_train[1][idx]], self.y_train
 
     def train(self, x_train, y_train, batch_size):
-        losses = []
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            _batch_size = len(_u)
-            print(_u)
-            # _u = np.expand_dims(_u, -1)
-            # _p = np.expand_dims(_p, -1)
-            # _n = np.expand_dims(_n, -1)
-
-
-            start_time = time.time()
-            _ = self.sess.run([self.critic_updates],
+            self.sess.run([self.critic_updates],
                           feed_dict={self.u: _u, self.i: _i, self.training_flag: False})
 
-            # print("training time of critic: %fs" % (time.time() - start_time))
+        for i in range(math.ceil(len(y_train) / batch_size)):
+            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
 
-            p_aux = np.zeros([_batch_size, self.iNum])
+            p_aux = np.zeros([len(_u), self.iNum])
             for uid in range(len(_u)):
                 p_aux[uid][self.user_pos_item[_u[uid]]] = 0.2 / len(self.user_pos_item[_u[uid]])
 
-            _ = self.sess.run([self.gen_updates],
-                                 feed_dict={self.u: _u, self.i: _i,
-                                            self.gen_p_aux: p_aux, self.training_flag: True})
+            self.sess.run([self.gen_updates],
+                          feed_dict={self.u: _u, self.i: _i,
+                                     self.gen_p_aux: p_aux, self.training_flag: True})
 
             # print("training time of generator: %fs" % (time.time() - start_time))
 
@@ -245,44 +235,19 @@ class APL(BPR):
         # return np.mean(losses)
         return 0
 
-    def training(self):
-
-        print("Dataset: %s\nUsers number: %d\nItems number: %d" % (self.data_set, self.users_num, self.items_num))
-        print("Metric:\t\tPrecision@10\t\tRecall@10\t\tMAP@10\t\tNDCG@10")
-        result = self.eval()
-        buf = '\t'.join([str(x) for x in result])
-        print("pre_trained:\t%s" % buf)
-
-        for epoch in range(self.epochs):
-            np.random.shuffle(self.data)
-            print("epoch: %d" % epoch)
-
-            train_size = len(self.data)
-            index = 0
-
-            train_size = len(self.data)
-            index = 0
-            start_time = time.time()
-            while index + self.batch_size < train_size:
-                input_user, input_item = get_batch_data(self.data, index, self.batch_size)
-
-                p_aux = np.zeros([self.batch_size, self.items_num])
-                for uid in range(len(input_user)):
-                    p_aux[uid][self.user_pos_train[input_user[uid]]] = 0.2 / len(self.user_pos_train[input_user[uid]])
-
-                index += self.batch_size
-                self.sess.run([self.gen_updates],
-                              feed_dict={self.u: input_user, self.i: input_item,
-                                         self.gen_p_aux: p_aux, self.training_flag: True})
-
-            print("training time of generator: %fs" % (time.time() - start_time))
-            if epoch % 5 == 0:
-                result = self.eval()
-                buf = '\t'.join([str(x) for x in result])
-                print("epoch %d: %s" % (epoch, buf))
-
-            if self.save_model:
-                params = self.sess.run(self.g_params)
-                pickle.dump(params, open(self.save_model_dir + "%03d_gen_model.pkl" % epoch, "wb"))
-        return
-
+# import scipy.sparse as sp
+# import numpy as np
+#
+#
+# train = sp.dok_matrix((99 + 1, 49 + 1), dtype=np.float32)
+# for i in range(100):
+#     for j in range(50):
+#         train[i, j ] = 1.0
+# apl = APL(100, 50, 10)
+# apl.init(train)
+#
+# x_train, y_train = apl.get_train_instances(train)
+# for i in range(10):
+#     loss = apl.train(x_train, y_train, 64)
+#     print(apl.rank([0], [1,34]))
+#
