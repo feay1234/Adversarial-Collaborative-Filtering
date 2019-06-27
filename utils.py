@@ -14,3 +14,6 @@ def prediction2file(path, pred):
     thefile.close()
 
 
+class History():
+    def __init__(self, loss):
+        self.history = {'loss':[loss]}

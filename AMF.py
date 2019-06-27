@@ -1,5 +1,3 @@
-
-
 import os
 import math
 import numpy as np
@@ -14,7 +12,9 @@ from time import localtime
 
 from keras.engine.saving import load_model
 
+from BPR import BPR
 from Dataset import Dataset
+from utils import History
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 _user_input = None
@@ -65,7 +65,6 @@ def parse_amf_args():
     parser.add_argument('--eps', type=float, default=0.5,
                         help='Epsilon for adversarial weights.')
     return parser.parse_args()
-
 
 
 # data sampling and shuffling
@@ -127,7 +126,7 @@ def _get_train_batch(i):
 
 
 # prediction model
-class AMF:
+class AMF(BPR):
     def __init__(self, num_users, num_items, args):
         self.num_items = num_items
         self.num_users = num_users
@@ -173,7 +172,8 @@ class AMF:
             self.embedding_p = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_P, self.user_input), 1)
             self.embedding_q = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_Q, item_input),
                                              1)  # (b, embedding_size)
-            return tf.matmul(self.embedding_p * self.embedding_q, self.h), self.embedding_p, self.embedding_q # (b, embedding_size) * (embedding_size, 1)
+            return tf.matmul(self.embedding_p * self.embedding_q,
+                             self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
 
     def _create_inference_adv(self, item_input):
         with tf.name_scope("inference_adv"):
@@ -185,7 +185,8 @@ class AMF:
             self.P_plus_delta = self.embedding_p + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_P, self.user_input),
                                                                  1)
             self.Q_plus_delta = self.embedding_q + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_Q, item_input), 1)
-            return tf.matmul(self.P_plus_delta * self.Q_plus_delta, self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
+            return tf.matmul(self.P_plus_delta * self.Q_plus_delta,
+                             self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
 
     def _create_loss(self):
         with tf.name_scope("loss"):
@@ -197,7 +198,8 @@ class AMF:
             self.loss = tf.reduce_sum(tf.nn.softplus(-self.result))
 
             # loss to be omptimized
-            self.opt_loss = self.loss + self.reg * tf.reduce_mean(tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg)) # embed_p_pos == embed_q_neg
+            self.opt_loss = self.loss + self.reg * tf.reduce_mean(
+                tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
 
             if self.adver:
                 # loss for L(Theta + adv_Delta)
@@ -207,8 +209,8 @@ class AMF:
                 # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
                 self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
                 self.opt_loss += self.reg_adv * self.loss_adv + \
-                                 self.reg * tf.reduce_mean(tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
-
+                                 self.reg * tf.reduce_mean(
+                                     tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
 
     def _create_adversarial(self):
         with tf.name_scope("adversarial"):
@@ -246,6 +248,7 @@ class AMF:
         self._create_loss()
         self._create_optimizer()
         self._create_adversarial()
+        # start session
         self.sess = tf.Session()
 
     def load_pre_train(self, path):
@@ -263,6 +266,33 @@ class AMF:
         feed_dict = {self.user_input: users, self.item_input_pos: items}
         return self.sess.run(self.output, feed_dict)
 
+    def save(self, path):
+        pass
+
+    def train(self, x_train, y_train, batch_size):
+        losses = []
+        for i in range(math.ceil(len(y_train) / batch_size)):
+            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+            _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+
+            _u = np.expand_dims(_u, -1)
+            _p = np.expand_dims(_p, -1)
+            _n = np.expand_dims(_n, -1)
+
+            feed_dict = {self.user_input: _u,
+                         self.item_input_pos: _p,
+                         self.item_input_neg: _n}
+
+            # generate noise
+            self.sess.run([self.update_P, self.update_Q], feed_dict)
+            # train main model
+            loss, _ = self.sess.run([self.loss_adv, self.optimizer], feed_dict)
+
+            losses.append(loss)
+
+        hist = History(np.mean(losses))
+        return hist
 
 
 # training
@@ -274,7 +304,8 @@ def training(model, dataset, args, epoch_start, epoch_end, time_stamp):  # saver
             ckpt_restore_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
         else:
             ckpt_save_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/MF_BPR/embed_%d/%s/" % (
+                args.dataset, args.embed_size, args.restore)
 
         if not os.path.exists(ckpt_save_path):
             os.makedirs(ckpt_save_path)
@@ -307,7 +338,7 @@ def training(model, dataset, args, epoch_start, epoch_end, time_stamp):  # saver
         best_res = {}
 
         # train by epoch
-        for epoch_count in range(epoch_start, epoch_end+1):
+        for epoch_count in range(epoch_start, epoch_end + 1):
 
             # initialize for training batches
             batch_begin = time()
@@ -514,6 +545,7 @@ def _eval_by_user(user):
 
     return hr, ndcg, auc
 
+
 def init_logging(args, time_stamp):
     path = "Log/%s_%s/" % (strftime('%Y-%m-%d_%H', localtime()), args.task)
     if not os.path.exists(path):
@@ -522,40 +554,3 @@ def init_logging(args, time_stamp):
                         level=logging.INFO)
     logging.info(args)
     print(args)
-
-
-if __name__ == '__main__':
-
-    # time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
-    #
-    # # initilize arguments and logging
-    args = parse_amf_args()
-    # init_logging(args, time_stamp)
-    #
-    # # initialize dataset
-    # dataset = Dataset(args.path + args.dataset)
-    #
-    # args.adver = 0
-    # # initialize MF_BPR models
-    # MF_BPR = MF(dataset.num_users, dataset.num_items, args)
-    # MF_BPR.build_graph()
-    #
-    # print("Initialize MF_BPR")
-    #
-    # # start training
-    # training(MF_BPR, dataset, args, epoch_start=0, epoch_end=args.adv_epoch-1, time_stamp=time_stamp)
-    #
-    args.adver = 1
-    # # instialize AMF model
-    AMF = AMF(5, 4, args)
-    AMF.build_graph()
-
-    # print(AMF.embedding_P.setWeights(np.random.rand(5,10)))
-    with tf.Session() as sess:
-        print(AMF.embedding_P)
-
-    #
-    # print("Initialize AMF")
-    #
-    # # start training
-    # training(AMF, dataset, args, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
