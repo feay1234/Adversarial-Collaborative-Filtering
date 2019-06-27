@@ -146,8 +146,7 @@ if __name__ == '__main__':
 
     elif modelName == "apr":
         # get APR's default params
-        args = parse_apr_args()
-        ranker = APR(uNum, iNum, args)
+        ranker = APR(uNum, iNum)
         ranker.build_graph()
 
     # load pretrained

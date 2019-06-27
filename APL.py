@@ -1,4 +1,3 @@
-import os
 import time
 import pickle
 import argparse
@@ -291,7 +290,8 @@ class APL(BPR):
 
 
 
-# if __name__ == "__main__":
-#     args = parse_args()
-#     apl = APL(args)
-#     apl.training()
+if __name__ == "__main__":
+    args = parse_apl_args()
+    apl = APL(10, 5 ,6, args)
+
+    # apl.training()
