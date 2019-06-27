@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
+from AMF import AMF
 from APL import APL
 from APR import APR
 from BPR import BPR, AdversarialBPR
@@ -17,7 +18,8 @@ from FastAdversarialMF import FastAdversarialMF
 from MatrixFactorisation import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
 from evaluation import evaluate_model
-from utils import write2file, prediction2file
+from utils import write2file, prediction2file, parse_amf_args
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Adversarial Collaborative Filtering")
@@ -25,7 +27,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="pinterest-20")
@@ -68,7 +70,7 @@ if __name__ == '__main__':
     # pre = "ml-small_bpr_d10_06-24-2019_20-45-40.h5"
     # pre = "ml-1m_bpr_d10_06-25-2019_14-36-48.h5"
     # pre = "ml-1m_bpr_d64_06-25-2019_22-37-26.h5"
-    # pre = "yelp_bpr_d10_06-26-2019_20-42-29.h5"
+    pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
 
     # num_negatives = 1
     topK = 10
@@ -154,6 +156,10 @@ if __name__ == '__main__':
         ranker = APR(uNum, iNum, dim)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
+    elif modelName == "apr_ori":
+        args = parse_amf_args()
+        ranker = AMF(uNum, iNum, args)
 
     # load pretrained
     # TODO only support BPR-based models
