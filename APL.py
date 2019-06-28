@@ -70,11 +70,11 @@ class APL(BPR):
 
     def load_pre_train(self, path):
 
-        # pretrainModel = load_model(path)
-        # assign_P = self.g_params[0].assign(pretrainModel.get_layer("uEmb").get_weights()[0])
-        # assign_Q = self.g_params[1].assign(pretrainModel.get_layer("iEmb").get_weights()[0])
-        # self.sess.run([assign_P, assign_Q])
-        pass
+        pretrainModel = load_model(path)
+        assign_P = self.g_params[0].assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        assign_Q = self.g_params[1].assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        self.sess.run([assign_P, assign_Q])
+        # pass
 
     def _def_params(self, g_init_param=None):
         with tf.variable_scope("g_params"):
@@ -228,26 +228,6 @@ class APL(BPR):
                           feed_dict={self.u: _u, self.i: _i,
                                      self.gen_p_aux: p_aux, self.training_flag: True})
 
-            # print("training time of generator: %fs" % (time.time() - start_time))
-
-            # losses.append(loss)
-
-        # return np.mean(losses)
         return 0
 
-# import scipy.sparse as sp
-# import numpy as np
-#
-#
-# train = sp.dok_matrix((99 + 1, 49 + 1), dtype=np.float32)
-# for i in range(100):
-#     for j in range(50):
-#         train[i, j ] = 1.0
-# apl = APL(100, 50, 10)
-# apl.init(train)
-#
-# x_train, y_train = apl.get_train_instances(train)
-# for i in range(10):
-#     loss = apl.train(x_train, y_train, 64)
-#     print(apl.rank([0], [1,34]))
-#
+
