@@ -149,6 +149,7 @@ if __name__ == '__main__':
         ranker = IRGAN(uNum, iNum, dim, batch_size)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        ranker.init(train)
 
     elif modelName == "apr":
         # get APR's default params

@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from keras.engine.saving import load_model
+import math
 
 
 class IRGAN():
@@ -34,6 +35,81 @@ class IRGAN():
     def rank(self, users, items):
         feed_dict = {self.generator.u: users, self.generator.i: items}
         return self.sess.run(self.generator.predictor, feed_dict)
+
+    def init(self, train):
+
+        self.user_pos_item = {i: [] for i in range(self.uNum)}
+        for (u, i) in train.keys():
+            self.user_pos_item[u].append(i)
+
+    def get_train_instances(self, train):
+        # We do not need need function for IRGAN
+        return None, None
+
+    def train(self, x_train, y_train, batch_size):
+        # TODO support d_ and g_steps
+
+        x_train_d, y_train_d = self.generate_for_d()
+        for i in range(math.ceil(len(y_train_d) / batch_size)):
+            _u = x_train_d[0][i * batch_size:(i * batch_size) + batch_size]
+            _i = x_train_d[1][i * batch_size:(i * batch_size) + batch_size]
+            _y = y_train_d[i * batch_size:(i * batch_size) + batch_size]
+            _ = self.sess.run(self.discriminator.d_updates,
+                              feed_dict={self.discriminator.u: _u, self.discriminator.i: _i,
+                                         self.discriminator.label: _y})
+
+        for u in self.user_pos_item:
+            sample_lambda = 0.2
+            pos = self.user_pos_item[u]
+
+            rating = self.sess.run(self.generator.all_logits, {self.generator.u: u})
+            exp_rating = np.exp(rating)
+            prob = exp_rating / np.sum(exp_rating)  # prob is generator distribution p_\theta
+
+            pn = (1 - sample_lambda) * prob
+            pn[pos] += sample_lambda * 1.0 / len(pos)
+            # Now, pn is the Pn in importance sampling, prob is generator distribution p_\theta
+
+            sample = np.random.choice(np.arange(self.iNum), 2 * len(pos), p=pn)
+            ###########################################################################
+            # Get reward and adapt it with importance sampling
+            ###########################################################################
+            reward = self.sess.run(self.discriminator.reward, {self.discriminator.u: u, self.discriminator.i: sample})
+            reward = reward * prob[sample] / pn[sample]
+            ###########################################################################
+            # Update G
+            ###########################################################################
+            _ = self.sess.run(self.generator.gan_updates,
+                         {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
+        return _
+
+
+    def generate_for_d(self):
+        _u, _i, _y = [], [], []
+        for u in self.user_pos_item:
+            pos = self.user_pos_item[u]
+
+            rating = self.sess.run(self.generator.all_rating, {self.generator.u: [u]})
+            rating = np.array(rating[0]) / 0.2  # Temperature
+
+            exp_rating = np.exp(rating)
+
+            if np.sum(exp_rating) == float("inf"):
+                # uniform distribution over all items
+                neg = np.random.choice(np.arange(self.iNum), size=len(pos))
+            else:
+                prob = exp_rating / np.sum(exp_rating)
+                neg = np.random.choice(np.arange(self.iNum), size=len(pos), p=prob)
+
+            for i in range(len(pos)):
+                _u.append(u)
+                _u.append(u)
+                _i.append(pos[i])
+                _i.append(neg[i])
+                _y.append(1)
+                _y.append(0)
+
+        return [_u, _i], _y
 
 
 class GEN():
@@ -79,15 +155,14 @@ class GEN():
         g_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.gan_updates = g_opt.minimize(self.gan_loss, var_list=self.g_params)
 
-        # not efficient
-        # self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
-        #                             transpose_b=True)
-        # Faster
-        self.embedding_p = tf.nn.embedding_lookup(self.user_embeddings, self.u)
-        self.embedding_q = tf.nn.embedding_lookup(self.item_embeddings, self.i) # (b, embedding_size)
-        self.predictor = tf.reduce_sum(tf.multiply(self.embedding_p, self.embedding_q), 1)
+        # not efficient, but for policy gradient
+        self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
+                                    transpose_b=True)
 
-        # self.all_rating =  tf.reduce_sum(tf.multiply(self.embedding_p, self.embedding_q), 1)
+        # used at test time
+        self.embedding_p = tf.nn.embedding_lookup(self.user_embeddings, self.u)
+        self.embedding_q = tf.nn.embedding_lookup(self.item_embeddings, self.i)  # (b, embedding_size)
+        self.predictor = tf.reduce_sum(tf.multiply(self.embedding_p, self.embedding_q), 1)
 
     def save_model(self, sess, filename):
         param = sess.run(self.g_params)
