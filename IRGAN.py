@@ -1,5 +1,8 @@
 import tensorflow as tf
 import pickle
+import numpy as np
+import pandas as pd
+from keras.engine.saving import load_model
 
 
 class IRGAN():
@@ -20,6 +23,17 @@ class IRGAN():
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         self.sess.run(tf.global_variables_initializer())
+
+    def load_pre_train(self, path):
+        pretrainModel = load_model(path)
+
+        assign_P = self.generator.user_embeddings.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        assign_Q = self.generator.item_embeddings.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        self.sess.run([assign_P, assign_Q])
+
+    def rank(self, users, items):
+        feed_dict = {self.generator.u: users, self.generator.i: items}
+        return self.sess.run(self.generator.predictor, feed_dict)
 
 
 class GEN():
@@ -65,8 +79,15 @@ class GEN():
         g_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.gan_updates = g_opt.minimize(self.gan_loss, var_list=self.g_params)
 
-        self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
-                                    transpose_b=True)
+        # not efficient
+        # self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
+        #                             transpose_b=True)
+        # Faster
+        self.embedding_p = tf.nn.embedding_lookup(self.user_embeddings, self.u)
+        self.embedding_q = tf.nn.embedding_lookup(self.item_embeddings, self.i) # (b, embedding_size)
+        self.predictor = tf.reduce_sum(tf.multiply(self.embedding_p, self.embedding_q), 1)
+
+        # self.all_rating =  tf.reduce_sum(tf.multiply(self.embedding_p, self.embedding_q), 1)
 
     def save_model(self, sess, filename):
         param = sess.run(self.g_params)

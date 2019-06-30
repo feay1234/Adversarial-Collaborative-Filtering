@@ -9,6 +9,7 @@ from APL import APL
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
+from IRGAN import IRGAN
 from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
 from evaluation import evaluate_model
@@ -21,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="irgan")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="pinterest-20")
@@ -143,6 +144,11 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         ranker.init(train)
+
+    elif modelName == "irgan":
+        ranker = IRGAN(uNum, iNum, dim, batch_size)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "apr":
         # get APR's default params
