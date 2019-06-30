@@ -61,7 +61,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    # pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
+    pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
 
     # num_negatives = 1
     topK = 10
@@ -164,7 +164,8 @@ if __name__ == '__main__':
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
                                    topK, evaluation_threads)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    output = 'Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg)
+    # output = 'Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg)
+    output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + runName + ".out", output)
 
@@ -184,7 +185,9 @@ if __name__ == '__main__':
         hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
         # hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist[0]
 
-        output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (
+        # output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (
+        #     epoch, t2 - t1, hr, ndcg, loss, time() - t2)
+        output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
 

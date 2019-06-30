@@ -6,6 +6,7 @@ import tensorflow as tf
 import math
 
 from keras.engine.saving import load_model
+from tqdm import tqdm
 
 from BPR import BPR
 
@@ -29,6 +30,7 @@ from BPR import BPR
 #     parser.add_argument('--save_model', type=int, default=0,
 #                         help='Whether to save the trained model.')
 #     return parser.parse_args()
+from MF import MatrixFactorization
 
 
 def init_param(shape):
@@ -52,14 +54,72 @@ class APL(BPR):
         self.users_num = uNum
         self.items_num = iNum
         self.factors_num = dim
-        self.lr = 0.05
-        # self.lr = 10
+        # self.lr = 0.05
+        self.lr = 1
         self.regs = eval('[0, 0.05]', )
         self.loss_function = 'log'  # 'Choose a loss function from "log", "wgan" or "hinge".')
         self.all_items = set(range(self.items_num))
+        import tensorflow as tf
+        import pickle
 
-        np.random.seed(2018)
-        tf.set_random_seed(2018)
+        class GEN():
+            def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
+                self.itemNum = itemNum
+                self.userNum = userNum
+                self.emb_dim = emb_dim
+                self.lamda = lamda  # regularization parameters
+                self.param = param
+                self.initdelta = initdelta
+                self.learning_rate = learning_rate
+                self.g_params = []
+
+                with tf.variable_scope('generator'):
+                    if self.param == None:
+                        self.user_embeddings = tf.Variable(
+                            tf.random_uniform([self.userNum, self.emb_dim], minval=-self.initdelta,
+                                              maxval=self.initdelta,
+                                              dtype=tf.float32))
+                        self.item_embeddings = tf.Variable(
+                            tf.random_uniform([self.itemNum, self.emb_dim], minval=-self.initdelta,
+                                              maxval=self.initdelta,
+                                              dtype=tf.float32))
+                        self.item_bias = tf.Variable(tf.zeros([self.itemNum]))
+                    else:
+                        self.user_embeddings = tf.Variable(self.param[0])
+                        self.item_embeddings = tf.Variable(self.param[1])
+                        self.item_bias = tf.Variable(param[2])
+
+                    self.g_params = [self.user_embeddings, self.item_embeddings, self.item_bias]
+
+                self.u = tf.placeholder(tf.int32)
+                self.i = tf.placeholder(tf.int32)
+                self.reward = tf.placeholder(tf.float32)
+
+                self.u_embedding = tf.nn.embedding_lookup(self.user_embeddings, self.u)
+                self.i_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.i)
+                self.i_bias = tf.gather(self.item_bias, self.i)
+
+                self.all_logits = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1) + self.item_bias
+                self.i_prob = tf.gather(
+                    tf.reshape(tf.nn.softmax(tf.reshape(self.all_logits, [1, -1])), [-1]),
+                    self.i)
+
+                self.gan_loss = -tf.reduce_mean(tf.log(self.i_prob) * self.reward) + self.lamda * (
+                    tf.nn.l2_loss(self.u_embedding) + tf.nn.l2_loss(self.i_embedding) + tf.nn.l2_loss(self.i_bias))
+
+                g_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+                self.gan_updates = g_opt.minimize(self.gan_loss, var_list=self.g_params)
+
+                # for test stage, self.u: [batch_size]
+                self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
+                                            transpose_b=True) + self.item_bias
+
+            def save_model(self, sess, filename):
+                param = sess.run(self.g_params)
+                pickle.dump(param, open(filename, 'w'))
+
+        # np.random.seed(2018)
+        # tf.set_random_seed(2018)
 
         self.u = tf.placeholder(tf.int32, name="user_holder")
         self.i = tf.placeholder(tf.int32, name="item_holder")
@@ -207,6 +267,8 @@ class APL(BPR):
     def get_train_instances(self, train):
         idx = np.arange(len(self.x_train[0]))
         np.random.shuffle(idx)
+        # print("here")
+        # print(idx)
         return [self.x_train[0][idx], self.x_train[1][idx]], self.y_train
 
     def train(self, x_train, y_train, batch_size):
@@ -230,4 +292,32 @@ class APL(BPR):
 
         return 0
 
+# import scipy.sparse as sp
+#
+# apl = APL(10, 5, 12)
+# u = np.random.randint(0, 10, 100)
+# v = np.random.randint(0, 5, 100)
+# y = np.ones(100)
+# mat = sp.dok_matrix((10 + 1, 5 + 1), dtype=np.float32)
+#
+# for i in range(10):
+#     for j in range(5):
+#         mat[i,j] = 1
+#
+# apl.init(mat)
+# print(apl.rank([0], [1,2,3,4]))
+# for i in range(100):
+#     x_train, y_train = apl.get_train_instances(mat)
+#     apl.train(x_train, y_train, 32)
+#
+# print(apl.rank([0], [1,2,3,4]))
+
+# print()
+# mf = MatrixFactorization(10,5,12)
+# print(mf.rank([0,0,0,0], [1,2,3,4]).flatten())
+# for i in range(100):
+#     mf.train([u,v], y, 1)
+# print(mf.rank([0,0,0,0], [1,2,3,4]).flatten())
+
+# for i in range(100):
 
