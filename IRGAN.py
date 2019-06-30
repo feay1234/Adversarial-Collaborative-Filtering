@@ -15,10 +15,10 @@ class IRGAN():
         INIT_DELTA = 0.05
 
         self.generator = GEN(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
-                             learning_rate=0.001)
+                             learning_rate=0.05)
 
         self.discriminator = DIS(iNum, uNum, dim, lamda=0.1 / batch_size, param=None, initdelta=INIT_DELTA,
-                                 learning_rate=0.001)
+                                 learning_rate=0.05)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -33,8 +33,11 @@ class IRGAN():
         self.sess.run([assign_P, assign_Q])
 
     def rank(self, users, items):
-        feed_dict = {self.generator.u: users, self.generator.i: items}
-        return self.sess.run(self.generator.predictor, feed_dict)
+        # feed_dict = {self.generator.u: users, self.generator.i: items}
+        # print()
+        user_batch_rating = self.sess.run(self.generator.all_rating, {self.generator.u: [users[0]]})
+        # return self.sess.run(self.generator.predictor, feed_dict)
+        return user_batch_rating[0][items]
 
     def init(self, train):
 
@@ -46,7 +49,7 @@ class IRGAN():
         # We do not need need function for IRGAN
         return None, None
 
-    def save(self):
+    def save(self, path):
         pass
 
     def train(self, x_train, y_train, batch_size):
@@ -61,6 +64,7 @@ class IRGAN():
                               feed_dict={self.discriminator.u: _u, self.discriminator.i: _i,
                                          self.discriminator.label: _y})
 
+        losses = []
         for u in self.user_pos_item:
             sample_lambda = 0.2
             pos = self.user_pos_item[u]
@@ -82,9 +86,10 @@ class IRGAN():
             ###########################################################################
             # Update G
             ###########################################################################
-            _ = self.sess.run(self.generator.gan_updates,
+            loss, _ = self.sess.run([self.generator.gan_loss, self.generator.gan_updates],
                               {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
-        return 0
+            losses.append(loss)
+        return np.mean(losses)
 
     def generate_for_d(self):
         _u, _i, _y = [], [], []
@@ -107,7 +112,7 @@ class IRGAN():
                 _u.extend([u, u])
                 _i.append(pos[i])
                 _i.append(neg[i])
-                _y.extend([1, 0])
+                _y.extend([1,0])
 
         return [_u, _i], _y
 
@@ -224,6 +229,12 @@ class DIS():
         # for dns sample
         self.dns_rating = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1)
 
+
     def save_model(self, sess, filename):
         param = sess.run(self.d_params)
         pickle.dump(param, open(filename, 'w'))
+
+
+
+
+

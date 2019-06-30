@@ -62,7 +62,7 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
+    # pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
 
     # num_negatives = 1
     topK = 10
