@@ -14,11 +14,13 @@ class IRGAN():
 
         INIT_DELTA = 0.05
 
-        self.generator = GEN(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
-                             learning_rate=0.05)
+        # self.generator = GEN(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
+        #                      learning_rate=0.05)
 
-        self.discriminator = DIS(iNum, uNum, dim, lamda=0.1 / batch_size, param=None, initdelta=INIT_DELTA,
-                                 learning_rate=0.05)
+        # self.discriminator = DIS(iNum, uNum, dim, lamda=0.1 / batch_size, param=None, initdelta=INIT_DELTA,
+        #                          learning_rate=0.05)
+
+        self.discriminator = DIS(iNum, uNum, dim, lamda=0.1, param=None, initdelta=0.05, learning_rate=0.05)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -33,14 +35,13 @@ class IRGAN():
         self.sess.run([assign_P, assign_Q])
 
     def rank(self, users, items):
-        # feed_dict = {self.generator.u: users, self.generator.i: items}
-        # print()
-        user_batch_rating = self.sess.run(self.generator.all_rating, {self.generator.u: [users[0]]})
-        # return self.sess.run(self.generator.predictor, feed_dict)
+        # user_batch_rating = self.sess.run(self.generator.all_rating, {self.generator.u: [users[0]]})
+        user_batch_rating = self.sess.run(self.discriminator.all_rating, {self.discriminator.u: [users[0]]})
         return user_batch_rating[0][items]
 
     def init(self, train):
 
+        self.trainData = train
         self.user_pos_item = {i: [] for i in range(self.uNum)}
         for (u, i) in train.keys():
             self.user_pos_item[u].append(i)
@@ -53,6 +54,18 @@ class IRGAN():
         pass
 
     def train(self, x_train, y_train, batch_size):
+
+        x_train_d, y_train_d = self.generate_dns()
+        for i in range(math.ceil(len(y_train_d) / batch_size)):
+            _u = x_train_d[0][i * batch_size:(i * batch_size) + batch_size]
+            _p = x_train_d[1][i * batch_size:(i * batch_size) + batch_size]
+            _n = x_train_d[2][i * batch_size:(i * batch_size) + batch_size]
+            _ = self.sess.run(self.discriminator.d_updates,
+                           feed_dict={self.discriminator.u: _u, self.discriminator.pos: _p,
+                                      self.discriminator.neg: _n})
+        return 0
+
+    def train2(self, x_train, y_train, batch_size):
         # TODO support d_ and g_steps
 
         x_train_d, y_train_d = self.generate_for_d()
@@ -87,7 +100,7 @@ class IRGAN():
             # Update G
             ###########################################################################
             loss, _ = self.sess.run([self.generator.gan_loss, self.generator.gan_updates],
-                              {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
+                                    {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
             losses.append(loss)
         return np.mean(losses)
 
@@ -112,9 +125,27 @@ class IRGAN():
                 _u.extend([u, u])
                 _i.append(pos[i])
                 _i.append(neg[i])
-                _y.extend([1,0])
+                _y.extend([1, 0])
 
         return [_u, _i], _y
+
+    def generate_dns(self):
+        user_input, pos_item_input, neg_item_input, labels = [], [], [], []
+        for (u, i) in self.trainData.keys():
+            # positive instance
+            user_input.append(u)
+            pos_item_input.append(i)
+            # negative instances
+            j = np.random.randint(self.iNum)
+            while (u, j) in self.trainData:
+                j = np.random.randint(self.iNum)
+            neg_item_input.append(j)
+            labels.append(1)
+
+        idx = np.arange(len(user_input))
+        np.random.shuffle(idx)
+
+        return [np.array(user_input)[idx], np.array(pos_item_input)[idx], np.array(neg_item_input)[idx]], np.array(labels)
 
 
 class GEN():
@@ -174,7 +205,7 @@ class GEN():
         pickle.dump(param, open(filename, 'w'))
 
 
-class DIS():
+class DIS2():
     def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
         self.itemNum = itemNum
         self.userNum = userNum
@@ -229,12 +260,70 @@ class DIS():
         # for dns sample
         self.dns_rating = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1)
 
-
     def save_model(self, sess, filename):
         param = sess.run(self.d_params)
         pickle.dump(param, open(filename, 'w'))
 
+class DIS():
+    def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
+        self.itemNum = itemNum
+        self.userNum = userNum
+        self.emb_dim = emb_dim
+        self.lamda = lamda  # regularization parameters
+        self.param = param
+        self.initdelta = initdelta
+        self.learning_rate = learning_rate
+        self.d_params = []
 
+        with tf.variable_scope('discriminator'):
+            if self.param is None:
+                self.user_embeddings = tf.Variable(
+                    tf.random_uniform([self.userNum, self.emb_dim], minval=-self.initdelta, maxval=self.initdelta,
+                                      dtype=tf.float32))
+                self.item_embeddings = tf.Variable(
+                    tf.random_uniform([self.itemNum, self.emb_dim], minval=-self.initdelta, maxval=self.initdelta,
+                                      dtype=tf.float32))
+                self.item_bias = tf.Variable(tf.zeros([self.itemNum]))
+            else:
+                self.user_embeddings = tf.Variable(self.param[0])
+                self.item_embeddings = tf.Variable(self.param[1])
+                self.item_bias = tf.Variable(self.param[2])
 
+        self.d_params = [self.user_embeddings, self.item_embeddings, self.item_bias]
 
+        # placeholder definition
+        self.u = tf.placeholder(tf.int32)
+        self.pos = tf.placeholder(tf.int32)
+        self.neg = tf.placeholder(tf.int32)
 
+        self.u_embedding = tf.nn.embedding_lookup(self.user_embeddings, self.u)
+        self.pos_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.pos)
+        self.pos_bias = tf.gather(self.item_bias, self.pos)
+        self.neg_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.neg)
+        self.neg_bias = tf.gather(self.item_bias, self.neg)
+
+        self.pre_logits = tf.sigmoid(
+            tf.reduce_sum(tf.multiply(self.u_embedding, self.pos_embedding - self.neg_embedding),
+                          1) + self.pos_bias - self.neg_bias)
+        self.pre_loss = -tf.reduce_mean(tf.log(self.pre_logits)) + self.lamda * (
+            tf.nn.l2_loss(self.u_embedding) +
+            tf.nn.l2_loss(self.pos_embedding) +
+            tf.nn.l2_loss(self.pos_bias) +
+            tf.nn.l2_loss(self.neg_embedding) +
+            tf.nn.l2_loss(self.neg_bias)
+        )
+
+        d_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+        self.d_updates = d_opt.minimize(self.pre_loss, var_list=self.d_params)
+
+        # for test stage, self.u: [batch_size]
+        self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
+                                    transpose_b=True) + self.item_bias
+
+        self.all_logits = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1) + self.item_bias
+        # for dns sample
+        self.dns_rating = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1) + self.item_bias
+
+    def save_model(self, sess, filename):
+        param = sess.run(self.d_params)
+        pickle.dump(param, open(filename, 'w'))

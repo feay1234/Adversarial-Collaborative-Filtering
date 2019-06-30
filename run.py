@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="irgan")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="pinterest-20")
