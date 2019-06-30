@@ -46,6 +46,9 @@ class IRGAN():
         # We do not need need function for IRGAN
         return None, None
 
+    def save(self):
+        pass
+
     def train(self, x_train, y_train, batch_size):
         # TODO support d_ and g_steps
 
@@ -80,9 +83,8 @@ class IRGAN():
             # Update G
             ###########################################################################
             _ = self.sess.run(self.generator.gan_updates,
-                         {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
-        return _
-
+                              {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
+        return 0
 
     def generate_for_d(self):
         _u, _i, _y = [], [], []
@@ -102,12 +104,10 @@ class IRGAN():
                 neg = np.random.choice(np.arange(self.iNum), size=len(pos), p=prob)
 
             for i in range(len(pos)):
-                _u.append(u)
-                _u.append(u)
+                _u.extend([u, u])
                 _i.append(pos[i])
                 _i.append(neg[i])
-                _y.append(1)
-                _y.append(0)
+                _y.extend([1, 0])
 
         return [_u, _i], _y
 
