@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="irgan")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml")
@@ -202,7 +202,6 @@ if __name__ == '__main__':
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
 
-        # TODO each mode save, TF and Keras
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
             if save:

@@ -42,9 +42,12 @@ class IRGAN():
     def init(self, train):
 
         self.trainData = train
-        self.user_pos_item = {i: [] for i in range(self.uNum)}
+        self.user_pos_item = {}
         for (u, i) in train.keys():
-            self.user_pos_item[u].append(i)
+            if u in self.user_pos_item:
+                self.user_pos_item[u].append(i)
+            else:
+                self.user_pos_item[u] = [i]
 
     def get_train_instances(self, train):
         # We do not need need function for IRGAN
