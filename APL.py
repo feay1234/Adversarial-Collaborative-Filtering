@@ -212,12 +212,15 @@ class APL(BPR):
         return [self.x_train[0][idx], self.x_train[1][idx]], self.y_train
 
     def train(self, x_train, y_train, batch_size):
+        Dloss = []
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            self.sess.run([self.critic_updates],
+            loss, _ = self.sess.run([self.critic_loss, self.critic_updates],
                           feed_dict={self.u: _u, self.i: _i, self.training_flag: False})
+            Dloss.append(loss)
 
+        Gloss = []
         for i in range(math.ceil(len(y_train) / batch_size)):
             _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             _i = x_train[1][i * batch_size:(i * batch_size) + batch_size]
@@ -226,11 +229,12 @@ class APL(BPR):
             for uid in range(len(_u)):
                 p_aux[uid][self.user_pos_item[_u[uid]]] = 0.2 / len(self.user_pos_item[_u[uid]])
 
-            self.sess.run([self.gen_updates],
+            loss, _ = self.sess.run([self.gen_loss, self.gen_updates],
                           feed_dict={self.u: _u, self.i: _i,
                                      self.gen_p_aux: p_aux, self.training_flag: True})
+            Gloss.append(loss)
 
-        return 0
+        return "G: %.4f D: %.4f" % (np.mean(Gloss), np.mean(Dloss))
 
 # import scipy.sparse as sp
 #

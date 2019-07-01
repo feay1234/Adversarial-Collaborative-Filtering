@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="irgan")
+                        help='Model Name: lstm', default="apl")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml")
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
         # output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (
         #     epoch, t2 - t1, hr, ndcg, loss, time() - t2)
-        output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
+        output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %s [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
 

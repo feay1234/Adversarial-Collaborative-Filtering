@@ -109,7 +109,7 @@ class IRGAN():
             loss, _ = self.sess.run([self.generator.gan_loss, self.generator.gan_updates],
                                     {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
             losses.append(loss)
-        return np.mean(losses)
+        return "%.4f" % np.mean(losses)
 
     def generate_for_d(self):
         _u, _i, _y = [], [], []

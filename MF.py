@@ -28,7 +28,7 @@ class MatrixFactorization:
     def train(self, x_train, y_train, batch_size):
         hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
         loss = hist.history['loss'][0]
-        return loss
+        return "%.4f" % loss
 
     def save(self, path):
         pass
