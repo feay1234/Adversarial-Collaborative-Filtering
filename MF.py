@@ -30,6 +30,9 @@ class MatrixFactorization:
         loss = hist.history['loss'][0]
         return loss
 
+    def save(self, path):
+        pass
+
     def rank(self, users, items):
         return self.model.predict([users, items], batch_size=100, verbose=0)
 
