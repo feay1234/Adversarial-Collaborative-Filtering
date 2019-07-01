@@ -25,7 +25,7 @@ def parse_args():
                         help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="pinterest-20")
+                        help='Dataset name', default="ml")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -45,6 +45,9 @@ def parse_args():
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
 
+    parser.add_argument('--save', type=int, default=1,
+                        help='Save model')
+
     return parser.parse_args()
 
 
@@ -62,6 +65,8 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
+    save = True if args.save == 1 else False
+    save = False
     # pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
 
     # num_negatives = 1
@@ -77,8 +82,7 @@ if __name__ == '__main__':
         dataset = Dataset(path + "data/" + data)
 
     elif data == "ml":
-        df = pd.read_csv(path + "data/ml-20m/ratings.csv", names=columns,
-                         skiprows=1)
+        df = pd.read_csv(path + "data/ml-small", names=columns, sep="\t")
         dataset = RawDataset(df)
     elif data == "dating":
         columns = ["uid", "iid", "rating"]
@@ -201,13 +205,15 @@ if __name__ == '__main__':
         # TODO each mode save, TF and Keras
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
-            ranker.save(path + "h5/" + runName + ".best.h5")
+            if save:
+                ranker.save(path + "h5/" + runName + ".best.h5")
 
         # only save result file for the best model
         prediction2file(path + "out/" + runName + ".hr", hits)
         prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
         # save current one
-        ranker.save(path + "h5/" + runName + ".last.h5")
+        if save:
+            ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     write2file(path + "out/" + runName + ".out", output)

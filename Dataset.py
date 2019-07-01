@@ -7,7 +7,6 @@ Processing datasets.
 import scipy.sparse as sp
 import numpy as np
 
-
 class Dataset(object):
     '''
     classdocs
@@ -92,7 +91,7 @@ class RawDataset():
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
 
         df = df[df.groupby("uid").cumcount(ascending=False) > 0]
-        import scipy.sparse as sp
+        print(uNum, iNum)
         mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
         if "rating" in df.columns:
             for u, i, r in df[["uid", "iid", "rating"]].values.tolist():

@@ -14,13 +14,13 @@ class IRGAN():
 
         INIT_DELTA = 0.05
 
-        # self.generator = GEN(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
-        #                      learning_rate=0.05)
+        self.generator = GEN(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
+                             learning_rate=0.05)
 
-        # self.discriminator = DIS(iNum, uNum, dim, lamda=0.1 / batch_size, param=None, initdelta=INIT_DELTA,
-        #                          learning_rate=0.05)
+        self.discriminator = DIS(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
+                                 learning_rate=0.05)
 
-        self.discriminator = DIS(iNum, uNum, dim, lamda=0.1, param=None, initdelta=0.05, learning_rate=0.05)
+        # self.discriminator = DIS(iNum, uNum, dim, lamda=0.1, param=None, initdelta=0.05, learning_rate=0.05)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -35,8 +35,8 @@ class IRGAN():
         self.sess.run([assign_P, assign_Q])
 
     def rank(self, users, items):
-        # user_batch_rating = self.sess.run(self.generator.all_rating, {self.generator.u: [users[0]]})
-        user_batch_rating = self.sess.run(self.discriminator.all_rating, {self.discriminator.u: [users[0]]})
+        user_batch_rating = self.sess.run(self.generator.all_rating, {self.generator.u: [users[0]]})
+        # user_batch_rating = self.sess.run(self.discriminator.all_rating, {self.discriminator.u: [users[0]]})
         return user_batch_rating[0][items]
 
     def init(self, train):
@@ -53,7 +53,7 @@ class IRGAN():
     def save(self, path):
         pass
 
-    def train(self, x_train, y_train, batch_size):
+    def train2(self, x_train, y_train, batch_size):
 
         x_train_d, y_train_d = self.generate_dns()
         for i in range(math.ceil(len(y_train_d) / batch_size)):
@@ -65,7 +65,7 @@ class IRGAN():
                                       self.discriminator.neg: _n})
         return 0
 
-    def train2(self, x_train, y_train, batch_size):
+    def train(self, x_train, y_train, batch_size):
         # TODO support d_ and g_steps
 
         x_train_d, y_train_d = self.generate_for_d()
@@ -205,7 +205,7 @@ class GEN():
         pickle.dump(param, open(filename, 'w'))
 
 
-class DIS2():
+class DIS():
     def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
         self.itemNum = itemNum
         self.userNum = userNum
@@ -264,7 +264,7 @@ class DIS2():
         param = sess.run(self.d_params)
         pickle.dump(param, open(filename, 'w'))
 
-class DIS():
+class DIS2():
     def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
         self.itemNum = itemNum
         self.userNum = userNum
@@ -283,13 +283,11 @@ class DIS():
                 self.item_embeddings = tf.Variable(
                     tf.random_uniform([self.itemNum, self.emb_dim], minval=-self.initdelta, maxval=self.initdelta,
                                       dtype=tf.float32))
-                self.item_bias = tf.Variable(tf.zeros([self.itemNum]))
             else:
                 self.user_embeddings = tf.Variable(self.param[0])
                 self.item_embeddings = tf.Variable(self.param[1])
-                self.item_bias = tf.Variable(self.param[2])
 
-        self.d_params = [self.user_embeddings, self.item_embeddings, self.item_bias]
+        self.d_params = [self.user_embeddings, self.item_embeddings]
 
         # placeholder definition
         self.u = tf.placeholder(tf.int32)
@@ -298,31 +296,37 @@ class DIS():
 
         self.u_embedding = tf.nn.embedding_lookup(self.user_embeddings, self.u)
         self.pos_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.pos)
-        self.pos_bias = tf.gather(self.item_bias, self.pos)
         self.neg_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.neg)
-        self.neg_bias = tf.gather(self.item_bias, self.neg)
 
-        self.pre_logits = tf.sigmoid(
-            tf.reduce_sum(tf.multiply(self.u_embedding, self.pos_embedding - self.neg_embedding),
-                          1) + self.pos_bias - self.neg_bias)
-        self.pre_loss = -tf.reduce_mean(tf.log(self.pre_logits)) + self.lamda * (
-            tf.nn.l2_loss(self.u_embedding) +
-            tf.nn.l2_loss(self.pos_embedding) +
-            tf.nn.l2_loss(self.pos_bias) +
-            tf.nn.l2_loss(self.neg_embedding) +
-            tf.nn.l2_loss(self.neg_bias)
-        )
+        # self.pre_logits = tf.sigmoid(
+        #     tf.reduce_sum(tf.multiply(self.u_embedding, self.pos_embedding - self.neg_embedding),1))
+        # self.pre_loss = -tf.reduce_mean(tf.log(self.pre_logits))
+        #
+        # d_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+        # self.d_updates = d_opt.minimize(self.pre_loss, var_list=self.d_params)
 
-        d_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
-        self.d_updates = d_opt.minimize(self.pre_loss, var_list=self.d_params)
+        self.output = tf.multiply(self.u_embedding, self.pos_embedding)
+        self.output_neg = tf.multiply(self.u_embedding, self.neg_embedding)
+
+        # self.result = tf.clip_by_value(self.output - self.output_neg, -80.0, 1e8)
+        self.result = self.output - self.output_neg
+        # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
+        self.opt_loss = tf.reduce_sum(tf.nn.softplus(-self.result))
+
+        self.d_updates = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
+
+        # loss to be omptimized
+        # self.opt_loss = self.loss + self.reg * tf.reduce_mean(
+        #     tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
+
 
         # for test stage, self.u: [batch_size]
         self.all_rating = tf.matmul(self.u_embedding, self.item_embeddings, transpose_a=False,
-                                    transpose_b=True) + self.item_bias
+                                    transpose_b=True)
 
-        self.all_logits = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1) + self.item_bias
+        self.all_logits = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1)
         # for dns sample
-        self.dns_rating = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1) + self.item_bias
+        self.dns_rating = tf.reduce_sum(tf.multiply(self.u_embedding, self.item_embeddings), 1)
 
     def save_model(self, sess, filename):
         param = sess.run(self.d_params)
