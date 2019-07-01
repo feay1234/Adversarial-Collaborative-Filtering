@@ -85,15 +85,19 @@ class IRGAN():
             sample_lambda = 0.2
             pos = self.user_pos_item[u]
 
-            rating = self.sess.run(self.generator.all_logits, {self.generator.u: u})
-            exp_rating = np.exp(rating)
-            prob = exp_rating / np.sum(exp_rating)  # prob is generator distribution p_\theta
+            try:
 
-            pn = (1 - sample_lambda) * prob
-            pn[pos] += sample_lambda * 1.0 / len(pos)
-            # Now, pn is the Pn in importance sampling, prob is generator distribution p_\theta
+                rating = self.sess.run(self.generator.all_logits, {self.generator.u: u})
+                exp_rating = np.exp(rating)
+                prob = exp_rating / np.sum(exp_rating)  # prob is generator distribution p_\theta
 
-            sample = np.random.choice(np.arange(self.iNum), 2 * len(pos), p=pn)
+                pn = (1 - sample_lambda) * prob
+                pn[pos] += sample_lambda * 1.0 / len(pos)
+                # Now, pn is the Pn in importance sampling, prob is generator distribution p_\theta
+
+                sample = np.random.choice(np.arange(self.iNum), 2 * len(pos), p=pn)
+            except:
+                sample = np.random.choice(np.arange(self.iNum), 2 * len(pos))
             ###########################################################################
             # Get reward and adapt it with importance sampling
             ###########################################################################
@@ -117,12 +121,11 @@ class IRGAN():
 
             exp_rating = np.exp(rating)
 
-            if np.sum(exp_rating) == float("inf"):
-                # uniform distribution over all items
-                neg = np.random.choice(np.arange(self.iNum), size=len(pos))
-            else:
+            try:
                 prob = exp_rating / np.sum(exp_rating)
                 neg = np.random.choice(np.arange(self.iNum), size=len(pos), p=prob)
+            except:
+                neg = np.random.choice(np.arange(self.iNum), size=len(pos))
 
             for i in range(len(pos)):
                 _u.extend([u, u])

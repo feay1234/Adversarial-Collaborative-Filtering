@@ -27,10 +27,10 @@ def parse_args():
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml")
 
-    parser.add_argument('--d', type=int, default=10,
+    parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
 
-    parser.add_argument('--epochs', type=int, default=200,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -67,7 +67,8 @@ if __name__ == '__main__':
     pre = args.pre
     save = True if args.save == 1 else False
     save = False
-    # pre = "pinterest-20_bpr_d10_06-27-2019_11-43-42.last.h5"
+    # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
+    pre = "ml_bpr_d64_07-01-2019_10-40-19.best.h5"
 
     # num_negatives = 1
     topK = 10
