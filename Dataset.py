@@ -78,7 +78,7 @@ class Dataset(object):
 class RawDataset():
 
     def __init__(self, df):
-        np.random.seed(1111)
+        # np.random.seed(1111)
 
         # pre-process
         df = df.groupby("iid").filter(lambda x: len(x) >= 10)

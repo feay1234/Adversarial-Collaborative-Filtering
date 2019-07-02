@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="irgan")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml")
@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
 
-    parser.add_argument('--save', type=int, default=1,
+    parser.add_argument('--save_model', type=int, default=1,
                         help='Save model')
 
     return parser.parse_args()
@@ -65,10 +65,10 @@ if __name__ == '__main__':
     batch_size = args.bs
     epochs = args.epochs
     pre = args.pre
-    save = True if args.save == 1 else False
-    save = False
+    save_model = True if args.save_model == 1 else False
+    save_model = False
     # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
-    pre = "ml_bpr_d64_07-01-2019_10-40-19.best.h5"
+    pre = "ml_bpr_d64_07-01-2019_10-40-19.last.h5"
 
     # num_negatives = 1
     topK = 10
@@ -205,14 +205,14 @@ if __name__ == '__main__':
 
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
-            if save:
+            if save_model:
                 ranker.save(path + "h5/" + runName + ".best.h5")
 
         # only save result file for the best model
         prediction2file(path + "out/" + runName + ".hr", hits)
         prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
         # save current one
-        if save:
+        if save_model:
             ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)

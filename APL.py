@@ -55,9 +55,9 @@ class APL(BPR):
         self.items_num = iNum
         self.factors_num = dim
         self.lr = 0.05
-        # self.lr = 1
-        self.regs = eval('[0, 0]', )
-        # self.regs = eval('[0, 0.05]', )
+        # self.lr =
+        # self.regs = eval('[0, 0]', )
+        self.regs = eval('[0, 0.05]', )
         self.loss_function = 'log'  # 'Choose a loss function from "log", "wgan" or "hinge".')
         self.all_items = set(range(self.items_num))
 
@@ -118,7 +118,7 @@ class APL(BPR):
                 u_embedding = tf.nn.embedding_lookup(user_embeddings, self.u)
                 i_embedding = tf.nn.embedding_lookup(item_embeddings, self.i)
                 with tf.name_scope("real_mf"):
-                    real_logits = tf.reduce_sum(tf.multiply(u_embedding, i_embedding), 1)
+                    self.real_logits = tf.reduce_sum(tf.multiply(u_embedding, i_embedding), 1)
                 self.c_l2_loss = tf.nn.l2_loss(u_embedding) + tf.nn.l2_loss(i_embedding)
 
             with tf.name_scope("fake_item"):
@@ -129,7 +129,7 @@ class APL(BPR):
                     fake_logits = tf.reduce_sum(tf.multiply(u_embedding, i_embedding), 1)
                 self.c_l2_loss += tf.nn.l2_loss(u_embedding) + tf.nn.l2_loss(i_embedding)
 
-        self.gen_loss, self.critic_loss = self._get_loss(real_logits, fake_logits)
+        self.gen_loss, self.critic_loss = self._get_loss(self.real_logits, fake_logits)
 
         g_opt = tf.train.GradientDescentOptimizer(self.lr)
         self.gen_updates = g_opt.minimize(self.gen_loss, var_list=self.g_params)
@@ -148,11 +148,19 @@ class APL(BPR):
         y_ij = real_logits - fake_logits
         with tf.name_scope("g_loss"):
             gen_wgan_loss = -tf.reduce_mean(fake_logits) + self.regs[0] * self.g_l2_loss
-            gen_log_loss = tf.reduce_mean(tf.log(tf.sigmoid(y_ij))) + self.regs[0] * self.g_l2_loss
+            # gen_log_loss = tf.reduce_mean(tf.log(tf.sigmoid(y_ij))) + self.regs[0] * self.g_l2_loss
+            # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
+            # result = tf.clip_by_value(y_ij, -80.0, 1e8)
+            # gen_log_loss = tf.reduce_sum(tf.nn.softplus(-y_ij))
+            gen_log_loss = tf.reduce_sum(tf.sigmoid(y_ij))
+
             gen_hinge_loss = -tf.reduce_mean(tf.maximum(1 - y_ij, 0)) + self.regs[0] * self.g_l2_loss
         with tf.name_scope("c_loss"):
             critic_wgan_loss = tf.reduce_mean(-y_ij)
-            critic_log_loss = -tf.reduce_mean(tf.log(tf.sigmoid(y_ij))) + self.regs[1] * self.c_l2_loss
+            # critic_log_loss = -tf.reduce_mean(tf.log(tf.sigmoid(y_ij))) + self.regs[1] * self.c_l2_loss
+            # result = tf.clip_by_value(y_ij, -80.0, 1e8)
+            critic_log_loss = tf.reduce_sum(tf.nn.softplus(-y_ij))
+
             critic_hinge_loss = tf.reduce_mean(tf.maximum(1 - y_ij, 0)) + self.regs[1] * self.c_l2_loss
 
         loss_dict = {"log": (critic_log_loss, gen_log_loss),
@@ -186,7 +194,13 @@ class APL(BPR):
 
     def rank(self, users, items):
         pred = self.sess.run(self.g_all_logits, feed_dict={self.u: [users[0]]})
+        # res = []
+        # for u, i in zip(users, items):
+        #     res.append(self.sess.run(self.real_logits, feed_dict={self.u: [u], self.i: [i]}))
+
         return pred[0][items]
+        # return res
+        # return self.sess.run(self.real_logits, feed_dict={self.u: users, self.i: items})
 
     def save(self, path):
         pass

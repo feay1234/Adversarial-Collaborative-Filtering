@@ -7,20 +7,18 @@ import math
 
 
 class IRGAN():
-    def __init__(self, uNum, iNum, dim, batch_size):
+    def __init__(self, uNum, iNum, dim, BATCH_SIZE):
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
 
         INIT_DELTA = 0.05
 
-        self.generator = GEN(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
-                             learning_rate=0.05)
-
-        self.discriminator = DIS(iNum, uNum, dim, lamda=0.0 / batch_size, param=None, initdelta=INIT_DELTA,
-                                 learning_rate=0.05)
-
-        # self.discriminator = DIS(iNum, uNum, dim, lamda=0.1, param=None, initdelta=0.05, learning_rate=0.05)
+        self.generator = GEN(iNum, uNum, dim, lamda=0.0/BATCH_SIZE, param=None, initdelta=INIT_DELTA,
+                             learning_rate=0.001)
+        #
+        self.discriminator = DIS(iNum, uNum, dim, lamda=0.1/BATCH_SIZE, param=None, initdelta=INIT_DELTA,
+                                 learning_rate=0.001)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -69,18 +67,17 @@ class IRGAN():
         return 0
 
     def train(self, x_train, y_train, batch_size):
-        # TODO support d_ and g_steps
 
         x_train_d, y_train_d = self.generate_for_d()
         for i in range(math.ceil(len(y_train_d) / batch_size)):
             _u = x_train_d[0][i * batch_size:(i * batch_size) + batch_size]
             _i = x_train_d[1][i * batch_size:(i * batch_size) + batch_size]
             _y = y_train_d[i * batch_size:(i * batch_size) + batch_size]
-            _ = self.sess.run(self.discriminator.d_updates,
+            _ = self.sess.run([self.discriminator.d_updates],
                               feed_dict={self.discriminator.u: _u, self.discriminator.i: _i,
                                          self.discriminator.label: _y})
 
-        losses = []
+        Gloss = []
         for u in self.user_pos_item:
             sample_lambda = 0.2
             pos = self.user_pos_item[u]
@@ -108,8 +105,8 @@ class IRGAN():
             ###########################################################################
             loss, _ = self.sess.run([self.generator.gan_loss, self.generator.gan_updates],
                                     {self.generator.u: u, self.generator.i: sample, self.generator.reward: reward})
-            losses.append(loss)
-        return "%.4f" % np.mean(losses)
+            Gloss.append(loss)
+        return "loss: %.4f" % np.mean(Gloss)
 
     def generate_for_d(self):
         _u, _i, _y = [], [], []
@@ -245,6 +242,7 @@ class DIS():
         self.i_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.i)
 
         self.pre_logits = tf.reduce_sum(tf.multiply(self.u_embedding, self.i_embedding), 1)
+
         self.pre_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.label,
                                                                 logits=self.pre_logits) + self.lamda * (
             tf.nn.l2_loss(self.u_embedding) + tf.nn.l2_loss(self.i_embedding)
@@ -319,7 +317,7 @@ class DIS2():
         # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
         self.opt_loss = tf.reduce_sum(tf.nn.softplus(-self.result))
 
-        self.d_updates = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
+        self.d_updates = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
 
         # loss to be omptimized
         # self.opt_loss = self.loss + self.reg * tf.reduce_mean(
