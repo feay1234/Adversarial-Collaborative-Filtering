@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="irgan")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml")
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     save_model = True if args.save_model == 1 else False
     save_model = False
     # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
-    pre = "ml_bpr_d64_07-01-2019_10-40-19.last.h5"
+    # pre = "ml_bpr_d64_07-01-2019_10-40-19.best.h5"
 
     # num_negatives = 1
     topK = 10
@@ -163,6 +163,7 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
+
     # load pretrained
     # TODO only support BPR-based models
     if pre != "":
@@ -171,6 +172,10 @@ if __name__ == '__main__':
 
     write2file(path + "out/" + runName + ".out", stat)
     write2file(path + "out/" + runName + ".out", runName)
+    if pre != "":
+        write2file(path + "out/" + runName + ".out", pre)
+
+
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
