@@ -4,6 +4,8 @@ Processing datasets.
 
 @author: Xiangnan He (xiangnanhe@gmail.com)
 '''
+from collections import defaultdict
+
 import scipy.sparse as sp
 import numpy as np
 
@@ -16,7 +18,7 @@ class Dataset(object):
         '''
         Constructor
         '''
-        self.trainMatrix = self.load_rating_file_as_matrix(path + ".train.rating")
+        self.trainMatrix, self.trainSeq = self.load_rating_file_as_matrix(path + ".train.rating")
         self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
         self.testNegatives = self.load_negative_file(path + ".test.negative")
         assert len(self.testRatings) == len(self.testNegatives)
@@ -64,6 +66,7 @@ class Dataset(object):
                 line = f.readline()
         # Construct matrix
         mat = sp.dok_matrix((num_users + 1, num_items + 1), dtype=np.float32)
+        seq = defaultdict(list)
         with open(filename, "r") as f:
             line = f.readline()
             while line != None and line != "":
@@ -71,8 +74,9 @@ class Dataset(object):
                 user, item, rating = int(arr[0]), int(arr[1]), float(arr[2])
                 if (rating > 0):
                     mat[user, item] = 1.0
+                    seq[user].append(item)
                 line = f.readline()
-        return mat
+        return mat, seq
 
 
 class RawDataset():
