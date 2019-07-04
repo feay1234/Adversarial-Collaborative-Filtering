@@ -12,6 +12,7 @@ from FastAdversarialMF import FastAdversarialMF
 from IRGAN import IRGAN
 from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
+from SASRec import SASRec
 from evaluation import evaluate_model
 from utils import write2file, prediction2file
 
@@ -22,10 +23,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apl")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -163,6 +164,12 @@ if __name__ == '__main__':
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
+    elif modelName == "sasrec":
+        ranker = SASRec(uNum, iNum, dim)
+        ranker.init(trainSeq)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
 
     # load pretrained
     # TODO only support BPR-based models
@@ -181,7 +188,6 @@ if __name__ == '__main__':
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
                                    topK, evaluation_threads)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    # output = 'Init: HR = %.4f, NDCG = %.4f' % (hr, ndcg)
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + runName + ".out", output)

@@ -1,20 +1,36 @@
-
 import tensorflow as tf
-
-# https://github.com/kang205/SASRec
+import numpy as np
+import math
 from keras_preprocessing.sequence import pad_sequences
 
 
+# Default params
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--dataset', default="Video")
+# parser.add_argument('--train_dir', default="default")
+# parser.add_argument('--batch_size', default=128, type=int)
+# parser.add_argument('--lr', default=0.001, type=float)
+# parser.add_argument('--maxlen', default=50, type=int)
+# parser.add_argument('--hidden_units', default=50, type=int)
+# parser.add_argument('--num_blocks', default=2, type=int)
+# parser.add_argument('--num_epochs', default=201, type=int)
+# parser.add_argument('--num_heads', default=1, type=int)
+# parser.add_argument('--dropout_rate', default=0.5, type=float)
+# parser.add_argument('--l2_emb', default=0.0, type=float)
+
+# https://github.com/kang205/SASRec
 class SASRec():
-    def __init__(self, usernum, itemnum, args, reuse=None):
+    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2, num_heads=1, dropout_rate=0.5,
+                 l2_emb=0.0, lr=0.05, reuse=None):
         self.uNum = usernum
         self.iNum = itemnum
-        self.args = args
+        self.maxlen = maxlen
+        # self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
         self.u = tf.placeholder(tf.int32, shape=(None))
-        self.input_seq = tf.placeholder(tf.int32, shape=(None, args.maxlen))
-        self.pos = tf.placeholder(tf.int32, shape=(None, args.maxlen))
-        self.neg = tf.placeholder(tf.int32, shape=(None, args.maxlen))
+        self.input_seq = tf.placeholder(tf.int32, shape=(None, maxlen))
+        self.pos = tf.placeholder(tf.int32, shape=(None, maxlen))
+        self.neg = tf.placeholder(tf.int32, shape=(None, maxlen))
         pos = self.pos
         neg = self.neg
         mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
@@ -22,11 +38,11 @@ class SASRec():
         with tf.variable_scope("SASRec", reuse=reuse):
             # sequence embedding, item embedding table
             self.seq, item_emb_table = embedding(self.input_seq,
-                                                 vocab_size=itemnum + 2, # last item as padding
-                                                 num_units=args.hidden_units,
+                                                 vocab_size=itemnum + 2,  # last item as padding
+                                                 num_units=hidden_units,
                                                  zero_pad=True,
                                                  scale=True,
-                                                 l2_reg=args.l2_emb,
+                                                 l2_reg=l2_emb,
                                                  scope="input_embeddings",
                                                  with_t=True,
                                                  reuse=reuse
@@ -35,11 +51,11 @@ class SASRec():
             # Positional Encoding
             t, pos_emb_table = embedding(
                 tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0), [tf.shape(self.input_seq)[0], 1]),
-                vocab_size=args.maxlen,
-                num_units=args.hidden_units,
+                vocab_size=maxlen,
+                num_units=hidden_units,
                 zero_pad=False,
                 scale=False,
-                l2_reg=args.l2_emb,
+                l2_reg=l2_emb,
                 scope="dec_pos",
                 reuse=reuse,
                 with_t=True
@@ -48,42 +64,41 @@ class SASRec():
 
             # Dropout
             self.seq = tf.layers.dropout(self.seq,
-                                         rate=args.dropout_rate,
+                                         rate=dropout_rate,
                                          training=tf.convert_to_tensor(self.is_training))
             self.seq *= mask
 
             # Build blocks
 
-            for i in range(args.num_blocks):
+            for i in range(num_blocks):
                 with tf.variable_scope("num_blocks_%d" % i):
-
                     # Self-attention
                     self.seq = multihead_attention(queries=normalize(self.seq),
                                                    keys=self.seq,
-                                                   num_units=args.hidden_units,
-                                                   num_heads=args.num_heads,
-                                                   dropout_rate=args.dropout_rate,
+                                                   num_units=hidden_units,
+                                                   num_heads=num_heads,
+                                                   dropout_rate=dropout_rate,
                                                    is_training=self.is_training,
                                                    causality=True,
                                                    scope="self_attention")
 
                     # Feed forward
-                    self.seq = feedforward(normalize(self.seq), num_units=[args.hidden_units, args.hidden_units],
-                                           dropout_rate=args.dropout_rate, is_training=self.is_training)
+                    self.seq = feedforward(normalize(self.seq), num_units=[hidden_units, hidden_units],
+                                           dropout_rate=dropout_rate, is_training=self.is_training)
                     self.seq *= mask
 
             self.seq = normalize(self.seq)
 
-        pos = tf.reshape(pos, [tf.shape(self.input_seq)[0] * args.maxlen])
-        neg = tf.reshape(neg, [tf.shape(self.input_seq)[0] * args.maxlen])
+        pos = tf.reshape(pos, [tf.shape(self.input_seq)[0] * maxlen])
+        neg = tf.reshape(neg, [tf.shape(self.input_seq)[0] * maxlen])
         pos_emb = tf.nn.embedding_lookup(item_emb_table, pos)
         neg_emb = tf.nn.embedding_lookup(item_emb_table, neg)
-        seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * args.maxlen, args.hidden_units])
+        seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        self.test_item = tf.placeholder(tf.int32, shape=(101))
+        self.test_item = tf.placeholder(tf.int32, shape=(100))
         test_item_emb = tf.nn.embedding_lookup(item_emb_table, self.test_item)
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
-        self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], args.maxlen, 101])
+        self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, 100])
         self.test_logits = self.test_logits[:, -1, :]
 
         # prediction layer
@@ -91,7 +106,7 @@ class SASRec():
         self.neg_logits = tf.reduce_sum(neg_emb * seq_emb, -1)
 
         # ignore padding items (0)
-        istarget = tf.reshape(tf.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * args.maxlen])
+        istarget = tf.reshape(tf.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * maxlen])
         self.loss = tf.reduce_sum(
             - tf.log(tf.sigmoid(self.pos_logits) + 1e-24) * istarget -
             tf.log(1 - tf.sigmoid(self.neg_logits) + 1e-24) * istarget
@@ -107,21 +122,33 @@ class SASRec():
         if reuse is None:
             tf.summary.scalar('auc', self.auc)
             self.global_step = tf.Variable(0, name='global_step', trainable=False)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=args.lr, beta2=0.98)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta2=0.98)
             self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
         else:
             tf.summary.scalar('test_auc', self.auc)
 
         self.merged = tf.summary.merge_all()
 
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        config.allow_soft_placement = True
+        self.sess = tf.Session(config=config)
+
+        self.sess.run(tf.initialize_all_variables())
+
     def init(self, trainSeq):
         self.trainSeq = trainSeq
 
-    def predict(self, sess, u, seq, item_idx):
-        return sess.run(self.test_logits,
-                        {self.u: u, self.input_seq: seq, self.test_item: item_idx, self.is_training: False})
+    def rank(self, users, items):
+        # print(self.trainSeq[users[0]])
+        seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen, value=self.iNum + 1)
+        return self.sess.run(self.test_logits,
+                             {self.u: users[0], self.input_seq: seq, self.test_item: items, self.is_training: False})[0]
 
     def save(self, path):
+        pass
+
+    def load_pre_train(self, pre):
         pass
 
     def get_train_instances(self, train):
@@ -133,47 +160,39 @@ class SASRec():
             seq.append(self.trainSeq[u][:-1])
             pos.append(self.trainSeq[u][1:])
             _neg = []
-            for i in range(len(self.trainSeq[u])-1):
-                j = np.random.randint(0, self.iNum, 1)
+            for i in range(len(self.trainSeq[u]) - 1):
+                j = np.random.randint(0, self.iNum, 1)[0]
                 while j in self.trainSeq[u]:
-                    j = np.random.randint(0, self.iNum, 1)
+                    j = np.random.randint(0, self.iNum, 1)[0]
                 _neg.append(j)
             neg.append(_neg)
+            # break
 
         user = np.array(user)
-        seq = pad_sequences(seq, self.args.maxlen, value=self.iNum+1)
-        pos = pad_sequences(pos, self.args.maxlen, value=self.iNum+1)
-        neg = pad_sequences(neg, self.args.maxlen, value=self.iNum+1)
+        seq = pad_sequences(seq, self.maxlen, value=self.iNum + 1)
+        pos = pad_sequences(pos, self.maxlen, value=self.iNum + 1)
+        neg = pad_sequences(neg, self.maxlen, value=self.iNum + 1)
         label = np.array(label)
 
+        # Shuffle
         idx = np.arange(len(user))
         np.random.shuffle(idx)
 
         return [user[idx], seq[idx], pos[idx], neg[idx]], label
 
-
-
-
     def train(self, x_train, y_train, batch_size):
         losses = []
         for i in range(math.ceil(len(y_train) / batch_size)):
-            _u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-            _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+            u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            seq = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+            pos = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+            neg = x_train[3][i * batch_size:(i * batch_size) + batch_size]
 
-            _u = np.expand_dims(_u, -1)
-            _p = np.expand_dims(_p, -1)
-            _n = np.expand_dims(_n, -1)
+            auc, loss, _ = self.sess.run([self.auc, self.loss, self.train_op],
+                                         {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                          self.is_training: True})
 
-            feed_dict = {self.user_input: _u,
-                         self.item_input_pos: _p,
-                         self.item_input_neg: _n}
-
-            # generate noise
-            self.sess.run([self.update_P, self.update_Q], feed_dict)
-            # train main model
-            loss, _ = self.sess.run([self.loss_adv, self.optimizer], feed_dict)
-
+            # print(auc, loss)
             losses.append(loss)
 
         return "%.4f" % np.mean(losses)
@@ -186,9 +205,6 @@ June 2017 by kyubyong park.
 kbpark.linguist@gmail.com.
 https://www.github.com/kyubyong/transformer
 '''
-
-import tensorflow as tf
-import numpy as np
 
 
 def positional_encoding(dim, sentence_length, dtype=tf.float32):
@@ -448,4 +464,3 @@ def feedforward(inputs,
         # outputs = normalize(outputs)
 
     return outputs
-
