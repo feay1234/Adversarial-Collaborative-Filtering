@@ -140,7 +140,6 @@ class SASRec():
         self.trainSeq = trainSeq
 
     def rank(self, users, items):
-        # print(self.trainSeq[users[0]])
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen, value=self.iNum + 1)
         return self.sess.run(self.test_logits,
                              {self.u: users[0], self.input_seq: seq, self.test_item: items, self.is_training: False})[0]
@@ -166,7 +165,6 @@ class SASRec():
                     j = np.random.randint(0, self.iNum, 1)[0]
                 _neg.append(j)
             neg.append(_neg)
-            # break
 
         user = np.array(user)
         seq = pad_sequences(seq, self.maxlen, value=self.iNum + 1)
