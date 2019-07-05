@@ -24,10 +24,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="gru4rec")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="yelp")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -171,12 +171,12 @@ if __name__ == '__main__':
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "sasrec":
-        ranker = SASRec(uNum, iNum, dim, maxlen)
+        ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
         ranker.init(trainSeq)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
-    elif modelName == "gru4rec"
+    elif modelName == "gru4rec":
         ranker = GRU4Rec(uNum, iNum, dim, maxlen)
         ranker.init(trainSeq)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,

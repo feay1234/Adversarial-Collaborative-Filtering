@@ -21,8 +21,11 @@ from keras_preprocessing.sequence import pad_sequences
 # Self-Attentive Sequential Recommendation
 # https://github.com/kang205/SASRec
 class SASRec():
-    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2, num_heads=1, dropout_rate=0.5,
+    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1, dropout_rate=0.5,
                  l2_emb=0.0, lr=0.05, reuse=None):
+
+        testNegNum = len(testNegatives[0])
+
         self.uNum = usernum
         self.iNum = itemnum
         self.maxlen = maxlen
@@ -96,10 +99,10 @@ class SASRec():
         neg_emb = tf.nn.embedding_lookup(item_emb_table, neg)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        self.test_item = tf.placeholder(tf.int32, shape=(100))
+        self.test_item = tf.placeholder(tf.int32, shape=(testNegNum))
         test_item_emb = tf.nn.embedding_lookup(item_emb_table, self.test_item)
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
-        self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, 100])
+        self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, testNegNum])
         self.test_logits = self.test_logits[:, -1, :]
 
         # prediction layer
