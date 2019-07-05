@@ -9,6 +9,7 @@ from APL import APL
 from BPR import BPR, AdversarialBPR
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
+from GRU4Rec import GRU4Rec
 from IRGAN import IRGAN
 from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
@@ -23,13 +24,16 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="gru4rec")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
+
+    parser.add_argument('--maxlen', type=int, default=50,
+                        help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=100,
                         help='Epoch number')
@@ -65,9 +69,11 @@ if __name__ == '__main__':
     pop_percent = args.pp
     batch_size = args.bs
     epochs = args.epochs
+    maxlen = args.maxlen
     pre = args.pre
     save_model = True if args.save_model == 1 else False
     save_model = False
+
     # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
     # pre = "ml_bpr_d64_07-01-2019_10-40-19.best.h5"
 
@@ -165,7 +171,13 @@ if __name__ == '__main__':
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "sasrec":
-        ranker = SASRec(uNum, iNum, dim)
+        ranker = SASRec(uNum, iNum, dim, maxlen)
+        ranker.init(trainSeq)
+        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+
+    elif modelName == "gru4rec"
+        ranker = GRU4Rec(uNum, iNum, dim, maxlen)
         ranker.init(trainSeq)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))

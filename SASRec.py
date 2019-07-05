@@ -18,6 +18,7 @@ from keras_preprocessing.sequence import pad_sequences
 # parser.add_argument('--dropout_rate', default=0.5, type=float)
 # parser.add_argument('--l2_emb', default=0.0, type=float)
 
+# Self-Attentive Sequential Recommendation
 # https://github.com/kang205/SASRec
 class SASRec():
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2, num_heads=1, dropout_rate=0.5,
