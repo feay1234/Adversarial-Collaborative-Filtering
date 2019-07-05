@@ -24,6 +24,9 @@ class MatrixFactorization:
 
         self.model = Model([userInput, itemInput], pred)
         self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
+        
+    def load_pre_train(self, pre):
+        pass
 
     def train(self, x_train, y_train, batch_size):
         hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
