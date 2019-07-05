@@ -82,7 +82,7 @@ class Dataset(object):
 class RawDataset():
 
     def __init__(self, df):
-        # np.random.seed(1111)
+        np.random.seed(2019)
 
         # pre-process
         df = df.groupby("iid").filter(lambda x: len(x) >= 10)
@@ -96,13 +96,17 @@ class RawDataset():
 
         df = df[df.groupby("uid").cumcount(ascending=False) > 0]
         mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
+        seq = defaultdict(list)
         if "rating" in df.columns:
             for u, i, r in df[["uid", "iid", "rating"]].values.tolist():
                 mat[u, i] = r
+                seq[u].append(i)
         else:
             for u, i in df[["uid", "iid"]].values.tolist():
                 mat[u, i] = 1
+                seq[u].append(i)
         self.trainMatrix = mat
+        self.trainSeq = seq
 
         negatives = []
         for u in range(uNum):
