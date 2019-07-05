@@ -24,7 +24,7 @@ class SASRec():
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1, dropout_rate=0.5,
                  l2_emb=0.0, lr=0.05, reuse=None):
 
-        testNegNum = len(testNegatives[0])
+        testNegNum = len(testNegatives[0]) + 1 # plus positive one
 
         self.uNum = usernum
         self.iNum = itemnum
