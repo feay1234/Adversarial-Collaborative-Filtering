@@ -177,8 +177,8 @@ if __name__ == '__main__':
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "gru4rec":
-        ranker = GRU4Rec(uNum, iNum, dim, maxlen)
-        ranker.init(trainSeq)
+        ranker = GRU4Rec(uNum, iNum, dim, batch_size)
+        ranker.init(trainSeq, df)
         runName = "%s_%s_d%d_%s" % (data, modelName, dim,
                                     datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
