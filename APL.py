@@ -46,6 +46,8 @@ def gumbel_softmax(logits, temperature=0.2):
     return tf.nn.softmax(y / temperature)
 
 
+# Tensorflow implementation of Adversarial Pairwise Learning (APL)
+# https://github.com/ZhongchuanSun/APL
 class APL(BPR):
     def __init__(self, uNum, iNum, dim):
         self.uNum = uNum

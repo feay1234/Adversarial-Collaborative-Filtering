@@ -55,6 +55,8 @@ class Args():
 
 
 class GRU4Rec(Recommender):
+
+
     def __init__(self, uNum, iNum, dim, batch_size):
         self.uNum = uNum
         self.iNum = iNum
@@ -186,6 +188,9 @@ class GRU4Rec(Recommender):
         self.yhat = self.final_activation(logits)
         self.cost = self.loss_function(self.yhat)
 
+        logits = tf.matmul(output, softmax_W, transpose_b=True) + softmax_b
+        self.pred = self.final_activation(logits)
+
         self.lr = tf.maximum(1e-5, tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,
                                                               self.decay, staircase=True))
 
@@ -218,11 +223,19 @@ class GRU4Rec(Recommender):
 
 
     def rank(self, users, items):
-        # seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
-        # feed_dict = {self.X: seq}
-        # preds = self.sess.run([self.yhat], feed_dict)
-        # return preds[0][-1][items]
-        pass
+        seq = pad_sequences([self.trainSeq[users[0]]], self.batch_size)[0]
+        fetches = [self.pred, self.final_state]
+        feed_dict = {self.X: seq}
+        for i in range(self.layers):
+            feed_dict[self.state[i]] = self.predict_state[i]
+        preds, self.predict_state = self.sess.run(fetches, feed_dict)
+        return preds[-1][items]
+    
+    def save(self, path):
+        super().save(path)
+
+    def load_pre_train(self, pre):
+        super().load_pre_train(pre)
 
 
     def train(self, x_train, y_train, batch_size):
