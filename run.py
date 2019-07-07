@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
 
 
-    train, trainSeq, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.testRatings, dataset.testNegatives
+    train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (time() - t1, uNum, iNum, train.nnz, len(testRatings))
 

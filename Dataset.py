@@ -8,6 +8,7 @@ from collections import defaultdict
 
 import scipy.sparse as sp
 import numpy as np
+import pandas as pd
 
 class Dataset(object):
     '''
@@ -18,7 +19,7 @@ class Dataset(object):
         '''
         Constructor
         '''
-        self.trainMatrix, self.trainSeq = self.load_rating_file_as_matrix(path + ".train.rating")
+        self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + ".train.rating")
         self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
         self.testNegatives = self.load_negative_file(path + ".test.negative")
         assert len(self.testRatings) == len(self.testNegatives)
@@ -67,6 +68,8 @@ class Dataset(object):
         # Construct matrix
         mat = sp.dok_matrix((num_users + 1, num_items + 1), dtype=np.float32)
         seq = defaultdict(list)
+        columns = ["uid", "iid", "rating", "timestamp"]
+        df = pd.read_csv(filename, names=columns, sep="\t")
         with open(filename, "r") as f:
             line = f.readline()
             while line != None and line != "":
@@ -76,7 +79,7 @@ class Dataset(object):
                     mat[user, item] = 1.0
                     seq[user].append(item)
                 line = f.readline()
-        return mat, seq
+        return mat, seq, df
 
 
 class RawDataset():
