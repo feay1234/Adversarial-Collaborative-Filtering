@@ -144,7 +144,7 @@ class SASRec():
         self.trainSeq = trainSeq
 
     def rank(self, users, items):
-        seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen, value=self.iNum + 1)
+        seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
         return self.sess.run(self.test_logits,
                              {self.u: users[0], self.input_seq: seq, self.test_item: items, self.is_training: False})[0]
 
@@ -164,9 +164,9 @@ class SASRec():
             pos.append(self.trainSeq[u][1:])
             _neg = []
             for i in range(len(self.trainSeq[u]) - 1):
-                j = np.random.randint(0, self.iNum, 1)[0]
+                j = np.random.randint(0, self.iNum)
                 while j in self.trainSeq[u]:
-                    j = np.random.randint(0, self.iNum, 1)[0]
+                    j = np.random.randint(0, self.iNum)
                 _neg.append(j)
             neg.append(_neg)
 
