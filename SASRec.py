@@ -42,7 +42,7 @@ class SASRec():
         with tf.variable_scope("SASRec", reuse=reuse):
             # sequence embedding, item embedding table
             self.seq, item_emb_table = embedding(self.input_seq,
-                                                 vocab_size=itemnum + 2,  # last item as padding
+                                                 vocab_size=itemnum + 1,
                                                  num_units=hidden_units,
                                                  zero_pad=True,
                                                  scale=True,
@@ -171,9 +171,9 @@ class SASRec():
             neg.append(_neg)
 
         user = np.array(user)
-        seq = pad_sequences(seq, self.maxlen, value=self.iNum + 1)
-        pos = pad_sequences(pos, self.maxlen, value=self.iNum + 1)
-        neg = pad_sequences(neg, self.maxlen, value=self.iNum + 1)
+        seq = pad_sequences(seq, self.maxlen)
+        pos = pad_sequences(pos, self.maxlen)
+        neg = pad_sequences(neg, self.maxlen)
         label = np.array(label)
 
         # Shuffle

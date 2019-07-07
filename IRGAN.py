@@ -22,6 +22,7 @@ class IRGAN():
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
+
         self.sess = tf.Session(config=config)
         self.sess.run(tf.global_variables_initializer())
 
