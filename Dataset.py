@@ -70,6 +70,9 @@ class Dataset(object):
         seq = defaultdict(list)
         columns = ["uid", "iid", "rating", "timestamp"]
         df = pd.read_csv(filename, names=columns, sep="\t")
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df.sort_values(["uid", "timestamp"], inplace=True)
+
         with open(filename, "r") as f:
             line = f.readline()
             while line != None and line != "":
@@ -98,6 +101,7 @@ class RawDataset():
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
 
         df = df[df.groupby("uid").cumcount(ascending=False) > 0]
+        df.sort_values(["uid", "timestamp"], inplace=True)
         mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
         seq = defaultdict(list)
         if "rating" in df.columns:

@@ -27,7 +27,7 @@ def parse_args():
                         help='Model Name: lstm', default="gru4rec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
     elif data == "brightkite":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=100000)
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
@@ -106,9 +106,11 @@ if __name__ == '__main__':
 
 
 
+
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (time() - t1, uNum, iNum, train.nnz, len(testRatings))
+    print(df)
 
     # Initialise Model
 
