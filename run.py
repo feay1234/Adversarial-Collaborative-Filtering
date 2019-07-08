@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=512,
+    parser.add_argument('--bs', type=int, default=3,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",

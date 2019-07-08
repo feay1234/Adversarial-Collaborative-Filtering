@@ -2,7 +2,7 @@ import argparse
 
 # -*- coding: utf-8 -*-
 from Recommender import Recommender
-
+import pandas as pd
 """
 Created on Feb 26, 2017
 @author: Weiping Song
@@ -230,16 +230,25 @@ class GRU4Rec(Recommender):
             feed_dict[self.state[i]] = self.predict_state[i]
         preds, self.predict_state = self.sess.run(fetches, feed_dict)
         return preds[-1][items]
-    
+
     def save(self, path):
         super().save(path)
 
     def load_pre_train(self, pre):
         super().load_pre_train(pre)
 
-
     def train(self, x_train, y_train, batch_size):
-        losses = []
+        self.item_key = "iid"
+        data = self.df
+
+        self.error_during_train = False
+        itemids = data[self.item_key].unique()
+        self.n_items = len(itemids)
+        self.itemidmap = pd.Series(data=np.arange(self.n_items), index=itemids)
+        data = pd.merge(data, pd.DataFrame({self.item_key: itemids, 'ItemIdx': self.itemidmap[itemids].values}),
+                        on=self.item_key, how='inner')
+        print('fitting model...')
+        epoch_cost = []
         state = [np.zeros([self.batch_size, self.rnn_size], dtype=np.float32) for _ in range(self.layers)]
         session_idx_arr = np.arange(len(self.offset_sessions) - 1)
         iters = np.arange(self.batch_size)
@@ -249,18 +258,24 @@ class GRU4Rec(Recommender):
         finished = False
         while not finished:
             minlen = (end - start).min()
-            out_idx = self.df.iid.values[start]
+            out_idx = data.ItemIdx.values[start]
             for i in range(minlen - 1):
                 in_idx = out_idx
-                out_idx = self.df.iid.values[start + i + 1]
+                out_idx = data.ItemIdx.values[start + i + 1]
                 # prepare inputs, targeted outputs and hidden states
                 fetches = [self.cost, self.final_state, self.global_step, self.lr, self.train_op]
                 feed_dict = {self.X: in_idx, self.Y: out_idx}
                 for j in range(self.layers):
                     feed_dict[self.state[j]] = state[j]
 
-                loss, state, step, lr, _ = self.sess.run(fetches, feed_dict)
-                losses.append(loss)
+                cost, state, step, lr, _ = self.sess.run(fetches, feed_dict)
+                epoch_cost.append(cost)
+                if np.isnan(cost):
+                    self.error_during_train = True
+                    return
+                if step == 1 or step % self.decay_steps == 0:
+                    avgc = np.mean(epoch_cost)
+                    # print('Epoch {}\tStep {}\tlr: {:.6f}\tloss: {:.6f}'.format(epoch, step, lr, avgc))
             start = start + minlen - 1
             mask = np.arange(len(iters))[(end - start) <= 1]
             for idx in mask:
@@ -275,9 +290,63 @@ class GRU4Rec(Recommender):
                 for i in range(self.layers):
                     state[i][mask] = 0
 
-        return "%.4f" % np.mean(losses)
+        avgc = np.mean(epoch_cost)
+        if np.isnan(avgc):
+            print('Epoch {}: Nan error!'.format(0, avgc))
+            self.error_during_train = True
+            return
+        return "%.4f" % avgc
 
-
+    #
+    # def train(self, x_train, y_train, batch_size):
+    #     losses = []
+    #     state = [np.zeros([self.batch_size, self.rnn_size], dtype=np.float32) for _ in range(self.layers)]
+    #     session_idx_arr = np.arange(len(self.offset_sessions) - 1)
+    #
+    #     iters = np.arange(self.batch_size)
+    #     maxiter = iters.max()
+    #     start = self.offset_sessions[session_idx_arr[iters]]
+    #     print(self.df.head())
+    #     print("start", start)
+    #     end = self.offset_sessions[session_idx_arr[iters] + 1]
+    #     print("end", end)
+    #     print(self.trainSeq[0])
+    #     print(self.trainSeq[1])
+    #     print(self.trainSeq[2])
+    #     finished = False
+    #     while not finished:
+    #         minlen = (end - start).min()
+    #         out_idx = self.df.iid.values[start]
+    #         for i in range(minlen - 1):
+    #             in_idx = out_idx
+    #             out_idx = self.df.iid.values[start + i + 1]
+    #             # prepare inputs, targeted outputs and hidden states
+    #             fetches = [self.cost, self.final_state, self.global_step, self.lr, self.train_op]
+    #             feed_dict = {self.X: in_idx, self.Y: out_idx}
+    #             print("in_idx", in_idx)
+    #             print("out_idx", out_idx)
+    #             for j in range(self.layers):
+    #                 feed_dict[self.state[j]] = state[j]
+    #
+    #             loss, state, step, lr, _ = self.sess.run(fetches, feed_dict)
+    #             losses.append(loss)
+    #         start = start + minlen - 1
+    #         mask = np.arange(len(iters))[(end - start) <= 1]
+    #         for idx in mask:
+    #             maxiter += 1
+    #             if maxiter >= len(self.offset_sessions) - 1:
+    #                 finished = True
+    #                 break
+    #             iters[idx] = maxiter
+    #             start[idx] = self.offset_sessions[session_idx_arr[maxiter]]
+    #             end[idx] = self.offset_sessions[session_idx_arr[maxiter] + 1]
+    #         if len(mask) and self.reset_after_session:
+    #             for i in range(self.layers):
+    #                 state[i][mask] = 0
+    #
+    #     return "%.4f" % np.mean(losses)
+    #
+    #
 
 # b = GRU4Rec(10, 10, 5, 3, 512)
 # s = {i: [1, 2, 3, 4] for i in range(512)}
