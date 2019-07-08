@@ -110,6 +110,7 @@ class RawDataset():
                 seq[u].append(i)
         self.trainMatrix = mat
         self.trainSeq = seq
+        self.df = df
 
         negatives = []
         for u in range(uNum):
