@@ -114,8 +114,6 @@ class RawDataset():
 
         # self.df.sort_values(["uid", "timestamp"], inplace=True)
 
-        print(df)
-
         negatives = []
         for u in range(uNum):
             neg = []

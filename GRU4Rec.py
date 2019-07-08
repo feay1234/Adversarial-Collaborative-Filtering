@@ -49,9 +49,9 @@ class GRU4Rec(Recommender):
         super().load_pre_train(pre)
 
     def rank(self, users, items):
-        seq = pad_sequences([self.trainSeq[users[0]]], self.batch_size)[0]
+        seq = pad_sequences([self.data[self.data.uid == users[0]].iid.values.tolist()], self.batch_size)
         fetches = [self.pred, self.final_state]
-        feed_dict = {self.X: seq}
+        feed_dict = {self.X: seq[0]}
         for i in range(self.layers):
             feed_dict[self.state[i]] = self.predict_state[i]
         preds, self.predict_state = self.sess.run(fetches, feed_dict)
@@ -120,9 +120,9 @@ class GRU4Rec(Recommender):
         else:
             raise NotImplementedError
 
-        self.checkpoint_dir = args.checkpoint_dir
-        if not os.path.isdir(self.checkpoint_dir):
-            raise Exception("[!] Checkpoint Dir not found")
+        # self.checkpoint_dir = args.checkpoint_dir
+        # if not os.path.isdir(self.checkpoint_dir):
+        #     raise Exception("[!] Checkpoint Dir not found")
 
         self.build_model()
         config = tf.ConfigProto()
@@ -193,9 +193,9 @@ class GRU4Rec(Recommender):
             logits = tf.matmul(output, sampled_W, transpose_b=True) + sampled_b
             self.yhat = self.final_activation(logits)
             self.cost = self.loss_function(self.yhat)
-        else:
+
             logits = tf.matmul(output, softmax_W, transpose_b=True) + softmax_b
-            self.yhat = self.final_activation(logits)
+            self.pred = self.final_activation(logits)
 
         if not self.is_training:
             return
@@ -232,58 +232,52 @@ class GRU4Rec(Recommender):
         self.error_during_train = False
         itemids = self.data[self.item_key].unique()
         self.n_items = len(itemids)
-        self.itemidmap = pd.Series(data=np.arange(self.n_items), index=itemids)
-        data = pd.merge(self.data, pd.DataFrame({self.item_key:itemids, 'ItemIdx':self.itemidmap[itemids].values}), on=self.item_key, how='inner')
+        # self.itemidmap = pd.Series(data=np.arange(self.n_items), index=itemids)
+        # data = pd.merge(self.data, pd.DataFrame({self.item_key:itemids, 'ItemIdx':self.itemidmap[itemids].values}), on=self.item_key, how='inner')
+        data = self.data
         offset_sessions = self.initOffset(data)
-        for epoch in range(self.n_epochs):
-            epoch_cost = []
-            state = [np.zeros([self.batch_size, self.rnn_size], dtype=np.float32) for _ in range(self.layers)]
-            session_idx_arr = np.arange(len(offset_sessions)-1)
-            iters = np.arange(self.batch_size)
-            maxiter = iters.max()
-            start = offset_sessions[session_idx_arr[iters]]
-            end = offset_sessions[session_idx_arr[iters]+1]
-            finished = False
-            while not finished:
-                minlen = (end-start).min()
-                out_idx = data.ItemIdx.values[start]
-                for i in range(minlen-1):
-                    in_idx = out_idx
-                    out_idx = data.ItemIdx.values[start+i+1]
-                    # prepare inputs, targeted outputs and hidden states
-                    fetches = [self.cost, self.final_state, self.global_step, self.lr, self.train_op]
-                    feed_dict = {self.X: in_idx, self.Y: out_idx}
-                    for j in range(self.layers): 
-                        feed_dict[self.state[j]] = state[j]
-                    
-                    cost, state, step, lr, _ = self.sess.run(fetches, feed_dict)
-                    epoch_cost.append(cost)
-                    if np.isnan(cost):
-                        print((str(epoch) + ':Nan error!'))
-                        self.error_during_train = True
-                        return
-                    if step == 1 or step % self.decay_steps == 0:
-                        avgc = np.mean(epoch_cost)
-                        print(('Epoch {}\tStep {}\tlr: {:.6f}\tloss: {:.6f}'.format(epoch, step, lr, avgc)))
-                start = start+minlen-1
-                mask = np.arange(len(iters))[(end-start)<=1]
-                for idx in mask:
-                    maxiter += 1
-                    if maxiter >= len(offset_sessions)-1:
-                        finished = True
-                        break
-                    iters[idx] = maxiter
-                    start[idx] = offset_sessions[session_idx_arr[maxiter]]
-                    end[idx] = offset_sessions[session_idx_arr[maxiter]+1]
-                if len(mask) and self.reset_after_session:
-                    for i in range(self.layers):
-                        state[i][mask] = 0
-            
-            avgc = np.mean(epoch_cost)
-            if np.isnan(avgc):
-                print(('Epoch {}: Nan error!'.format(epoch, avgc)))
-                self.error_during_train = True
-                return
+        losses = []
+        state = [np.zeros([self.batch_size, self.rnn_size], dtype=np.float32) for _ in range(self.layers)]
+        session_idx_arr = np.arange(len(offset_sessions)-1)
+        iters = np.arange(self.batch_size)
+        maxiter = iters.max()
+        start = offset_sessions[session_idx_arr[iters]]
+        end = offset_sessions[session_idx_arr[iters]+1]
+        finished = False
+        while not finished:
+            minlen = (end-start).min()
+            out_idx = data.iid.values[start]
+            for i in range(minlen-1):
+                in_idx = out_idx
+                out_idx = data.iid.values[start+i+1]
+                # prepare inputs, targeted outputs and hidden states
+                fetches = [self.cost, self.final_state, self.global_step, self.lr, self.train_op]
+                feed_dict = {self.X: in_idx, self.Y: out_idx}
+                for j in range(self.layers):
+                    feed_dict[self.state[j]] = state[j]
+
+                cost, state, step, lr, _ = self.sess.run(fetches, feed_dict)
+                losses.append(cost)
+            start = start+minlen-1
+            mask = np.arange(len(iters))[(end-start)<=1]
+            for idx in mask:
+                maxiter += 1
+                if maxiter >= len(offset_sessions)-1:
+                    finished = True
+                    break
+                iters[idx] = maxiter
+                start[idx] = offset_sessions[session_idx_arr[maxiter]]
+                end[idx] = offset_sessions[session_idx_arr[maxiter]+1]
+            if len(mask) and self.reset_after_session:
+                for i in range(self.layers):
+                    state[i][mask] = 0
+
+        return "%.4f" % np.mean(losses)
+
+            # if np.isnan(avgc):
+            #     print(('Epoch {}: Nan error!'.format(epoch, avgc)))
+            #     self.error_during_train = True
+            #     return
             # self.saver.save(self.sess, '{}/gru-model'.format(self.checkpoint_dir), global_step=epoch)
     
     def predict_next_batch(self, session_ids, input_item_ids, itemidmap, batch=50):
