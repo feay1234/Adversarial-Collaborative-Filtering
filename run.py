@@ -97,7 +97,7 @@ if __name__ == '__main__':
         df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
     elif data == "brightkite":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=100000)
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]

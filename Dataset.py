@@ -73,15 +73,10 @@ class Dataset(object):
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         df.sort_values(["uid", "timestamp"], inplace=True)
 
-        with open(filename, "r") as f:
-            line = f.readline()
-            while line != None and line != "":
-                arr = line.split("\t")
-                user, item, rating = int(arr[0]), int(arr[1]), float(arr[2])
-                if (rating > 0):
-                    mat[user, item] = 1.0
-                    seq[user].append(item)
-                line = f.readline()
+        for u, i in df[["uid", "iid"]].values.tolist():
+            mat[u, i] = 1.0
+            seq[u].append(i)
+
         return mat, seq, df
 
 
