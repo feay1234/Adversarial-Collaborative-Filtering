@@ -112,13 +112,17 @@ class RawDataset():
         self.trainSeq = seq
         self.df = df
 
+        # self.df.sort_values(["uid", "timestamp"], inplace=True)
+
+        print(df)
+
         negatives = []
         for u in range(uNum):
             neg = []
             for i in range(99):
-                r = np.random.randint(0, iNum, 1)[0]
+                r = np.random.randint(0, iNum)
                 while (u, r) in mat:
-                    r = np.random.randint(0, iNum, 1)[0]
+                    r = np.random.randint(0, iNum)
                 neg.append(r)
             negatives.append(neg)
 
