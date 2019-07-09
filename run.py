@@ -168,7 +168,7 @@ if __name__ == '__main__':
         ranker.init(df)
     elif modelName == "caser":
         set_seed(2019, cuda=False)
-        ranker = CaserModel(uNum, iNum, dim, maxlen, False)
+        ranker = CaserModel(uNum, iNum, dim, maxlen, True)
         ranker.init(df)
 
     runName = "%s_%s_d%d_%s" % (data, modelName, dim,
