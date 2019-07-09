@@ -155,32 +155,32 @@ class SASRec():
         pass
 
     def get_train_instances(self, train):
-        user, seq, pos, neg, label = [], [], [], [], []
+        user, seq, pos, neg = [], [], [], []
         for u in self.trainSeq:
             # positive instance
-            user.append(u)
-            label.append(1)
-            seq.append(self.trainSeq[u][:-1])
-            pos.append(self.trainSeq[u][1:])
-            _neg = []
             for i in range(len(self.trainSeq[u]) - 1):
-                j = np.random.randint(0, self.iNum)
-                while j in self.trainSeq[u]:
+                user.append(u)
+                seq.append(self.trainSeq[u][i:i+self.maxlen])
+                pos.append(self.trainSeq[u][i+1:i+1+self.maxlen])
+
+                _neg = []
+                for n in range(self.maxlen):
                     j = np.random.randint(0, self.iNum)
-                _neg.append(j)
-            neg.append(_neg)
+                    while j in self.trainSeq[u]:
+                        j = np.random.randint(0, self.iNum)
+                    _neg.append(j)
+                neg.append(_neg)
 
         user = np.array(user)
         seq = pad_sequences(seq, self.maxlen)
         pos = pad_sequences(pos, self.maxlen)
         neg = pad_sequences(neg, self.maxlen)
-        label = np.array(label)
 
         # Shuffle
         idx = np.arange(len(user))
         np.random.shuffle(idx)
 
-        return [user[idx], seq[idx], pos[idx], neg[idx]], label
+        return [user[idx], seq[idx], pos[idx], neg[idx]], None
 
     def train(self, x_train, y_train, batch_size):
         losses = []
