@@ -7,11 +7,11 @@ from Recommender import Recommender
 from utils import *
 import numpy as np
 
+
 # A PyTorch implementation of Convolutional Sequence Embedding Recommendation Model (Caser)
 # https://github.com/graytowne/caser_pytorch
 
 class CaserModel(Recommender):
-
     def __init__(self, uNum, iNum, dim, maxlen, use_cuda=False):
 
         self.uNum = uNum
@@ -25,7 +25,6 @@ class CaserModel(Recommender):
                           self.dim, self.maxlen).to(self._device)
 
         self._optimizer = optim.Adam(self._net.parameters())
-
 
     def init(self, df):
         self.df = df
@@ -64,30 +63,31 @@ class CaserModel(Recommender):
         target_length: int
             Sequence target length.
         """
+        sequence_length = self.maxlen
+        target_length = 1  # default paper is 3, for a fair comparison we use 1 for all baselines
 
         users, checkins, positive_venues, negative_venues = [], [], [], []
 
         for u in range(self.uNum):
             visited = self.df[self.df.uid == u].iid.tolist()
-            if len(visited) < self.model_args.L + self.model_args.T:
+            if len(visited) < self.maxlen + 1:
                 continue
 
             users.append(u)
-            for i in range(len(visited) - self.model_args.T):
-                checkins.append(visited[i:i+self.model_args.L])
-                positive_venues.append(visited[i+self.model_args.L: i+self.model_args.L + self.model_args.T])
+            for i in range(len(visited) - sequence_length):
+                checkins.append(visited[i:i + sequence_length])
+                positive_venues.append(visited[i + sequence_length: i + sequence_length + target_length])
 
                 neg = []
-                for j in range(self.model_args.T):
+                for j in range(target_length):
 
                     n = np.random.randint(0, self.iNum)
-                    while (u,n) in train:
+                    while (u, n) in train:
                         n = np.random.randint(0, self.iNum)
                     neg.append(n)
                 negative_venues.append(neg)
 
         return [np.array(users), np.array(checkins), np.array(positive_venues), np.array(negative_venues)], None
-
 
     def load_pre_train(self, pre):
         super().load_pre_train(pre)
@@ -114,8 +114,6 @@ class CaserModel(Recommender):
 
         users_np, sequences_np, targets_np, negatives_np = x_train
 
-
-
         # convert numpy arrays to PyTorch tensors and move it to the corresponding devices
         users, sequences, targets, negatives = (torch.from_numpy(users_np).long(),
                                                 torch.from_numpy(sequences_np).long(),
@@ -133,11 +131,10 @@ class CaserModel(Recommender):
               batch_sequences,
               batch_targets,
               batch_negatives)) in enumerate(self.minibatch(users,
-                                                       sequences,
-                                                       targets,
-                                                       negatives,
-                                                       batch_size=batch_size)):
-
+                                                            sequences,
+                                                            targets,
+                                                            negatives,
+                                                            batch_size=batch_size)):
             items_to_predict = torch.cat((batch_targets, batch_negatives), 1)
             items_prediction = self._net(batch_sequences,
                                          batch_users,
@@ -163,8 +160,6 @@ class CaserModel(Recommender):
 
         return "%.4f" % np.mean(losses)
 
-
-
     def rank(self, users, items):
         """
         Make predictions for evaluation: given a user id, it will
@@ -182,13 +177,10 @@ class CaserModel(Recommender):
             will be computed.
         """
 
-        if self.test_sequence is None:
-            raise ValueError('Missing test sequences, cannot make predictions')
-
         # set model to evaluation model
         self._net.eval()
         with torch.no_grad():
-            sequences_np = pad_sequences(self.df[self.df.uid == users[0]].iid.values, self.maxlen)
+            sequences_np = pad_sequences([self.df[self.df.uid == users[0]].iid.values], self.maxlen)
             sequences_np = np.atleast_2d(sequences_np)
             sequences = torch.from_numpy(sequences_np).long()
             item_ids = torch.from_numpy(items).long()
@@ -208,6 +200,7 @@ class CaserModel(Recommender):
 
 activation_getter = {'iden': lambda x: x, 'relu': F.relu, 'tanh': torch.tanh, 'sigm': torch.sigmoid}
 
+
 class Caser(nn.Module):
     """
     Convolutional Sequence Embedding Recommendation Model (Caser)[1].
@@ -226,7 +219,7 @@ class Caser(nn.Module):
     """
 
     def __init__(self, num_users, num_items, dim, maxlen):
-
+        super(Caser, self).__init__()
         # init args
         L = maxlen
         dims = dim
@@ -254,7 +247,7 @@ class Caser(nn.Module):
         # W1, b1 can be encoded with nn.Linear
         self.fc1 = nn.Linear(fc1_dim_in, dims)
         # W2, b2 are encoded with nn.Embedding, as we don't need to compute scores for all items
-        self.W2 = nn.Embedding(num_items, dims+dims)
+        self.W2 = nn.Embedding(num_items, dims + dims)
         self.b2 = nn.Embedding(num_items, 1)
 
         # dropout
@@ -329,8 +322,6 @@ class Caser(nn.Module):
 
 
 if __name__ == '__main__':
-
-
     # set seed
 
 
