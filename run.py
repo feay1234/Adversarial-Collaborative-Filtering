@@ -107,7 +107,7 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/gowalla.csv", names=columns, sep="\t")
+        df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t")
         dataset = RawDataset(df)
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
@@ -206,10 +206,7 @@ if __name__ == '__main__':
         (hits, ndcgs) = evaluate_model(ranker, testRatings,
                                        testNegatives, topK, evaluation_threads)
         hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-        # hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist[0]
 
-        # output = 'Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' % (
-        #     epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %s [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
