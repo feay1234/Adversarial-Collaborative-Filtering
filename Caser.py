@@ -73,8 +73,8 @@ class CaserModel(Recommender):
             if len(visited) < self.maxlen + 1:
                 continue
 
-            users.append(u)
             for i in range(len(visited) - sequence_length):
+                users.append([u])
                 checkins.append(visited[i:i + sequence_length])
                 positive_venues.append(visited[i + sequence_length: i + sequence_length + target_length])
 
