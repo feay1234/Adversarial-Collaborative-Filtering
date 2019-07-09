@@ -7,6 +7,7 @@ import pandas as pd
 from APR import APR
 from APL import APL
 from BPR import BPR, AdversarialBPR
+from DREAM import DREAM
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
 from GRU4Rec import GRU4Rec
@@ -24,15 +25,15 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="gru4rec")
+                        help='Model Name: lstm', default="dream")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=50,
+    parser.add_argument('--maxlen', type=int, default=10,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=100,
@@ -101,102 +102,79 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/gowalla.csv", names=columns, sep="\t")
+        df = pd.read_csv(path + "data/gowalla.csv", names=columns, sep="\t", nrows=10000)
         dataset = RawDataset(df)
-
-
-
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
-    stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (time() - t1, uNum, iNum, train.nnz, len(testRatings))
-    print(df)
+    stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (
+    time() - t1, uNum, iNum, train.nnz, len(testRatings))
 
     # Initialise Model
 
     if modelName == "mf":
         ranker = MatrixFactorization(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     elif modelName == "bpr":
         ranker = BPR(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "amf":
         ranker = AdversarialMatrixFactorisation(uNum, iNum, dim, weight, pop_percent)
-        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
-                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         x_train, y_train = ranker.get_train_instances(train)
         ranker.init(x_train[0], x_train[1])
 
     elif modelName == "abpr":
         ranker = AdversarialBPR(uNum, iNum, dim, weight, pop_percent)
-        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
-                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         x_train, y_train = ranker.get_train_instances(train)
         ranker.init(x_train[0], x_train[1])
 
 
     elif modelName == "amf2":
         ranker = FastAdversarialMF(uNum, iNum, dim, weight, pop_percent)
-        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
-                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     elif modelName == "neumf":
         ranker = NeuMF(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "aneumf":
         ranker = AdversarialNeuMF(uNum, iNum, dim, weight, pop_percent)
-        runName = "%s_%s_d%d_w%f_pp%f_%s" % (data, modelName, dim, weight, pop_percent,
-                                             datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "apl":
         # args = parse_apl_args()
         ranker = APL(uNum, iNum, dim)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         ranker.init(train)
 
     elif modelName == "irgan":
         ranker = IRGAN(uNum, iNum, dim, batch_size)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         ranker.init(train)
 
     elif modelName == "apr":
         # get APR's default params
         ranker = APR(uNum, iNum, dim)
         ranker.build_graph()
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "sasrec":
         ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
         ranker.init(trainSeq)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     elif modelName == "gru4rec":
         ranker = GRU4Rec(uNum, iNum, dim, batch_size)
         ranker.init(df)
-        runName = "%s_%s_d%d_%s" % (data, modelName, dim,
-                                    datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
+    elif modelName == "dream":
+        ranker = DREAM(uNum, iNum, dim, maxlen)
+        ranker.init(df)
+
+    runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+                                datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # load pretrained
     # TODO only support BPR-based models
     if pre != "":
-        ranker.load_pre_train(path+"h5/"+pre)
+        ranker.load_pre_train(path + "h5/" + pre)
         runName = "%s_%s_pre_d%d_%s" % (data, modelName, dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     write2file(path + "out/" + runName + ".out", stat)
     write2file(path + "out/" + runName + ".out", runName)
     if pre != "":
         write2file(path + "out/" + runName + ".out", pre)
-
-
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
@@ -205,7 +183,6 @@ if __name__ == '__main__':
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + runName + ".out", output)
-
 
     start = time()
     # Training model
@@ -240,8 +217,6 @@ if __name__ == '__main__':
         if save_model:
             ranker.save(path + "h5/" + runName + ".last.h5")
 
-    output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (best_iter, best_hr, best_ndcg, (time() - start) / 3600)
+    output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
+    best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     write2file(path + "out/" + runName + ".out", output)
-
-
-
