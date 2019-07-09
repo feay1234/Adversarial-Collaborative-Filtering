@@ -60,7 +60,8 @@ class DREAM(Recommender):
                 checkins.extend(sequence.pad_sequences([checkin_[:]], maxlen=self.maxVenue))
 
             # start from the second venue in user's checkin sequence.
-            for i in range(2, len(visited) + 1, 1):
+            visited = visited[1:]
+            for i in range(len(visited)):
                 positive_venues.append(visited[i])
 
                 j = np.random.randint(self.vNum)
@@ -74,12 +75,9 @@ class DREAM(Recommender):
         return [np.array(checkins), np.array(positive_venues), np.array(negative_venues)], np.array(labels)
 
     def rank(self, users, items):
-        item_matrix = self.venue_embedding.get_weights()[0][vids]
-
-        user_checkins = np.array(self.df[self.df.uid == uid].vid)
-        user_checkins = sequence.pad_sequences([user_checkins], maxlen=self.maxVenue)
-
-        return np.dot(self.rnn.predict(user_checkins), item_matrix.T)[0]
+        checkins = [self.df[self.df.uid == users[0]].iid.tolist()] * len(items)
+        checkins = sequence.pad_sequences(checkins, maxlen=self.maxVenue)
+        return self.predictor.predict([checkins, items], batch_size=100, verbose=0)
 
     def load_pre_train(self, pre):
         super().load_pre_train(pre)
