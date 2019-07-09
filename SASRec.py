@@ -184,7 +184,7 @@ class SASRec():
 
     def train(self, x_train, y_train, batch_size):
         losses = []
-        for i in range(math.ceil(len(y_train) / batch_size)):
+        for i in range(math.ceil(len(x_train[0]) / batch_size)):
             u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
             seq = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             pos = x_train[2][i * batch_size:(i * batch_size) + batch_size]

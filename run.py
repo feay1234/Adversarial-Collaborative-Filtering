@@ -103,7 +103,7 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "test":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=10000)
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=100000)
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
