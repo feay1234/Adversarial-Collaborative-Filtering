@@ -7,6 +7,7 @@ import pandas as pd
 from APR import APR
 from APL import APL
 from BPR import BPR, AdversarialBPR
+from Caser import CaserModel
 from DREAM import DREAM
 from Dataset import Dataset, RawDataset
 from FastAdversarialMF import FastAdversarialMF
@@ -16,7 +17,7 @@ from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NeuMF import NeuMF, AdversarialNeuMF
 from SASRec import SASRec
 from evaluation import evaluate_model
-from utils import write2file, prediction2file
+from utils import write2file, prediction2file, set_seed
 
 
 def parse_args():
@@ -25,7 +26,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="dream")
+                        help='Model Name: lstm', default="caser")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="test")
@@ -164,6 +165,10 @@ if __name__ == '__main__':
 
     elif modelName == "dream":
         ranker = DREAM(uNum, iNum, dim, maxlen)
+        ranker.init(df)
+    elif modelName == "caser":
+        set_seed(2019, cuda=False)
+        ranker = CaserModel(uNum, iNum, dim, maxlen, False)
         ranker.init(df)
 
     runName = "%s_%s_d%d_%s" % (data, modelName, dim,

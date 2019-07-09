@@ -3,10 +3,6 @@ from abc import ABC, abstractmethod
 class Recommender(ABC):
 
     @abstractmethod
-    def rank(self):
-        pass
-
-    @abstractmethod
     def load_pre_train(self, pre):
         pass
 
