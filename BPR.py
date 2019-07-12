@@ -28,6 +28,8 @@ class BPR():
 
         pDot = Dot(axes=-1)([self.uEmb, self.pEmb])
         nDot = Dot(axes=-1)([self.uEmb, self.nEmb])
+        pDot = Dot(axes=-1)([self.uEmb, self.pEmb])
+        nDot = Dot(axes=-1)([self.uEmb, self.nEmb])
 
         diff = Subtract()([pDot, nDot])
 

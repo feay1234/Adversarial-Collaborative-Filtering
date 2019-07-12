@@ -10,6 +10,7 @@ import scipy.sparse as sp
 import numpy as np
 import pandas as pd
 
+
 class Dataset(object):
     '''
     classdocs
@@ -81,13 +82,28 @@ class Dataset(object):
 
 
 class RawDataset():
-
     def __init__(self, df):
         np.random.seed(2019)
 
         # pre-process
-        df = df.groupby("iid").filter(lambda x: len(x) >= 10)
+        # df = df.groupby("iid").filter(lambda x: len(x) >= 10)
         # df = df.groupby("uid").filter(lambda x: len(x) >= 10)
+
+        # # filtering user&venue with less than 10 check-ins
+        df = (df
+              .merge(df.groupby('uid').iid.nunique().reset_index().rename(columns={'iid': 'num_uniq_vid'}),
+                     on='uid', how='left')
+              .merge(df.groupby('iid').uid.nunique().reset_index().rename(columns={'uid': 'num_uniq_uid'}),
+                     on='iid', how='left'))
+        # elif filterMode == 2:
+        # df = (df
+        #       .merge(df.groupby('uid').iid.size().reset_index().rename(columns={'iid': 'num_uniq_vid'}), on='uid',
+        #              how='left')
+        #       .merge(df.groupby('iid').uid.size().reset_index().rename(columns={'uid': 'num_uniq_uid'}), on='iid',
+        #              how='left'))
+
+        # if enableFilter:
+        df = df[(df.num_uniq_vid >= 10) & ((df.num_uniq_uid >= 10))]
 
         df.uid = df.uid.astype('category').cat.codes.values
         df.iid = df.iid.astype('category').cat.codes.values
@@ -127,4 +143,3 @@ class RawDataset():
         assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
-

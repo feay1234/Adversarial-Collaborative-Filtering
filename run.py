@@ -26,12 +26,12 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="test")
+                        help='Dataset name', default="brightkite")
 
-    parser.add_argument('--d', type=int, default=64,
+    parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
     parser.add_argument('--maxlen', type=int, default=10,
@@ -46,7 +46,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=512,
+    parser.add_argument('--bs', type=int, default=256,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",
@@ -103,7 +103,7 @@ if __name__ == '__main__':
         dataset = RawDataset(df)
     elif data == "test":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=100000)
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=10000)
         dataset = RawDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
