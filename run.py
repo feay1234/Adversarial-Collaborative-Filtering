@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
 
-    parser.add_argument('--filter', type=int, default=0,
+    parser.add_argument('--filter', type=int, default=1,
                         help='Filter Mode')
 
     parser.add_argument('--save_model', type=int, default=1,

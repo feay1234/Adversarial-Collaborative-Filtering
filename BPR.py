@@ -8,6 +8,15 @@ import math
 from MF import AdversarialMatrixFactorisation
 
 
+def bpr_triplet_loss(X):
+    positive_item_latent, negative_item_latent = X
+
+    loss = 1 - K.log(K.sigmoid(positive_item_latent - negative_item_latent))
+
+    return loss
+def identity_loss(y_true, y_pred):
+    return K.mean(y_pred - 0 * y_true)
+
 class BPR():
     def __init__(self, uNum, iNum, dim):
 
@@ -31,12 +40,16 @@ class BPR():
 
         diff = Subtract()([pDot, nDot])
 
+        lammbda_output = Lambda(bpr_triplet_loss, output_shape=(1,))
+        self.pred = lammbda_output([pDot, nDot])
+
         # Pass difference through sigmoid function.
-        self.pred = Activation("sigmoid")(diff)
+        # self.pred = Activation("sigmoid")(diff)
 
         self.model = Model(inputs=[self.userInput, self.itemPosInput, self.itemNegInput], outputs=self.pred)
 
-        self.model.compile(optimizer="adam", loss="binary_crossentropy")
+        # self.model.compile(optimizer="adam", loss="binary_crossentropy")
+        self.model.compile(optimizer="adam", loss=identity_loss)
         self.predictor = Model([self.userInput, self.itemPosInput], [pDot])
 
     def load_pre_train(self, pre):
