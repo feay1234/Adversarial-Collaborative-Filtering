@@ -94,6 +94,8 @@ if __name__ == '__main__':
 
     if data in ["ml-1m", "yelp", "pinterest-20"]:
         dataset = Dataset(path + "data/" + data)
+    # if data == "brightkite":
+    #     dataset = Dataset(path + "/Users/jarana/local/workspace/datasets/neumf/" + data)
 
     elif data == "ml":
         df = pd.read_csv(path + "data/ml-small", names=columns, sep="\t")
@@ -116,8 +118,10 @@ if __name__ == '__main__':
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
+    print(len(df))
+    print(len(dataset.df))
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (
-    time() - t1, uNum, iNum, train.nnz, len(testRatings))
+        time() - t1, uNum, iNum, train.nnz, len(testRatings))
 
     # Initialise Model
 
@@ -228,5 +232,5 @@ if __name__ == '__main__':
             ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
-    best_iter, best_hr, best_ndcg, (time() - start) / 3600)
+        best_iter, best_hr, best_ndcg, (time() - start) / 3600)
     write2file(path + "out/" + runName + ".out", output)

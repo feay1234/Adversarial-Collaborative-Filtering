@@ -28,8 +28,8 @@ class BPR():
         self.itemPosInput = Input(shape=(1,), dtype="int32")
         self.itemNegInput = Input(shape=(1,), dtype="int32")
 
-        userEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
-        itemEmbeddingLayer = Embedding(input_dim=iNum, output_dim=dim, name="iEmb")
+        userEmbeddingLayer = Embedding(input_dim=uNum+1, output_dim=dim, name="uEmb")
+        itemEmbeddingLayer = Embedding(input_dim=iNum+1, output_dim=dim, name="iEmb")
 
         self.uEmb = Flatten()(userEmbeddingLayer(self.userInput))
         self.pEmb = Flatten()(itemEmbeddingLayer(self.itemPosInput))
