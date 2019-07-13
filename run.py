@@ -52,6 +52,9 @@ def parse_args():
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
 
+    parser.add_argument('--filter', type=int, default=0,
+                        help='Filter Mode')
+
     parser.add_argument('--save_model', type=int, default=1,
                         help='Save model')
 
@@ -75,6 +78,7 @@ if __name__ == '__main__':
     pre = args.pre
     save_model = True if args.save_model == 1 else False
     save_model = False
+    filterMode = args.filter
 
     # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
     # pre = "ml_bpr_d64_07-01-2019_10-40-19.best.h5"
@@ -100,15 +104,15 @@ if __name__ == '__main__':
     elif data == "brightkite":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
-        dataset = RawDataset(df)
+        dataset = RawDataset(df, filterMode)
     elif data == "test":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=10000)
-        dataset = RawDataset(df)
+        dataset = RawDataset(df, filterMode)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t")
-        dataset = RawDataset(df)
+        dataset = RawDataset(df, filterMode)
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape

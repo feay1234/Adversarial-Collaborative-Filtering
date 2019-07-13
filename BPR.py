@@ -28,8 +28,6 @@ class BPR():
 
         pDot = Dot(axes=-1)([self.uEmb, self.pEmb])
         nDot = Dot(axes=-1)([self.uEmb, self.nEmb])
-        pDot = Dot(axes=-1)([self.uEmb, self.pEmb])
-        nDot = Dot(axes=-1)([self.uEmb, self.nEmb])
 
         diff = Subtract()([pDot, nDot])
 
@@ -60,7 +58,7 @@ class BPR():
         #     _batch_size = _u.shape[0]
         #     y = np.ones(_batch_size)
         #     hist = self.model.fit([_u, _p, _n], y, batch_size=_batch_size, epochs=1, verbose=0)
-        hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=False)
+        hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0)
         loss = hist.history['loss'][0]
 
         return "%.4f" % loss
@@ -78,10 +76,10 @@ class BPR():
             neg_item_input.append(j)
             labels.append(1)
 
-        idx = np.arange(len(user_input))
-        np.random.shuffle(idx)
-
-        return [np.array(user_input)[idx], np.array(pos_item_input)[idx], np.array(neg_item_input)[idx]], np.array(labels)
+        # idx = np.arange(len(user_input))
+        # np.random.shuffle(idx)
+        # return [np.array(user_input)[idx], np.array(pos_item_input)[idx], np.array(neg_item_input)[idx]], np.array(labels)
+        return [np.array(user_input), np.array(pos_item_input), np.array(neg_item_input)], np.array(labels)
 
 
 
