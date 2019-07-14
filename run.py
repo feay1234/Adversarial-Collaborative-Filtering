@@ -94,8 +94,6 @@ if __name__ == '__main__':
 
     if data in ["ml-1m", "yelp", "pinterest-20"]:
         dataset = Dataset(path + "data/" + data)
-    # if data == "brightkite":
-    #     dataset = Dataset(path + "/Users/jarana/local/workspace/datasets/neumf/" + data)
 
     elif data == "ml":
         df = pd.read_csv(path + "data/ml-small", names=columns, sep="\t")
@@ -119,7 +117,7 @@ if __name__ == '__main__':
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (
-        time() - t1, uNum - 1, iNum - 1, train.nnz,
+        time() - t1, uNum - 1, iNum - 1, len(df),
         len(testRatings))  # user and item index start at 1, not zero, so the exact number of users and items = num - 1
 
     # Initialise Model
