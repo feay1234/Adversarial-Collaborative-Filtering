@@ -77,7 +77,7 @@ class BPR():
         hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0)
         loss = hist.history['loss'][0]
 
-        return "%.4f" % loss
+        return loss
 
     def get_train_instances(self, train):
         user_input, pos_item_input, neg_item_input, labels = [], [], [], []

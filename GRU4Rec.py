@@ -272,7 +272,7 @@ class GRU4Rec(Recommender):
                 for i in range(self.layers):
                     state[i][mask] = 0
 
-        return "%.4f" % np.mean(losses)
+        return np.mean(losses)
 
             # if np.isnan(avgc):
             #     print(('Epoch {}: Nan error!'.format(epoch, avgc)))

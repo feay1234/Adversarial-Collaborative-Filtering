@@ -164,7 +164,7 @@ class APR(BPR):
 
             losses.append(loss)
 
-        return "%.4f" % np.mean(losses)
+        return np.mean(losses)
 
 
 

@@ -246,7 +246,7 @@ class APL(BPR):
                                      self.gen_p_aux: p_aux, self.training_flag: True})
             Gloss.append(loss)
 
-        return "G: %.4f D: %.4f" % (np.mean(Gloss), np.mean(Dloss))
+        return np.mean(Gloss)
 
 # import scipy.sparse as sp
 #

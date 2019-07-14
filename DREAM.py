@@ -1,11 +1,8 @@
 # A Dynamic Recurrent Neural Network model for Venue Recommendation
 import numpy as np
-from keras import backend as K
-from keras.models import Model, Sequential
-from keras.layers import Embedding, Input, merge, SimpleRNN, Dot, Subtract, Activation
-from keras.optimizers import Adam
+from keras.models import Model
+from keras.layers import Embedding, Input, SimpleRNN, Dot, Subtract, Activation
 from keras.preprocessing import sequence
-
 from Recommender import Recommender
 
 
@@ -86,7 +83,7 @@ class DREAM(Recommender):
         hist = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=0, shuffle=True)
         loss = hist.history['loss'][0]
 
-        return "%.4f" % loss
+        return loss
 
     def save(self, path):
         super().save(path)

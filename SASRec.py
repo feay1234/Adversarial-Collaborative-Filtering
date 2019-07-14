@@ -197,7 +197,7 @@ class SASRec():
             # print(auc, loss)
             losses.append(loss)
 
-        return "%.4f" % np.mean(losses)
+        return np.mean(losses)
 
 
 # -*- coding: utf-8 -*-

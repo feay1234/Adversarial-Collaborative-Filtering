@@ -18,7 +18,7 @@ from NeuMF import NeuMF, AdversarialNeuMF
 from SASRec import SASRec
 from evaluation import evaluate_model
 from utils import write2file, prediction2file, set_seed
-
+import math
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Adversarial Collaborative Filtering")
@@ -29,7 +29,7 @@ def parse_args():
                         help='Model Name: lstm', default="neumf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -212,9 +212,12 @@ if __name__ == '__main__':
                                        testNegatives, topK, evaluation_threads)
         hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
 
-        output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %s [%.1f s]' % (
+        output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
+
+        if math.isnan(loss):
+            break
 
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
