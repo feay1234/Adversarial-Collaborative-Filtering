@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="neumf")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
 
-    parser.add_argument('--filter', type=int, default=1,
+    parser.add_argument('--filter', type=int, default=2,
                         help='Filter Mode')
 
     parser.add_argument('--save_model', type=int, default=1,
