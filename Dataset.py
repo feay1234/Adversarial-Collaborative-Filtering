@@ -77,7 +77,6 @@ class Dataset(object):
         # if "ankita" in path:
         columns = ['uid', 'iid', 'rating', 'hour', 'day', 'month', 'timestamp']
         df = pd.read_csv(filename, names=columns, sep="\t")
-        print(len(df))
         # df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         df.sort_values(["uid", "timestamp"], inplace=True)
 
@@ -122,13 +121,16 @@ class RawDataset():
                          how='left'))
             df = df[(df.num_uniq_vid >= 10) & ((df.num_uniq_uid >= 10))]
 
-        df.uid = df.uid.astype('category').cat.codes.values
-        df.iid = df.iid.astype('category').cat.codes.values
+        # df.uid = df.uid.astype('category').cat.codes.values
+        # df.iid = df.iid.astype('category').cat.codes.values
 
-        # dataset = df.merge(pd.Series(df.uid.unique()).reset_index().rename(columns={'index': 'new_uid', 0: 'uid'}),
-        #                    left_on='uid', right_on='uid').merge(
-        #     pd.Series(df.vid.unique()).reset_index().rename(columns={'index': 'new_vid', 0: 'vid'}), left_on='vid',
-        #     right_on='vid')
+        df = df.merge(pd.Series(df.uid.unique()).reset_index().rename(columns={'index': 'new_uid', 0: 'uid'}),
+                           left_on='uid', right_on='uid').merge(
+            pd.Series(df.vid.unique()).reset_index().rename(columns={'index': 'new_vid', 0: 'iid'}), left_on='iid',
+            right_on='vid')
+        del df['uid']
+        del df['iid']
+        df = df.rename(columns={'new_uid': 'uid', 'new_vid': 'iid'})
 
         uNum = df.uid.nunique()
         iNum = df.iid.nunique()
@@ -152,11 +154,11 @@ class RawDataset():
         self.trainSeq = seq
         self.df = df
 
+        random.seed(2019)
         candidates = df.iid.tolist()
 
         negatives = []
         for u in range(uNum):
-            print(u, uNum)
             neg = []
             for i in range(100):
                 r = random.choice(candidates)
