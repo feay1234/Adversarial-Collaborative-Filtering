@@ -97,27 +97,14 @@ class Dataset(object):
 
 
 class RawDataset():
-    def __init__(self, df, mode):
-        # np.random.seed(2019)
-
+    def __init__(self, df):
         # pre-process
-        if mode == 0:
-            df = df.groupby("iid").filter(lambda x: len(x) >= 10)
-            df = df.groupby("uid").filter(lambda x: len(x) >= 10)
-        elif mode == 1:
-            df = (df
-                  .merge(df.groupby('uid').iid.nunique().reset_index().rename(columns={'iid': 'num_uniq_vid'}),
-                         on='uid', how='left')
-                  .merge(df.groupby('iid').uid.nunique().reset_index().rename(columns={'uid': 'num_uniq_uid'}),
-                         on='iid', how='left'))
-            df = df[(df.num_uniq_vid >= 10) & ((df.num_uniq_uid >= 10))]
-        elif mode == 2:
-            df = (df
-                  .merge(df.groupby('uid').iid.size().reset_index().rename(columns={'iid': 'num_uniq_vid'}), on='uid',
-                         how='left')
-                  .merge(df.groupby('iid').uid.size().reset_index().rename(columns={'uid': 'num_uniq_uid'}), on='iid',
-                         how='left'))
-            df = df[(df.num_uniq_vid >= 10) & ((df.num_uniq_uid >= 10))]
+        df = (df
+              .merge(df.groupby('uid').iid.nunique().reset_index().rename(columns={'iid': 'num_uniq_vid'}),
+                     on='uid', how='left')
+              .merge(df.groupby('iid').uid.nunique().reset_index().rename(columns={'uid': 'num_uniq_uid'}),
+                     on='iid', how='left'))
+        df = df[(df.num_uniq_vid >= 10) & ((df.num_uniq_uid >= 10))]
 
         # index start at one and index zero is used for masking
         df.uid = df.uid.astype('category').cat.codes.values + 1
