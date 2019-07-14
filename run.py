@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument('--maxlen', type=int, default=10,
                         help='Maxlen')
 
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=500,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
@@ -216,20 +216,22 @@ if __name__ == '__main__':
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
         write2file(path + "out/" + runName + ".out", output)
 
-        if math.isnan(loss):
-            break
 
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
             if save_model:
                 ranker.save(path + "h5/" + runName + ".best.h5")
 
-        # only save result file for the best model
-        prediction2file(path + "out/" + runName + ".hr", hits)
-        prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
+            # only save result file for the best model
+            prediction2file(path + "out/" + runName + ".hr", hits)
+            prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
+
+        if math.isnan(loss):
+            break
+
         # save current one
-        if save_model:
-            ranker.save(path + "h5/" + runName + ".last.h5")
+        # if save_model:
+        #     ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
         best_iter, best_hr, best_ndcg, (time() - start) / 3600)
