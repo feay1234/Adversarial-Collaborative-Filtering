@@ -105,8 +105,6 @@ class RawDataset():
             df = df.groupby("iid").filter(lambda x: len(x) >= 10)
             df = df.groupby("uid").filter(lambda x: len(x) >= 10)
         elif mode == 1:
-
-            # # filtering user&venue with less than 10 check-ins
             df = (df
                   .merge(df.groupby('uid').iid.nunique().reset_index().rename(columns={'iid': 'num_uniq_vid'}),
                          on='uid', how='left')
@@ -121,31 +119,20 @@ class RawDataset():
                          how='left'))
             df = df[(df.num_uniq_vid >= 10) & ((df.num_uniq_uid >= 10))]
 
-        # df.uid = df.uid.astype('category').cat.codes.values
-        # df.iid = df.iid.astype('category').cat.codes.values
-
-        df = df.merge(pd.Series(df.uid.unique()).reset_index().rename(columns={'index': 'new_uid', 0: 'uid'}),
-                           left_on='uid', right_on='uid').merge(
-            pd.Series(df.vid.unique()).reset_index().rename(columns={'index': 'new_vid', 0: 'iid'}), left_on='iid',
-            right_on='vid')
-        del df['uid']
-        del df['iid']
-        df = df.rename(columns={'new_uid': 'uid', 'new_vid': 'iid'})
+        # index start at one and index zero is used for masking
+        df.uid = df.uid.astype('category').cat.codes.values + 1
+        df.iid = df.iid.astype('category').cat.codes.values + 1
 
         uNum = df.uid.nunique()
         iNum = df.iid.nunique()
+        df.sort_values(["uid", "timestamp"], inplace=True)
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
-        # df = df[df.groupby("uid").cumcount(ascending=False) > 0]
-        df.sort_values(["uid", "timestamp"], inplace=True)
-        mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
+
+        mat = sp.dok_matrix((uNum+1, iNum+1), dtype=np.float32)
         seq = defaultdict(list)
-        # if "rating" in df.columns:
-        #     for u, i, r in df[["uid", "iid", "rating"]].values.tolist():
-        #         mat[u, i] = r
-        #         seq[u].append(i)
-        # else:
+
         for u, i in df[["uid", "iid"]].values.tolist():
             mat[u, i] = 1.0
             seq[u].append(i)
@@ -157,12 +144,13 @@ class RawDataset():
         random.seed(2019)
         candidates = df.iid.tolist()
 
+
         negatives = []
         for u in range(uNum):
             neg = []
             for i in range(100):
                 r = random.choice(candidates)
-                while (u, r) in mat:
+                while (u, r) in mat or self.testRatings[u] == r:
                     r = random.choice(candidates)
                 neg.append(r)
             negatives.append(neg)

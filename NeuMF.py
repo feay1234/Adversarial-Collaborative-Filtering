@@ -1,9 +1,7 @@
-
-
 from keras import backend as K
 from keras.models import Sequential, Model
 from keras.layers.core import Dense, Lambda, Activation
-from keras.layers import Embedding, Input, Dense, merge,  Flatten, Dropout, Multiply, Concatenate
+from keras.layers import Embedding, Input, Dense, merge, Flatten, Dropout, Multiply, Concatenate
 import numpy as np
 
 from MF import AdversarialMatrixFactorisation, MatrixFactorization
@@ -11,24 +9,24 @@ from MF import AdversarialMatrixFactorisation, MatrixFactorization
 
 class NeuMF(MatrixFactorization):
     def __init__(self, uNum, iNum, mf_dim=10):
-
         self.uNum = uNum
         self.iNum = iNum
-        
 
-        layers = [mf_dim, mf_dim*2, mf_dim]
+        layers = [mf_dim, mf_dim * 2, mf_dim]
 
         num_layer = len(layers)  # Number of layers in the MLP
         # Input variables
-        self.user_input = Input(shape=(1,), dtype='int32', name = 'user_input')
-        self.item_input = Input(shape=(1,), dtype='int32', name = 'item_input')
+        self.user_input = Input(shape=(1,), dtype='int32', name='user_input')
+        self.item_input = Input(shape=(1,), dtype='int32', name='item_input')
 
         # Embedding layer
-        self.MF_Embedding_User = Embedding(input_dim = uNum, output_dim = mf_dim, name = 'mf_embedding_user', input_length=1)
-        self.MF_Embedding_Item = Embedding(input_dim = iNum, output_dim = mf_dim, name = 'mf_embedding_item', input_length=1)
+        self.MF_Embedding_User = Embedding(input_dim=uNum, output_dim=mf_dim, name='mf_embedding_user', input_length=1)
+        self.MF_Embedding_Item = Embedding(input_dim=iNum, output_dim=mf_dim, name='mf_embedding_item', input_length=1)
 
-        self.MLP_Embedding_User = Embedding(input_dim = uNum, output_dim = layers[0 ], name = "mlp_embedding_user", input_length=1)
-        self.MLP_Embedding_Item = Embedding(input_dim = iNum, output_dim = layers[0 ], name = 'mlp_embedding_item', input_length=1)
+        self.MLP_Embedding_User = Embedding(input_dim=uNum, output_dim=layers[0], name="mlp_embedding_user",
+                                            input_length=1)
+        self.MLP_Embedding_Item = Embedding(input_dim=iNum, output_dim=layers[0], name='mlp_embedding_item',
+                                            input_length=1)
 
         # MF part
         self.mf_user_latent = Flatten()(self.MF_Embedding_User(self.user_input))
@@ -40,7 +38,7 @@ class NeuMF(MatrixFactorization):
         self.mlp_item_latent = Flatten()(self.MLP_Embedding_Item(self.item_input))
         mlp_vector = Concatenate()([self.mlp_user_latent, self.mlp_item_latent])
         for idx in range(1, num_layer):
-            layer = Dense(layers[idx], activation='relu', name="layer%d" %idx)
+            layer = Dense(layers[idx], activation='relu', name="layer%d" % idx)
             mlp_vector = layer(mlp_vector)
 
         predict_vector = Concatenate()([mf_vector, mlp_vector])
@@ -49,12 +47,12 @@ class NeuMF(MatrixFactorization):
         self.pred = Dense(1, activation='sigmoid', name="prediction")(predict_vector)
 
         self.model = Model(input=[self.user_input, self.item_input],
-                      output=self.pred)
+                           output=self.pred)
 
         self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
 
-class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
+class AdversarialNeuMF(NeuMF, AdversarialMatrixFactorisation):
     def __init__(self, uNum, iNum, mf_dim, weight, pop_percent):
         NeuMF.__init__(self, uNum, iNum, mf_dim=mf_dim)
 
@@ -98,12 +96,17 @@ class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
         self.pred_u_mlp_disc = self.discriminator_mlp_u(uMLPAdvEmb)
         self.pred_i_mlp_disc = self.discriminator_mlp_i(iMLPAdvEmb)
 
-
-        self.advModel = Model([self.user_input, self.item_input, self.userMFAdvInput, self.itemMFAdvInput, self.userMLPAdvInput, self.itemMLPAdvInput], [self.pred, self.pred_u_mf_disc, self.pred_i_mf_disc, self.pred_u_mlp_disc, self.pred_i_mlp_disc])
-        self.advModel.compile(optimizer="adam", loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy", "binary_crossentropy", "binary_crossentropy"], metrics=['mse', 'acc', 'acc', 'acc', 'acc'], loss_weights=[1, self.weight, self.weight, self.weight, self.weight])
+        self.advModel = Model(
+            [self.user_input, self.item_input, self.userMFAdvInput, self.itemMFAdvInput, self.userMLPAdvInput,
+             self.itemMLPAdvInput],
+            [self.pred, self.pred_u_mf_disc, self.pred_i_mf_disc, self.pred_u_mlp_disc, self.pred_i_mlp_disc])
+        self.advModel.compile(optimizer="adam",
+                              loss=["binary_crossentropy", "binary_crossentropy", "binary_crossentropy",
+                                    "binary_crossentropy", "binary_crossentropy"],
+                              metrics=['mse', 'acc', 'acc', 'acc', 'acc'],
+                              loss_weights=[1, self.weight, self.weight, self.weight, self.weight])
 
     def train(self, x_train, y_train, batch_size):
-
         idx = np.random.randint(0, y_train.shape[0], batch_size)
         _x_train = [x_train[0][idx], x_train[1][idx]]
         _y_train = y_train[idx]
@@ -121,7 +124,6 @@ class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
 
         _popular_mlp_user_x = self.uMLPEncoder.predict(_popular_user_x)
         _rare_mlp_user_x = self.uMLPEncoder.predict(_rare_user_x)
-
 
         d_loss_popular_mf_user = self.discriminator_mf_u.train_on_batch(_popular_mf_user_x, self.popular_user_y)
         d_loss_rare_mf_user = self.discriminator_mf_u.train_on_batch(_rare_mf_user_x, self.rare_user_y)
@@ -175,9 +177,8 @@ class AdversarialNeuMF(NeuMF,AdversarialMatrixFactorisation):
 
 
         # Train adversarial model
-        g_loss = self.advModel.train_on_batch(_x_train + [_popular_rare_user_x, _popular_rare_item_x, _popular_rare_user_x, _popular_rare_item_x],
-                                              [_y_train, _popular_rare_y, _popular_rare_y, _popular_rare_y, _popular_rare_y])
-
+        g_loss = self.advModel.train_on_batch(
+            _x_train + [_popular_rare_user_x, _popular_rare_item_x, _popular_rare_user_x, _popular_rare_item_x],
+            [_y_train, _popular_rare_y, _popular_rare_y, _popular_rare_y, _popular_rare_y])
 
 # a = AdversarialMatrixFactorisation(1,1,1,1,1)
-

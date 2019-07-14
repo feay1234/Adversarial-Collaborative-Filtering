@@ -14,8 +14,11 @@ def bpr_triplet_loss(X):
     loss = 1 - K.log(K.sigmoid(positive_item_latent - negative_item_latent))
 
     return loss
+
+
 def identity_loss(y_true, y_pred):
     return K.mean(y_pred - 0 * y_true)
+
 
 class BPR():
     def __init__(self, uNum, iNum, dim):
@@ -28,8 +31,8 @@ class BPR():
         self.itemPosInput = Input(shape=(1,), dtype="int32")
         self.itemNegInput = Input(shape=(1,), dtype="int32")
 
-        userEmbeddingLayer = Embedding(input_dim=uNum+1, output_dim=dim, name="uEmb")
-        itemEmbeddingLayer = Embedding(input_dim=iNum+1, output_dim=dim, name="iEmb")
+        userEmbeddingLayer = Embedding(input_dim=uNum, output_dim=dim, name="uEmb")
+        itemEmbeddingLayer = Embedding(input_dim=iNum, output_dim=dim, name="iEmb")
 
         self.uEmb = Flatten()(userEmbeddingLayer(self.userInput))
         self.pEmb = Flatten()(itemEmbeddingLayer(self.itemPosInput))
@@ -95,9 +98,7 @@ class BPR():
         return [np.array(user_input), np.array(pos_item_input), np.array(neg_item_input)], np.array(labels)
 
 
-
 class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
-
     def __init__(self, uNum, iNum, dim, weight, pop_percent):
         BPR.__init__(self, uNum, iNum, dim)
 
@@ -165,6 +166,7 @@ class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
             y_user = np.array([0 if i in self.popular_user_x else 1 for i in _u])
             y_item = np.array([0 if i in self.popular_item_x else 1 for i in _p])
 
-            hist = self.advModel.fit([_u, _p, _n], [_labels, y_user, y_item], batch_size=batch_size, epochs=1, verbose=0)
+            hist = self.advModel.fit([_u, _p, _n], [_labels, y_user, y_item], batch_size=batch_size, epochs=1,
+                                     verbose=0)
 
         return hist
