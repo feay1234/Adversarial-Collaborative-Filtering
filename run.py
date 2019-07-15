@@ -26,10 +26,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="sasrecr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="fsq11")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -92,7 +92,8 @@ if __name__ == '__main__':
     # Loading data
     t1 = time()
 
-    if data in ["ml-1m", "yelp", "pinterest-20"]:
+    # if data in ["ml-1m", "yelp", "pinterest-20"]:
+    if data in ["brightkite", "yelp", "fsq11"]:
         dataset = Dataset(path + "data/" + data)
 
     elif data == "ml":
