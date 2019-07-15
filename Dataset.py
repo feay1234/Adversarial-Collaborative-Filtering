@@ -51,7 +51,8 @@ class Dataset(object):
                 negatives = []
                 for x in arr[1:]:
                     negatives.append(int(x))
-                negativeList.append(negatives)
+                # print(len(negatives))
+                negativeList.append(negatives[:100])
                 line = f.readline()
         return negativeList
 

@@ -27,6 +27,7 @@ class SASRec(Recommender):
 
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1, dropout_rate=0.5,
                  l2_emb=0.0, lr=0.05, reuse=None):
+        print(len(testNegatives[0]))
 
         testNegNum = len(testNegatives[0]) + 1 # plus positive one
 
@@ -181,10 +182,10 @@ class SASRec(Recommender):
         neg = pad_sequences(neg, self.maxlen)
 
         # Shuffle
-        idx = np.arange(len(user))
-        np.random.shuffle(idx)
-
-        return [user[idx], seq[idx], pos[idx], neg[idx]], None
+        # idx = np.arange(len(user))
+        # np.random.shuffle(idx)
+        # return [user[idx], seq[idx], pos[idx], neg[idx]], None
+        return [user, seq, pos, neg], None
 
     def train(self, x_train, y_train, batch_size):
         losses = []
@@ -198,7 +199,6 @@ class SASRec(Recommender):
                                          {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
                                           self.is_training: True})
 
-            # print(auc, loss)
             losses.append(loss)
 
         return np.mean(losses)
