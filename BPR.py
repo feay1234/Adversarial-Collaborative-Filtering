@@ -97,6 +97,9 @@ class BPR():
         # return [np.array(user_input)[idx], np.array(pos_item_input)[idx], np.array(neg_item_input)[idx]], np.array(labels)
         return [np.array(user_input), np.array(pos_item_input), np.array(neg_item_input)], np.array(labels)
 
+    def get_params(self):
+        return ""
+
 
 class AdversarialBPR(BPR, AdversarialMatrixFactorisation):
     def __init__(self, uNum, iNum, dim, weight, pop_percent):

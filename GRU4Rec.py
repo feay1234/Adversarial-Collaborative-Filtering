@@ -324,3 +324,5 @@ class GRU4Rec(Recommender):
         preds = np.asarray(preds).T
         return pd.DataFrame(data=preds, index=itemidmap.index)
 
+    def get_params(self):
+        return ""

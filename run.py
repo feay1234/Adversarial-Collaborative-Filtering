@@ -26,15 +26,15 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="neumf")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="test")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=10,
+    parser.add_argument('--maxlen', type=int, default=50,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=500,
@@ -176,7 +176,7 @@ if __name__ == '__main__':
         ranker = CaserModel(uNum, iNum, dim, maxlen, True)
         ranker.init(df)
 
-    runName = "%s_%s_d%d_%s" % (data, modelName, dim,
+    runName = "%s_%s_d%d%s_%s" % (data, modelName, dim, ranker.get_params(),
                                 datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     # load pretrained

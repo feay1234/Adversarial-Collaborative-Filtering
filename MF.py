@@ -55,6 +55,9 @@ class MatrixFactorization:
             labels.append(0)
         return [np.array(user_input), np.array(item_input)], np.array(labels)
 
+    def get_params(self):
+        return ""
+
 
 class AdversarialMatrixFactorisation(MatrixFactorization):
     def __init__(self, uNum, iNum, dim, weight, pop_percent):

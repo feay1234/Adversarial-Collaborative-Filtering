@@ -95,6 +95,9 @@ class CaserModel(Recommender):
     def save(self, path):
         super().save(path)
 
+    def get_params(self):
+        return ""
+
     def minibatch(self, *tensors, **kwargs):
 
         batch_size = kwargs.get('batch_size', 128)

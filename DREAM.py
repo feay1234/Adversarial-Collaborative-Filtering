@@ -87,3 +87,6 @@ class DREAM(Recommender):
 
     def save(self, path):
         super().save(path)
+
+    def get_params(self):
+        return ""

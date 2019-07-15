@@ -51,6 +51,9 @@ class NeuMF(MatrixFactorization):
 
         self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
+    def get_params(self):
+        return ""
+
 
 class AdversarialNeuMF(NeuMF, AdversarialMatrixFactorisation):
     def __init__(self, uNum, iNum, mf_dim, weight, pop_percent):

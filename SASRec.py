@@ -20,7 +20,11 @@ from keras_preprocessing.sequence import pad_sequences
 
 # Self-Attentive Sequential Recommendation
 # https://github.com/kang205/SASRec
-class SASRec():
+from Recommender import Recommender
+
+
+class SASRec(Recommender):
+
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1, dropout_rate=0.5,
                  l2_emb=0.0, lr=0.05, reuse=None):
 
@@ -198,6 +202,9 @@ class SASRec():
             losses.append(loss)
 
         return np.mean(losses)
+
+    def get_params(self):
+        return "_ml%d" % (self.maxlen)
 
 
 # -*- coding: utf-8 -*-

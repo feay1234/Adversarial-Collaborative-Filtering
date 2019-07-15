@@ -3,6 +3,10 @@ from abc import ABC, abstractmethod
 class Recommender(ABC):
 
     @abstractmethod
+    def get_params(self):
+        pass
+
+    @abstractmethod
     def load_pre_train(self, pre):
         pass
 
