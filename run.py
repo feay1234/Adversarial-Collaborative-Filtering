@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="fsq11")
@@ -117,6 +117,7 @@ if __name__ == '__main__':
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
+    uNum = max(uNum, len(testRatings))
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (
         time() - t1, uNum - 1, iNum - 1, len(df),
         len(testRatings))  # user and item index start at 1, not zero, so the exact number of users and items = num - 1
