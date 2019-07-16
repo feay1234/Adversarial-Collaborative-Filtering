@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="irgan")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=50,
+    parser.add_argument('--maxlen', type=int, default=64,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=500,
@@ -80,8 +80,7 @@ if __name__ == '__main__':
     # save_model = False
     # filterMode = args.filter
 
-    # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
-    # pre = "ml_bpr_d64_07-01-2019_10-40-19.best.h5"
+    pre = "brightkite_bpr_d10.h5"
 
     # num_negatives = 1
     topK = 10
@@ -223,7 +222,7 @@ if __name__ == '__main__':
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
             if save_model:
-                ranker.save(path + "h5/" + saveName + ".h5")
+                ranker.save(path + "h5/" + saveName + ".best.h5")
 
             # only save result file for the best model
             prediction2file(path + "out/" + runName + ".hr", hits)
@@ -233,8 +232,8 @@ if __name__ == '__main__':
             break
 
         # save current one
-        # if save_model:
-        #     ranker.save(path + "h5/" + runName + ".last.h5")
+        if save_model:
+            ranker.save(path + "h5/" + runName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
         best_iter, best_hr, best_ndcg, (time() - start) / 3600)
