@@ -29,7 +29,7 @@ def parse_args():
                         help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="yelp")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     maxlen = args.maxlen
     pre = args.pre
     save_model = True if args.save_model == 1 else False
-    save_model = False
+    # save_model = False
     # filterMode = args.filter
 
     # pre = "ml_bpr_d10_07-01-2019_10-29-14.last.h5"
@@ -192,12 +192,12 @@ if __name__ == '__main__':
         write2file(path + "out/" + runName + ".out", pre)
 
     # Init performance
-    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-                                   topK, evaluation_threads)
-    hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
-    best_hr, best_ndcg, best_iter = hr, ndcg, -1
-    write2file(path + "out/" + runName + ".out", output)
+    # (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
+    #                                topK, evaluation_threads)
+    # hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+    # output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
+    # best_hr, best_ndcg, best_iter = hr, ndcg, -1
+    # write2file(path + "out/" + runName + ".out", output)
 
     start = time()
     # Training model
@@ -205,6 +205,7 @@ if __name__ == '__main__':
         t1 = time()
         # Generate training instances
         x_train, y_train = ranker.get_train_instances(train)
+        print(len(x_train[0]))
 
         loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()

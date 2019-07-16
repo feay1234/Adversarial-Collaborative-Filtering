@@ -64,7 +64,7 @@ class CaserModel(Recommender):
             Sequence target length.
         """
         sequence_length = self.maxlen
-        target_length = 1  # default paper is 3, for a fair comparison we use 1 for all baselines
+        target_length = 3  # default paper is 3, for a fair comparison we use 1 for all baselines
 
         users, checkins, positive_venues, negative_venues = [], [], [], []
 
@@ -324,15 +324,4 @@ class Caser(nn.Module):
         return res
 
 
-if __name__ == '__main__':
-    # set seed
 
-
-    # fit model
-    model = Recommender(n_iter=config.n_iter,
-                        batch_size=config.batch_size,
-                        learning_rate=config.learning_rate,
-                        l2=config.l2,
-                        neg_samples=config.neg_samples,
-                        model_args=model_config,
-                        use_cuda=config.use_cuda)
