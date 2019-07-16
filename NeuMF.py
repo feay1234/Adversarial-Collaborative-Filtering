@@ -54,6 +54,9 @@ class NeuMF(MatrixFactorization):
     def get_params(self):
         return ""
 
+    def save(self, path):
+        self.model.save(path, overwrite=True)
+
 
 class AdversarialNeuMF(NeuMF, AdversarialMatrixFactorisation):
     def __init__(self, uNum, iNum, mf_dim, weight, pop_percent):
