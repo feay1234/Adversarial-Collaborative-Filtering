@@ -92,7 +92,7 @@ if __name__ == '__main__':
     t1 = time()
 
     # if data in ["ml-1m", "yelp", "pinterest-20"]:
-    if data in ["brightkite", "fsq11"]:
+    if data in ["brightkite", "fsq11", "yelp"]:
         dataset = Dataset(path + "data/" + data)
 
     elif data == "ml-1m":
@@ -101,8 +101,8 @@ if __name__ == '__main__':
         test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
         df = train.append(test)
         dataset = XiangnanDataset(df)
-        
-    elif data == "yelp":
+
+    elif data == "yelp-he":
         names = ["uid", "iid", "rating", "timestamp"]
         train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
         test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
