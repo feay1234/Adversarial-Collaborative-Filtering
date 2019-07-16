@@ -269,6 +269,9 @@ class DIS():
         param = sess.run(self.d_params)
         pickle.dump(param, open(filename, 'w'))
 
+    def get_params(self):
+        return ""
+
 class DIS2():
     def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
         self.itemNum = itemNum
