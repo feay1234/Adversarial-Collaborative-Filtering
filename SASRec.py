@@ -3,7 +3,6 @@ import numpy as np
 import math
 from keras_preprocessing.sequence import pad_sequences
 
-
 # Default params
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--dataset', default="Video")
@@ -24,11 +23,11 @@ from Recommender import Recommender
 
 
 class SASRec(Recommender):
-
-    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1, dropout_rate=0.5,
+    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1,
+                 dropout_rate=0.5,
                  l2_emb=0.0, lr=0.05, reuse=None):
 
-        testNegNum = len(testNegatives[0]) + 1 # plus positive one
+        testNegNum = len(testNegatives[0]) + 1  # plus positive one
 
         self.uNum = usernum
         self.iNum = itemnum
@@ -161,24 +160,43 @@ class SASRec(Recommender):
     def get_train_instances(self, train):
         user, seq, pos, neg = [], [], [], []
         for u in self.trainSeq:
-            # positive instance
-            for i in range(len(self.trainSeq[u]) - 1):
-                user.append(u)
-                seq.append(self.trainSeq[u][i:i+self.maxlen])
-                pos.append(self.trainSeq[u][i+1:i+1+self.maxlen])
 
-                _neg = []
-                for n in range(self.maxlen):
+            # Original
+            user.append(u)
+            seq.append(pad_sequences([self.trainSeq[u][:-1]], self.maxlen).squeeze())
+            pos.append(pad_sequences([self.trainSeq[u][1:]], self.maxlen).squeeze())
+
+            _neg = []
+            for n in range(self.maxlen):
+                j = np.random.randint(0, self.iNum)
+                while j in self.trainSeq[u]:
                     j = np.random.randint(0, self.iNum)
-                    while j in self.trainSeq[u]:
-                        j = np.random.randint(0, self.iNum)
-                    _neg.append(j)
-                neg.append(_neg)
+                _neg.append(j)
+            neg.append(_neg)
+            # break
+
+            # old
+            # # positive instance
+            # for i in range(len(self.trainSeq[u]) - 1):
+            #     user.append(u)
+            #     seq.append(self.trainSeq[u][i:i + self.maxlen])
+            #     pos.append(self.trainSeq[u][i + 1:i + 1 + self.maxlen])
+            #
+            #     _neg = []
+            #     for n in range(self.maxlen):
+            #         j = np.random.randint(0, self.iNum)
+            #         while j in self.trainSeq[u]:
+            #             j = np.random.randint(0, self.iNum)
+            #         _neg.append(j)
+            #     neg.append(_neg)
 
         user = np.array(user)
-        seq = pad_sequences(seq, self.maxlen)
-        pos = pad_sequences(pos, self.maxlen)
-        neg = pad_sequences(neg, self.maxlen)
+        seq = np.array(seq)
+        pos = np.array(pos)
+        neg = np.array(neg)
+        # seq = pad_sequences(seq, self.maxlen)
+        # pos = pad_sequences(pos, self.maxlen)
+        # neg = pad_sequences(neg, self.maxlen)
 
         # Shuffle
         # idx = np.arange(len(user))
