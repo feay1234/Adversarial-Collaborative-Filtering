@@ -9,7 +9,7 @@ from APL import APL
 from BPR import BPR, AdversarialBPR
 from Caser import CaserModel
 from DREAM import DREAM
-from Dataset import Dataset, RawDataset
+from Dataset import Dataset, RawDataset, XiangnanDataset
 from FastAdversarialMF import FastAdversarialMF
 from GRU4Rec import GRU4Rec
 from IRGAN import IRGAN
@@ -26,10 +26,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="yelp")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -92,12 +92,23 @@ if __name__ == '__main__':
     t1 = time()
 
     # if data in ["ml-1m", "yelp", "pinterest-20"]:
-    if data in ["brightkite", "yelp", "fsq11"]:
+    if data in ["brightkite", "fsq11"]:
         dataset = Dataset(path + "data/" + data)
 
-    elif data == "ml":
-        df = pd.read_csv(path + "data/ml-small", names=columns, sep="\t")
-        dataset = RawDataset(df)
+    elif data == "ml-1m":
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(path+"data/ml-1m.train.rating", sep="\t", names=names)
+        test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
+        df = train.append(test)
+        dataset = XiangnanDataset(df)
+        
+    elif data == "yelp":
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
+        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
+        df = train.append(test)
+        dataset = XiangnanDataset(df)
+
     elif data == "dating":
         columns = ["uid", "iid", "rating"]
         df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")

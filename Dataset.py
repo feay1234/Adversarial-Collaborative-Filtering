@@ -147,3 +147,47 @@ class RawDataset():
         assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
+
+class XiangnanDataset():
+    def __init__(self, df):
+
+        # index start at one and index zero is used for masking
+        df.uid = df.uid.astype('category').cat.codes.values + 1
+        df.iid = df.iid.astype('category').cat.codes.values + 1
+
+        uNum = df.uid.nunique()
+        iNum = df.iid.nunique()
+        df.sort_values(["uid", "timestamp"], inplace=True)
+        self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
+        # for each user, remove last interaction from training set
+        df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
+
+        mat = sp.dok_matrix((uNum+1, iNum+1), dtype=np.float32)
+        seq = defaultdict(list)
+
+        for u, i in df[["uid", "iid"]].values.tolist():
+            mat[u, i] = 1.0
+            seq[u].append(i)
+
+        self.trainMatrix = mat
+        self.trainSeq = seq
+        self.df = df
+
+        random.seed(2019)
+        candidates = df.iid.tolist()
+
+
+        negatives = []
+        for u in range(uNum):
+            neg = []
+            for i in range(100):
+                r = random.choice(candidates)
+                while (u, r) in mat or self.testRatings[u] == r:
+                    r = random.choice(candidates)
+                neg.append(r)
+            negatives.append(neg)
+
+        self.testNegatives = negatives
+        assert len(self.testRatings) == len(self.testNegatives)
+
+        self.num_users, self.num_items = self.trainMatrix.shape
