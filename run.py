@@ -80,7 +80,7 @@ if __name__ == '__main__':
     # save_model = False
     # filterMode = args.filter
 
-    pre = "brightkite_bpr_d10.h5"
+    # pre = "brightkite_bpr_d10.h5"
 
     # num_negatives = 1
     topK = 10

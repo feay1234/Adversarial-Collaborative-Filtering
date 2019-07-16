@@ -51,9 +51,6 @@ class NeuMF(MatrixFactorization):
 
         self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=['acc'])
 
-    def get_params(self):
-        return ""
-
     def save(self, path):
         self.model.save(path, overwrite=True)
 
