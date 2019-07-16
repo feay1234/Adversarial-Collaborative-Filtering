@@ -150,6 +150,8 @@ class IRGAN():
         np.random.shuffle(idx)
 
         return [np.array(user_input)[idx], np.array(pos_item_input)[idx], np.array(neg_item_input)[idx]], np.array(labels)
+    def get_params(self):
+        return ""
 
 
 class GEN():
@@ -207,6 +209,7 @@ class GEN():
     def save_model(self, sess, filename):
         param = sess.run(self.g_params)
         pickle.dump(param, open(filename, 'w'))
+
 
 
 class DIS():
@@ -269,8 +272,7 @@ class DIS():
         param = sess.run(self.d_params)
         pickle.dump(param, open(filename, 'w'))
 
-    def get_params(self):
-        return ""
+
 
 class DIS2():
     def __init__(self, itemNum, userNum, emb_dim, lamda, param=None, initdelta=0.05, learning_rate=0.05):
