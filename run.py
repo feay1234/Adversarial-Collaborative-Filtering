@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -179,6 +179,7 @@ if __name__ == '__main__':
 
     runName = "%s_%s_d%d%s_%s" % (data, modelName, dim, ranker.get_params(),
                                 datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+    saveName = "%s_%s_d%d%s" % (data, modelName, dim, ranker.get_params())
 
     # load pretrained
     # TODO only support BPR-based models
@@ -192,12 +193,12 @@ if __name__ == '__main__':
         write2file(path + "out/" + runName + ".out", pre)
 
     # Init performance
-    # (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-    #                                topK, evaluation_threads)
-    # hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    # output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
-    # best_hr, best_ndcg, best_iter = hr, ndcg, -1
-    # write2file(path + "out/" + runName + ".out", output)
+    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
+                                   topK, evaluation_threads)
+    hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+    output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
+    best_hr, best_ndcg, best_iter = hr, ndcg, -1
+    write2file(path + "out/" + runName + ".out", output)
 
     start = time()
     # Training model
@@ -205,7 +206,6 @@ if __name__ == '__main__':
         t1 = time()
         # Generate training instances
         x_train, y_train = ranker.get_train_instances(train)
-        print(len(x_train[0]))
 
         loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()
@@ -222,7 +222,7 @@ if __name__ == '__main__':
         if ndcg > best_ndcg:
             best_hr, best_ndcg, best_iter = hr, ndcg, epoch
             if save_model:
-                ranker.save(path + "h5/" + runName + ".best.h5")
+                ranker.save(path + "h5/" + saveName + ".h5")
 
             # only save result file for the best model
             prediction2file(path + "out/" + runName + ".hr", hits)
