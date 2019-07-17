@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=64,
+    parser.add_argument('--maxlen', type=int, default=50,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=500,
@@ -244,7 +244,7 @@ if __name__ == '__main__':
 
         # save current one
         if save_model:
-            ranker.save(path + "h5/" + runName + ".last.h5")
+            ranker.save(path + "h5/" + saveName + ".last.h5")
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
         best_iter, best_hr, best_ndcg, (time() - start) / 3600)
