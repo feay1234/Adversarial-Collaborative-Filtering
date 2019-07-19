@@ -10,7 +10,7 @@ from BPR import BPR, AdversarialBPR
 from Caser import CaserModel
 from DRCF import DRCF
 from DREAM import DREAM
-from Dataset import Dataset, RawDataset, XiangnanDataset
+from Dataset import Dataset, RawDataset, getDataset
 from FastAdversarialMF import FastAdversarialMF
 from GRU4Rec import GRU4Rec
 from IRGAN import IRGAN
@@ -30,7 +30,7 @@ def parse_args():
                         help='Model Name: lstm', default="drcf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="yelp")
+                        help='Dataset name', default="beauty")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -92,39 +92,7 @@ if __name__ == '__main__':
     # Loading data
     t1 = time()
 
-    # if data in ["ml-1m", "yelp", "pinterest-20"]:
-    if data in ["brightkite", "fsq11", "yelp"]:
-        dataset = Dataset(path + "data/" + data)
-
-    elif data == "ml-1m":
-        names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/ml-1m.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
-        df = train.append(test)
-        dataset = XiangnanDataset(df)
-
-    elif data == "yelp-he":
-        names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
-        df = train.append(test)
-        dataset = XiangnanDataset(df)
-
-    elif data == "dating":
-        columns = ["uid", "iid", "rating"]
-        df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
-    elif data == "brightkite":
-        columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
-        dataset = RawDataset(df)
-    elif data == "test":
-        columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=10000)
-        dataset = RawDataset(df)
-    elif data == "gowalla":
-        columns = ["uid", "timestamp", "lat", "lng", "iid"]
-        df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t")
-        dataset = RawDataset(df)
+    dataset = getDataset(data, path)
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape

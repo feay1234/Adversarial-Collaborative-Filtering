@@ -12,6 +12,49 @@ import pandas as pd
 import random
 
 
+def getDataset(data, path):
+
+    # if data in ["ml-1m", "yelp", "pinterest-20"]:
+    if data in ["brightkite", "fsq11", "yelp"]:
+        dataset = Dataset(path + "data/" + data)
+
+    elif data == "ml-1m":
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(path+"data/ml-1m.train.rating", sep="\t", names=names)
+        test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
+        df = train.append(test)
+        dataset = PreProcessDataset(df)
+
+    elif data == "yelp-he":
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
+        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
+        df = train.append(test)
+        dataset = PreProcessDataset(df)
+
+    elif data == "beauty":
+        names = ["uid", "iid"]
+        df = pd.read_csv(path+"data/Beauty.txt", sep=" ", names=names, nrows=1000)
+        dataset = PreProcessDataset(df, False)
+
+    elif data == "dating":
+        columns = ["uid", "iid", "rating"]
+        df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
+    elif data == "brightkite":
+        columns = ["uid", "timestamp", "lat", "lng", "iid"]
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
+        dataset = RawDataset(df)
+    elif data == "test":
+        columns = ["uid", "timestamp", "lat", "lng", "iid"]
+        df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=10000)
+        dataset = RawDataset(df)
+    elif data == "gowalla":
+        columns = ["uid", "timestamp", "lat", "lng", "iid"]
+        df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t")
+        dataset = RawDataset(df)
+
+    return dataset
+
 class Dataset(object):
     '''
     classdocs
@@ -148,8 +191,8 @@ class RawDataset():
 
         self.num_users, self.num_items = self.trainMatrix.shape
 
-class XiangnanDataset():
-    def __init__(self, df):
+class PreProcessDataset():
+    def __init__(self, df, doSort=True):
 
         # index start at one and index zero is used for masking
         df.uid = df.uid.astype('category').cat.codes.values + 1
@@ -157,7 +200,8 @@ class XiangnanDataset():
 
         uNum = df.uid.nunique()
         iNum = df.iid.nunique()
-        df.sort_values(["uid", "timestamp"], inplace=True)
+        if doSort:
+            df.sort_values(["uid", "timestamp"], inplace=True)
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
@@ -175,7 +219,6 @@ class XiangnanDataset():
 
         random.seed(2019)
         candidates = df.iid.tolist()
-
 
         negatives = []
         for u in range(uNum):

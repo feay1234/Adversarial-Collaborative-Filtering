@@ -15,8 +15,12 @@ def init_normal(shape, name=None):
 class DRCF(BPR):
 
 
-    def __init__(self, num_users, num_items, dim, maxVenue =5, opt=Adam()):
+    def __init__(self, num_users, num_items, dim, maxlen =5, opt=Adam()):
         # latent_dim = layers[-1]
+        self.uNum = num_users
+        self.iNum = num_items
+        self.maxlen = maxlen
+
         latent_dim = dim
         layers = [dim, dim * 3, dim * 2 , dim]
 
@@ -24,7 +28,7 @@ class DRCF(BPR):
         self.user_input = Input(shape=(1,), dtype='int32', name='user_input')
         self.item_input = Input(shape=(1,), dtype='int32', name='item_input')
         self.item_neg_input = Input(shape=(1,), dtype='int32', name='item_neg_input')
-        self.checkin_input = Input(shape=(maxVenue,), dtype='int32', name='checkin_input')
+        self.checkin_input = Input(shape=(maxlen,), dtype='int32', name='checkin_input')
 
         self.MF_Embedding_User = Embedding(input_dim=num_users, output_dim=latent_dim, name='mf_user_embedding',
                                       init=init_normal, input_length=1)
@@ -33,7 +37,7 @@ class DRCF(BPR):
                                       init=init_normal, input_length=1)
 
         self.MF_Embedding_Checkin = Embedding(input_dim=num_items, output_dim=latent_dim, name='mf_checkin_embedding',
-                                      init=init_normal, input_length=maxVenue)
+                                      init=init_normal, input_length=maxlen)
 
         self.DOT_MF_Embedding_User = Embedding(input_dim=num_users, output_dim=latent_dim, name='dot_mf_user_embedding',
                                            init=init_normal, input_length=1)
@@ -42,7 +46,7 @@ class DRCF(BPR):
                                            init=init_normal, input_length=1)
 
         self.DOT_MF_Embedding_Checkin = Embedding(input_dim=num_items, output_dim=latent_dim, name='dot_mf_checkin_embedding',
-                                              init=init_normal, input_length=maxVenue)
+                                              init=init_normal, input_length=maxlen)
 
         self.MF_RNN = Sequential()
         self.MF_RNN.add(self.MF_Embedding_Checkin)
@@ -84,7 +88,7 @@ class DRCF(BPR):
 
         self.MLP_Embedding_checkin = Embedding(input_dim=num_items, output_dim=int(layers[0] / 2),
                                                name='mlp_checkin_embedding',
-                                               init=init_normal, input_length=maxVenue)
+                                               init=init_normal, input_length=maxlen)
 
         self.DOT_MLP_Embedding_User = Embedding(input_dim=num_users, output_dim=int(layers[0] / 2),
                                                 name='dot_mlp_user_embedding',
@@ -95,7 +99,7 @@ class DRCF(BPR):
 
         self.DOT_MLP_Embedding_checkin = Embedding(input_dim=num_items, output_dim=int(layers[0] / 2),
                                                    name='dot_mlp_checkin_embedding',
-                                                   init=init_normal, input_length=maxVenue)
+                                                   init=init_normal, input_length=maxlen)
 
         self.MLP_RNN = Sequential()
         self.MLP_RNN.add(self.MLP_Embedding_checkin)
@@ -122,7 +126,7 @@ class DRCF(BPR):
 
         # The 0-th layer is the concatenation of embedding layers
         self.mlp_vector = Concatenate()(
-            [self.mlp_dot_vector, self.mlp_dynamic_user_latent, self.mlp_user_latent, self.mlp_item_latent], mode='concat')
+            [self.mlp_dot_vector, self.mlp_dynamic_user_latent, self.mlp_user_latent, self.mlp_item_latent])
         self.mlp_neg_vector = Concatenate()(
             [self.mlp_dot_neg_vector, self.mlp_dynamic_user_latent, self.mlp_user_latent, self.mlp_item_neg_latent])
 
@@ -165,27 +169,29 @@ class DRCF(BPR):
         self.predictor = Model([self.user_input, self.checkin_input, self.item_input], [prediction])
 
     def rank(self, users, items):
-        return self.predictor.predict([users, items], batch_size=100, verbose=0)
+        checkins = [self.trainSeq[users[0]]] * len(items)
+        checkins = sequence.pad_sequences(checkins, maxlen=self.maxlen)
+        return self.predictor.predict([users, checkins, items], batch_size=100, verbose=0)
 
 
     def get_train_instances(self, train):
         users, checkins, positive_venues, negative_venues, labels = [], [], [], [], []
 
-        for u, group in self.df.groupby('uid'):
-            visited = group.vid.tolist()
+        for u in self.trainSeq:
+            visited = self.trainSeq[u]
             checkin_ = []
             for v in visited[:-1]:
                 checkin_.append(v)
-                checkins.extend(sequence.pad_sequences([checkin_[:]], maxlen=self.maxVenue))
+                checkins.extend(sequence.pad_sequences([checkin_[:]], maxlen=self.maxlen))
                 users.append(u)
 
             # start from the second venue in user's checkin sequence.
             for i in range(2, len(visited) + 1, 1):
 
-                j = np.random.randint(self.vNum)
+                j = np.random.randint(self.iNum)
                 # check if j is in training dataset or in user's sequence at state i or not
                 while (u, j) in train or j in visited[:i]:
-                    j = np.random.randint(self.vNum)
+                    j = np.random.randint(self.iNum)
 
                 negative_venues.append(j)
 
@@ -196,8 +202,8 @@ class DRCF(BPR):
         return [np.array(users), np.array(checkins), np.array(positive_venues), np.array(negative_venues)], np.array(labels)
 
 
-    def init(self, df):
-        self.df = df
+    def init(self, trainSeq):
+        self.trainSeq = trainSeq
 
 
     def get_params(self):
