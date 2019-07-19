@@ -8,6 +8,7 @@ from APR import APR
 from APL import APL
 from BPR import BPR, AdversarialBPR
 from Caser import CaserModel
+from DRCF import DRCF
 from DREAM import DREAM
 from Dataset import Dataset, RawDataset, XiangnanDataset
 from FastAdversarialMF import FastAdversarialMF
@@ -26,7 +27,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="drcf")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="yelp")
@@ -174,6 +175,10 @@ if __name__ == '__main__':
 
     elif modelName == "sasrec":
         ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
+        ranker.init(trainSeq)
+
+    elif modelName == "drcf":
+        ranker = DRCF(uNum, iNum, dim, maxlen)
         ranker.init(trainSeq)
 
     elif modelName == "gru4rec":
