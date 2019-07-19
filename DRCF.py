@@ -117,8 +117,8 @@ class DRCF(BPR):
         self.mlp_dot_dynamic_user_latent = Flatten()(Reshape((1, int(layers[0] / 2)))(self.DOT_MLP_RNN(self.checkin_input)))
 
         # Dot-product of user and item embeddings
-        self.mlp_dot_vector = Dot()([Add()([self.mlp_dot_dynamic_user_latent, self.mlp_dot_user_latent]), self.mlp_dot_item_latent], axes=-1)
-        self.mlp_dot_neg_vector = Dot()([Add()([self.mlp_dot_dynamic_user_latent, self.mlp_dot_user_latent]), self.mlp_dot_item_neg_latent], axes=-1)
+        self.mlp_dot_vector = Dot(axes=-1)([Add()([self.mlp_dot_dynamic_user_latent, self.mlp_dot_user_latent]), self.mlp_dot_item_latent])
+        self.mlp_dot_neg_vector = Dot(axes=-1)([Add()([self.mlp_dot_dynamic_user_latent, self.mlp_dot_user_latent]), self.mlp_dot_item_neg_latent])
 
         # The 0-th layer is the concatenation of embedding layers
         self.mlp_vector = Concatenate()(
