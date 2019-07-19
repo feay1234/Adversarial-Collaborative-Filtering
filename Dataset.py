@@ -32,9 +32,21 @@ def getDataset(data, path):
         df = train.append(test)
         dataset = PreProcessDataset(df)
 
-    elif data == "beauty":
+    elif data in ["beauty", "steam", "video", "ml-sas"]:
         names = ["uid", "iid"]
-        df = pd.read_csv(path+"data/Beauty.txt", sep=" ", names=names, nrows=1000)
+        if data == "beauty":
+            df = pd.read_csv(path+"data/Beauty.txt", sep=" ", names=names)
+        elif data == "steam":
+            df = pd.read_csv(path+"data/Steam.txt", sep=" ", names=names)
+        elif data == "video":
+            df = pd.read_csv(path+"data/Video.txt", sep=" ", names=names)
+        else:
+            df = pd.read_csv(path+"data/ml-1m.txt", sep=" ", names=names)
+        dataset = PreProcessDataset(df, False)
+
+    elif data == "steam":
+        names = ["uid", "iid"]
+        df = pd.read_csv(path+"data/Steam.txt", sep=" ", names=names)
         dataset = PreProcessDataset(df, False)
 
     elif data == "dating":
