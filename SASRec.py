@@ -23,7 +23,8 @@ from Recommender import Recommender
 
 
 class SASRec(Recommender):
-    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2, num_heads=1,
+    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], mode=0, num_blocks=2,
+                 num_heads=1,
                  dropout_rate=0.5,
                  l2_emb=0.0, lr=0.05, reuse=None):
 
@@ -32,6 +33,7 @@ class SASRec(Recommender):
         self.uNum = usernum
         self.iNum = itemnum
         self.maxlen = maxlen
+        self.mode = mode
         # self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
         self.u = tf.placeholder(tf.int32, shape=(None))
@@ -161,34 +163,56 @@ class SASRec(Recommender):
         user, seq, pos, neg = [], [], [], []
         for u in self.trainSeq:
 
-            # Original
-            user.append(u)
-            seq.append(pad_sequences([self.trainSeq[u][:-1]], self.maxlen).squeeze())
-            pos.append(pad_sequences([self.trainSeq[u][1:]], self.maxlen).squeeze())
+            if self.mode == 0:
 
-            _neg = []
-            for n in range(self.maxlen):
-                j = np.random.randint(0, self.iNum)
-                while j in self.trainSeq[u]:
+                # Original
+                user.append(u)
+                seq.append(pad_sequences([self.trainSeq[u][:-1]], self.maxlen).squeeze())
+                pos.append(pad_sequences([self.trainSeq[u][1:]], self.maxlen).squeeze())
+
+                _neg = []
+                for n in range(self.maxlen):
                     j = np.random.randint(0, self.iNum)
-                _neg.append(j)
-            neg.append(_neg)
-            # break
+                    while j in self.trainSeq[u]:
+                        j = np.random.randint(0, self.iNum)
+                    _neg.append(j)
+                neg.append(_neg)
 
-            # old
-            # # positive instance
-            # for i in range(len(self.trainSeq[u]) - 1):
-            #     user.append(u)
-            #     seq.append(self.trainSeq[u][i:i + self.maxlen])
-            #     pos.append(self.trainSeq[u][i + 1:i + 1 + self.maxlen])
-            #
-            #     _neg = []
-            #     for n in range(self.maxlen):
-            #         j = np.random.randint(0, self.iNum)
-            #         while j in self.trainSeq[u]:
-            #             j = np.random.randint(0, self.iNum)
-            #         _neg.append(j)
-            #     neg.append(_neg)
+            elif self.mode == 1:
+
+                visited = self.trainSeq[u]
+                checkin_ = []
+                for v in visited[:-1]:
+                    checkin_.append(v)
+                    seq.extend(pad_sequences([checkin_[:]], maxlen=self.maxlen))
+                    user.append(u)
+
+                pos_checkin_ = []
+                neg_checkin_ = []
+                for v in visited[1:]:
+                    pos_checkin_.append(v)
+                    pos.extend(pad_sequences([pos_checkin_[:]], maxlen=self.maxlen))
+                    j = np.random.randint(self.iNum)
+                    # check if j is in training dataset or in user's sequence at state i or not
+                    while (u, j) in train or j in visited[:i]:
+                        j = np.random.randint(self.iNum)
+                    neg_checkin_.append(j)
+                    neg.extend(pad_sequences([neg_checkin_[:]], maxlen=self.maxlen))
+
+            elif self.mode == 2:
+
+                for i in range(len(self.trainSeq[u]) - 1):
+                    user.append(u)
+                    seq.append(self.trainSeq[u][i:i + self.maxlen])
+                    pos.append(self.trainSeq[u][i + 1:i + 1 + self.maxlen])
+
+                    _neg = []
+                    for n in range(self.maxlen):
+                        j = np.random.randint(0, self.iNum)
+                        while j in self.trainSeq[u]:
+                            j = np.random.randint(0, self.iNum)
+                        _neg.append(j)
+                    neg.append(_neg)
 
         user = np.array(user)
         seq = np.array(seq)
@@ -221,7 +245,7 @@ class SASRec(Recommender):
         return np.mean(losses)
 
     def get_params(self):
-        return "_ml%d" % (self.maxlen)
+        return "_ml%d_m%d" % (self.maxlen, self.mode)
 
 
 # -*- coding: utf-8 -*-

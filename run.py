@@ -27,10 +27,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="drcf")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="beauty")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -52,6 +52,9 @@ def parse_args():
 
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
+
+    parser.add_argument('--mode', type=int, default=1,
+                        help='mode')
 
     # parser.add_argument('--filter', type=int, default=2,
     #                     help='Filter Mode')
@@ -77,6 +80,7 @@ if __name__ == '__main__':
     epochs = args.epochs
     maxlen = args.maxlen
     pre = args.pre
+    mode = args.mode
     save_model = True if args.save_model == 1 else False
     # save_model = False
     # filterMode = args.filter
@@ -142,7 +146,7 @@ if __name__ == '__main__':
         ranker.build_graph()
 
     elif modelName == "sasrec":
-        ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
+        ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives, mode)
         ranker.init(trainSeq)
 
     elif modelName == "drcf":
