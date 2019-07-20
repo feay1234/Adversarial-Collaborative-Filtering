@@ -189,8 +189,9 @@ class SASRec(Recommender):
 
                 pos_checkin_ = []
                 neg_checkin_ = []
-                for v in visited[1:]:
-                    pos_checkin_.append(v)
+                # for v in :
+                for i in range(1, len(visited)):
+                    pos_checkin_.append(visited[i])
                     pos.extend(pad_sequences([pos_checkin_[:]], maxlen=self.maxlen))
                     j = np.random.randint(self.iNum)
                     # check if j is in training dataset or in user's sequence at state i or not
@@ -198,6 +199,7 @@ class SASRec(Recommender):
                         j = np.random.randint(self.iNum)
                     neg_checkin_.append(j)
                     neg.extend(pad_sequences([neg_checkin_[:]], maxlen=self.maxlen))
+
 
             elif self.mode == 2:
 
@@ -218,6 +220,9 @@ class SASRec(Recommender):
         seq = np.array(seq)
         pos = np.array(pos)
         neg = np.array(neg)
+
+        print(user.shape, seq.shape, pos.shape, neg.shape)
+        print(seq)
         # seq = pad_sequences(seq, self.maxlen)
         # pos = pad_sequences(pos, self.maxlen)
         # neg = pad_sequences(neg, self.maxlen)

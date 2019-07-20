@@ -59,7 +59,7 @@ def getDataset(data, path):
     elif data == "test":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t", nrows=1000)
-        dataset = RawDataset(df)
+        dataset = PreProcessDataset(df)
     elif data == "gowalla":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/gowalla.txt", names=columns, sep="\t")
