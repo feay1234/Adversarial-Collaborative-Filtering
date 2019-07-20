@@ -200,29 +200,11 @@ class SASRec(Recommender):
                     neg_checkin_.append(j)
                     neg.extend(pad_sequences([neg_checkin_[:]], maxlen=self.maxlen))
 
-
-            elif self.mode == 2:
-
-                for i in range(len(self.trainSeq[u]) - 1):
-                    user.append(u)
-                    seq.append(self.trainSeq[u][i:i + self.maxlen])
-                    pos.append(self.trainSeq[u][i + 1:i + 1 + self.maxlen])
-
-                    _neg = []
-                    for n in range(self.maxlen):
-                        j = np.random.randint(0, self.iNum)
-                        while j in self.trainSeq[u]:
-                            j = np.random.randint(0, self.iNum)
-                        _neg.append(j)
-                    neg.append(_neg)
-
         user = np.array(user)
         seq = np.array(seq)
         pos = np.array(pos)
         neg = np.array(neg)
 
-        print(user.shape, seq.shape, pos.shape, neg.shape)
-        print(seq)
         # seq = pad_sequences(seq, self.maxlen)
         # pos = pad_sequences(pos, self.maxlen)
         # neg = pad_sequences(neg, self.maxlen)
