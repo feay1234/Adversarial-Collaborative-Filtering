@@ -40,19 +40,19 @@ class BPR():
 
         pDot = Dot(axes=-1)([self.uEmb, self.pEmb])
         nDot = Dot(axes=-1)([self.uEmb, self.nEmb])
-
-        diff = Subtract()([pDot, nDot])
-
-        # lammbda_output = Lambda(bpr_triplet_loss, output_shape=(1,))
-        # self.pred = lammbda_output([pDot, nDot])
+        #
+        # diff = Subtract()([pDot, nDot])
+        #
+        lammbda_output = Lambda(bpr_triplet_loss, output_shape=(1,))
+        self.pred = lammbda_output([pDot, nDot])
 
         # Pass difference through sigmoid function.
-        self.pred = Activation("sigmoid")(diff)
+        # self.pred = Activation("sigmoid")(diff)
 
         self.model = Model(inputs=[self.userInput, self.itemPosInput, self.itemNegInput], outputs=self.pred)
 
-        self.model.compile(optimizer="adam", loss="binary_crossentropy")
-        # self.model.compile(optimizer="adam", loss=identity_loss)
+        # self.model.compile(optimizer="adam", loss="binary_crossentropy")
+        self.model.compile(optimizer="adam", loss=identity_loss)
         self.predictor = Model([self.userInput, self.itemPosInput], [pDot])
 
     def load_pre_train(self, pre):
