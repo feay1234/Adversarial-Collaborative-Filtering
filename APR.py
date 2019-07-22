@@ -70,8 +70,9 @@ class APR(BPR):
             self.output_neg, embed_p_neg, embed_q_neg = self._create_inference(self.item_input_neg)
             # self.result = tf.clip_by_value(self.output - self.output_neg, -80.0, 1e8)
             # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
-            # self.loss = tf.reduce_sum(tf.nn.softplus(-self.result))
-            self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output - self.output_neg)))
+            self.result = self.output - self.output_neg
+            self.loss = tf.reduce_sum(tf.nn.softplus(-self.result))
+            # self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output - self.output_neg)))
 
             # loss to be omptimized
             self.opt_loss = self.loss + self.reg * tf.reduce_mean(
@@ -81,9 +82,10 @@ class APR(BPR):
             self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
             self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
             # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
+            self.result_adv = self.output_adv - self.output_neg_adv
             # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
-            # self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
-            self.loss_adv = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output_adv - self.output_neg_adv)))
+            self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
+            # self.loss_adv = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output_adv - self.output_neg_adv)))
             self.opt_loss += self.reg_adv * self.loss_adv + \
                              self.reg * tf.reduce_mean(
                                  tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
