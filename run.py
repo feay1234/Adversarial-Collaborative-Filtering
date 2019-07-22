@@ -27,12 +27,12 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="test")
+                        help='Dataset name', default="brightkite")
 
-    parser.add_argument('--d', type=int, default=10,
+    parser.add_argument('--d', type=int, default=50,
                         help='Dimension')
 
     parser.add_argument('--maxlen', type=int, default=50,
