@@ -29,17 +29,11 @@ class APR(BPR):
 
     def _create_variables(self):
         with tf.name_scope("embedding"):
-            # self.embedding_P = tf.Variable(
-            #     tf.truncated_normal(shape=[self.num_users, self.embedding_size], mean=0.0, stddev=0.01),
-            #     name='embedding_P', dtype=tf.float32)  # (users, embedding_size)
-            # self.embedding_Q = tf.Variable(
-            #     tf.truncated_normal(shape=[self.num_items, self.embedding_size], mean=0.0, stddev=0.01),
-            #     name='embedding_Q', dtype=tf.float32)  # (items, embedding_size)
             self.embedding_P = tf.Variable(
-                tf.truncated_normal(shape=[self.num_users, self.embedding_size]),
+                tf.truncated_normal(shape=[self.num_users, self.embedding_size], mean=0.0, stddev=0.01),
                 name='embedding_P', dtype=tf.float32)  # (users, embedding_size)
             self.embedding_Q = tf.Variable(
-                tf.truncated_normal(shape=[self.num_items, self.embedding_size]),
+                tf.truncated_normal(shape=[self.num_items, self.embedding_size], mean=0.0, stddev=0.01),
                 name='embedding_Q', dtype=tf.float32)  # (items, embedding_size)
 
             self.delta_P = tf.Variable(tf.zeros(shape=[self.num_users, self.embedding_size]),
