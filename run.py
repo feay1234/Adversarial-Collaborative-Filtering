@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="dream")
+                        help='Model Name: lstm', default="dream-tf")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="test")

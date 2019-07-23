@@ -8,18 +8,18 @@ import tensorflow as tf
 import math
 
 class DREAM(Recommender):
-    def __init__(self, uNum, vNum, latent_dim, maxVenue):
+    def __init__(self, uNum, iNum, latent_dim, maxlen):
 
         self.uNum = uNum
-        self.vNum = vNum
+        self.iNum = iNum
         self.latent_dim = latent_dim
-        self.maxVenue = maxVenue
+        self.maxlen = maxlen
 
         self.positive_input = Input((1,), name='positive_input')
         self.negative_input = Input((1,), name='negative_input')
-        self.user_checkin_sequence = Input((maxVenue,), name='user_checkin_sequence')
+        self.user_checkin_sequence = Input((maxlen,), name='user_checkin_sequence')
 
-        self.venue_embedding = Embedding(vNum + 1, self.latent_dim, mask_zero=True,
+        self.venue_embedding = Embedding(iNum + 1, self.latent_dim, mask_zero=True,
                                          name="venue_embedding")
 
         self.rnn = SimpleRNN(self.latent_dim, unroll=True, name="rnn_layer")
@@ -53,17 +53,17 @@ class DREAM(Recommender):
             checkin_ = []
             for v in visited[:-1]:
                 checkin_.append(v)
-                checkins.extend(sequence.pad_sequences([checkin_[:]], maxlen=self.maxVenue))
+                checkins.extend(sequence.pad_sequences([checkin_[:]], maxlen=self.maxlen))
 
             # start from the second venue in user's checkin sequence.
             visited = visited[1:]
             for i in range(len(visited)):
                 positive_venues.append(visited[i])
 
-                j = np.random.randint(self.vNum)
+                j = np.random.randint(self.iNum)
                 # check if j is in training dataset or in user's sequence at state i or not
                 while (u, j) in train or j in visited[:i]:
-                    j = np.random.randint(self.vNum)
+                    j = np.random.randint(self.iNum)
 
                 negative_venues.append(j)
                 labels.append(1)
@@ -72,7 +72,7 @@ class DREAM(Recommender):
 
     def rank(self, users, items):
         checkins = [self.df[self.df.uid == users[0]].iid.tolist()] * len(items)
-        checkins = sequence.pad_sequences(checkins, maxlen=self.maxVenue)
+        checkins = sequence.pad_sequences(checkins, maxlen=self.maxlen)
         return self.predictor.predict([checkins, items], batch_size=100, verbose=0)
 
     def load_pre_train(self, pre):
@@ -109,17 +109,20 @@ class DREAM_TF(DREAM):
         self.rnn = tf.contrib.rnn.BasicRNNCell(self.dim)
 
         # embedding look up
-        seq_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding, self.seq_input), 1)
-        seq_emb = tf.reshape(seq_emb, [-1, self.maxlen, self.dim])
+        seq_emb = tf.nn.embedding_lookup(self.embedding, self.seq_input)
         pos_item_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding, self.item_input_pos), 1)
         neg_item_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding, self.item_input_neg), 1)
 
         outputs, states = tf.nn.dynamic_rnn(self.rnn, seq_emb, dtype=tf.float32)
 
-        final_output = outputs[-1]
+        final_output = outputs[:, -1, :]
 
-        pos_score = tf.matmul(final_output , pos_item_emb , transpose_b=True)
-        neg_score = tf.matmul(final_output , neg_item_emb , transpose_b=True)
+        # pos_score = tf.matmul(final_output , pos_item_emb , transpose_b=False)
+        # neg_score = tf.matmul(final_output , neg_item_emb , transpose_b=False)
+        h = tf.constant(1.0, tf.float32, [self.dim, 1], name="h")
+
+        pos_score = tf.matmul(final_output * pos_item_emb, h)
+        neg_score = tf.matmul(final_output * neg_item_emb, h)
 
         self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(pos_score-neg_score)))
         self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss)
@@ -135,11 +138,11 @@ class DREAM_TF(DREAM):
     def rank(self, users, items):
         items = np.expand_dims(items, -1)
         checkins = [self.df[self.df.uid == users[0]].iid.tolist()] * len(items)
-        checkins = sequence.pad_sequences(checkins, maxlen=self.maxVenue)
-        checkins = np.expand_dims(checkins, -1)
+        checkins = sequence.pad_sequences(checkins, maxlen=self.maxlen)
 
         feed_dict = {self.seq_input: checkins, self.item_input_pos: items}
-        return self.sess.run(self.predictor, feed_dict)
+        pred = self.sess.run(self.predictor, feed_dict)
+        return pred
 
 
     def train(self, x_train, y_train, batch_size):
@@ -149,7 +152,6 @@ class DREAM_TF(DREAM):
             _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
             _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
 
-            _s = np.expand_dims(_s, -1)
             _p = np.expand_dims(_p, -1)
             _n = np.expand_dims(_n, -1)
 
