@@ -29,11 +29,17 @@ class APR(BPR):
 
     def _create_variables(self):
         with tf.name_scope("embedding"):
+            # self.embedding_P = tf.Variable(
+            #     tf.truncated_normal(shape=[self.num_users, self.embedding_size], mean=0.0, stddev=0.01),
+            #     name='embedding_P', dtype=tf.float32)  # (users, embedding_size)
+            # self.embedding_Q = tf.Variable(
+            #     tf.truncated_normal(shape=[self.num_items, self.embedding_size], mean=0.0, stddev=0.01),
+            #     name='embedding_Q', dtype=tf.float32)  # (items, embedding_size)
             self.embedding_P = tf.Variable(
-                tf.truncated_normal(shape=[self.num_users, self.embedding_size], mean=0.0, stddev=0.01),
+                tf.truncated_normal(shape=[self.num_users, self.embedding_size]),
                 name='embedding_P', dtype=tf.float32)  # (users, embedding_size)
             self.embedding_Q = tf.Variable(
-                tf.truncated_normal(shape=[self.num_items, self.embedding_size], mean=0.0, stddev=0.01),
+                tf.truncated_normal(shape=[self.num_items, self.embedding_size]),
                 name='embedding_Q', dtype=tf.float32)  # (items, embedding_size)
 
             self.delta_P = tf.Variable(tf.zeros(shape=[self.num_users, self.embedding_size]),
@@ -70,13 +76,15 @@ class APR(BPR):
             # loss for L(Theta)
             self.output, embed_p_pos, embed_q_pos = self._create_inference(self.item_input_pos)
             self.output_neg, embed_p_neg, embed_q_neg = self._create_inference(self.item_input_neg)
+            # original
             # self.result = tf.clip_by_value(self.output - self.output_neg, -80.0, 1e8)
             # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
             # self.result = self.output - self.output_neg
             # self.loss = tf.reduce_sum(tf.nn.softplus(-self.result))
-            self.loss = tf.reduce_sum(-tf.log(tf.nn.sigmoid(self.output - self.output_neg)))
+            # modified version
+            self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output - self.output_neg)))
 
-            # loss to be omptimized
+            # loss to be optimized
             self.opt_loss = self.loss + self.reg * tf.reduce_mean(
                 tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
 
@@ -84,10 +92,12 @@ class APR(BPR):
                 # loss for L(Theta + adv_Delta)
                 self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
                 self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
+                # original
                 # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
-                self.result_adv = self.output_adv - self.output_neg_adv
+                # self.result_adv = self.output_adv - self.output_neg_adv
                 # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
                 # self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
+                # modified version
                 self.loss_adv = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output_adv - self.output_neg_adv)))
                 self.opt_loss += self.reg_adv * self.loss_adv + \
                                  self.reg * tf.reduce_mean(
@@ -121,7 +131,9 @@ class APR(BPR):
 
     def _create_optimizer(self):
         with tf.name_scope("optimizer"):
+            # original
             # self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
+            # fair comparison
             self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.opt_loss)
 
     def build_graph(self):
