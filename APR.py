@@ -153,6 +153,7 @@ class APR(BPR):
         # self.sess.run([assign_P, assign_Q])
         # with tf.Session() as self.sess:
 
+        # Tensorflow
         ckpt = tf.train.get_checkpoint_state(os.path.dirname(path+"/checkpoint"))
         self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
 
