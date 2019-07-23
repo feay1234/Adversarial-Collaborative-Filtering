@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from keras.engine.saving import load_model
 from BPR import BPR
+import os
 
 
 class APR(BPR):
@@ -136,16 +137,23 @@ class APR(BPR):
         self._create_loss()
         self._create_optimizer()
         self._create_adversarial()
+
+        self.saver_ckpt = tf.train.Saver({'embedding_P': self.embedding_P, 'embedding_Q': self.embedding_Q})
         # start session
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
-    def load_pre_train(self, path):
-        pretrainModel = load_model(path)
 
-        assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
-        assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
-        self.sess.run([assign_P, assign_Q])
+
+    def load_pre_train(self, path):
+        # Keras
+        # pretrainModel = load_model(path)
+        # assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        # assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        # self.sess.run([assign_P, assign_Q])
+
+        ckpt = tf.train.get_checkpoint_state(path)
+        self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
 
     def rank(self, users, items):
         users = np.expand_dims(users, -1)
@@ -154,7 +162,9 @@ class APR(BPR):
         return self.sess.run(self.output, feed_dict)
 
     def save(self, path):
-        pass
+        if not os.path.exists(path):
+            os.makedirs(path)
+        self.saver_ckpt.save(self.sess, path+"/weights")
 
     def train(self, x_train, y_train, batch_size):
         losses = []

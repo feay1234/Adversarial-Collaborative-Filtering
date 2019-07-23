@@ -30,7 +30,7 @@ def parse_args():
                         help='Model Name: lstm', default="bpr-he")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument('--maxlen', type=int, default=50,
                         help='Maxlen')
 
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
