@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr")
+                        help='Model Name: lstm', default="bpr-he")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="ml-1m")
@@ -146,7 +146,7 @@ if __name__ == '__main__':
         ranker.build_graph()
 
     elif modelName == "bpr-he":
-        ranker = APR(uNum, iNum, dim)
+        ranker = APR(uNum, iNum, dim, False)
         ranker.build_graph()
 
     elif modelName == "sasrec":
