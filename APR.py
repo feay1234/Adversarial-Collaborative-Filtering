@@ -137,11 +137,11 @@ class APR(BPR):
         self._create_loss()
         self._create_optimizer()
         self._create_adversarial()
-
         self.saver_ckpt = tf.train.Saver({'embedding_P': self.embedding_P, 'embedding_Q': self.embedding_Q})
         # start session
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
+
 
 
 
@@ -151,8 +151,9 @@ class APR(BPR):
         # assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
         # assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
         # self.sess.run([assign_P, assign_Q])
+        # with tf.Session() as self.sess:
 
-        ckpt = tf.train.get_checkpoint_state(path)
+        ckpt = tf.train.get_checkpoint_state(os.path.dirname(path+"/checkpoint"))
         self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
 
     def rank(self, users, items):
