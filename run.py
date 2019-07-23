@@ -27,10 +27,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -142,6 +142,10 @@ if __name__ == '__main__':
 
     elif modelName == "apr":
         # get APR's default params
+        ranker = APR(uNum, iNum, dim)
+        ranker.build_graph()
+
+    elif modelName == "bpr-he":
         ranker = APR(uNum, iNum, dim)
         ranker.build_graph()
 

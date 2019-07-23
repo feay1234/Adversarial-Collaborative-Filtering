@@ -5,7 +5,7 @@ from keras.engine.saving import load_model
 from BPR import BPR
 
 class APR(BPR):
-    def __init__(self, num_users, num_items, dim):
+    def __init__(self, num_users, num_items, dim, adver=True):
         self.num_items = num_items
         self.num_users = num_users
         self.embedding_size = dim
@@ -14,6 +14,7 @@ class APR(BPR):
         self.adv = "grad"
         self.eps = 0.5
         self.reg_adv = 1
+        self.adver = adver
 
         self.uNum = num_users
         self.iNum = num_items
@@ -78,17 +79,19 @@ class APR(BPR):
             self.opt_loss = self.loss + self.reg * tf.reduce_mean(
                 tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
 
-            # loss for L(Theta + adv_Delta)
-            self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
-            self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
-            # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
-            self.result_adv = self.output_adv - self.output_neg_adv
-            # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
-            self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
-            # self.loss_adv = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output_adv - self.output_neg_adv)))
-            self.opt_loss += self.reg_adv * self.loss_adv + \
-                             self.reg * tf.reduce_mean(
-                                 tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
+            if self.adver:
+
+                # loss for L(Theta + adv_Delta)
+                self.output_adv, embed_p_pos, embed_q_pos = self._create_inference_adv(self.item_input_pos)
+                self.output_neg_adv, embed_p_neg, embed_q_neg = self._create_inference_adv(self.item_input_neg)
+                # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
+                self.result_adv = self.output_adv - self.output_neg_adv
+                # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
+                self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
+                # self.loss_adv = tf.reduce_mean(-tf.log(tf.nn.sigmoid(self.output_adv - self.output_neg_adv)))
+                self.opt_loss += self.reg_adv * self.loss_adv + \
+                                 self.reg * tf.reduce_mean(
+                                     tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
 
     def _create_adversarial(self):
         with tf.name_scope("adversarial"):
@@ -162,9 +165,12 @@ class APR(BPR):
                          self.item_input_neg: _n}
 
             # generate noise
-            self.sess.run([self.update_P, self.update_Q], feed_dict)
+            if self.adver:
+                self.sess.run([self.update_P, self.update_Q], feed_dict)
+
             # train main model
-            loss, _ = self.sess.run([self.loss_adv, self.optimizer], feed_dict)
+            # loss, _ = self.sess.run([self.loss_adv, self.optimizer], feed_dict)
+            loss = self.sess.run(self.optimizer, feed_dict)
 
             losses.append(loss)
 
