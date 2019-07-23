@@ -5,7 +5,7 @@ from keras.layers import Embedding, Input, SimpleRNN, Dot, Subtract, Activation
 from keras.preprocessing import sequence
 from Recommender import Recommender
 import tensorflow as tf
-
+import math
 
 class DREAM(Recommender):
     def __init__(self, uNum, vNum, latent_dim, maxVenue):
@@ -126,22 +126,45 @@ class DREAM_TF(DREAM):
 
         # predict_user_embed = tf.nn.embedding_lookup(user_embedding , self.X_predict)
         # self.predict = tf.matmul(predict_user_embed , item_embedding , transpose_b=True)
+        self.predictor = pos_score
 
 
         self.sess = tf.Session() #create session
         self.sess.run(tf.global_variables_initializer())
 
+    def rank(self, users, items):
+        items = np.expand_dims(items, -1)
+        checkins = [self.df[self.df.uid == users[0]].iid.tolist()] * len(items)
+        checkins = sequence.pad_sequences(checkins, maxlen=self.maxVenue)
+        checkins = np.expand_dims(checkins, -1)
 
-        x = np.random.randint(0,4, (10,1))
-        s = np.random.randint(0,4, (10, 5))
+        feed_dict = {self.seq_input: checkins, self.item_input_pos: items}
+        return self.sess.run(self.predictor, feed_dict)
 
 
-        _, loss = self.sess.run([self.optimizer, self.loss],
-                                feed_dict={self.seq_input: s, self.item_input_pos: x, self.item_input_neg: x}
-                        )
+    def train(self, x_train, y_train, batch_size):
+        losses = []
+        for i in range(np.math.ceil(len(y_train) / batch_size)):
+            _s = x_train[0][i * batch_size:(i * batch_size) + batch_size]
+            _p = x_train[1][i * batch_size:(i * batch_size) + batch_size]
+            _n = x_train[2][i * batch_size:(i * batch_size) + batch_size]
+
+            _s = np.expand_dims(_s, -1)
+            _p = np.expand_dims(_p, -1)
+            _n = np.expand_dims(_n, -1)
+
+            feed_dict = {self.seq_input: _s,
+                         self.item_input_pos: _p,
+                         self.item_input_neg: _n}
+
+            _, loss = self.sess.run([self.optimizer, self.loss], feed_dict)
+
+            losses.append(loss)
+
+        return np.mean(losses)
 
 
-ddd = DREAM_TF(4,4,10,5)
+
 #
 # ## Define the shape of the tensor
 # X = tf.placeholder(tf.float32, [None, 5])

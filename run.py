@@ -9,7 +9,7 @@ from APL import APL
 from BPR import BPR, AdversarialBPR
 from Caser import CaserModel
 from DRCF import DRCF
-from DREAM import DREAM
+from DREAM import DREAM, DREAM_TF
 from Dataset import Dataset, RawDataset, getDataset
 from FastAdversarialMF import FastAdversarialMF
 from GRU4Rec import GRU4Rec
@@ -27,10 +27,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="dream")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="beauty")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -164,6 +164,11 @@ if __name__ == '__main__':
     elif modelName == "dream":
         ranker = DREAM(uNum, iNum, dim, maxlen)
         ranker.init(df)
+
+    elif modelName == "dream-tf":
+        ranker = DREAM_TF(uNum, iNum, dim, maxlen)
+        ranker.init(df)
+
     elif modelName == "caser":
         set_seed(2019, cuda=False)
         ranker = CaserModel(uNum, iNum, dim, maxlen, True)
