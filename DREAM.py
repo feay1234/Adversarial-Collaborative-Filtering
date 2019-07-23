@@ -4,10 +4,10 @@ from keras.models import Model
 from keras.layers import Embedding, Input, SimpleRNN, Dot, Subtract, Activation
 from keras.preprocessing import sequence
 from Recommender import Recommender
+import tensorflow as tf
 
 
 class DREAM(Recommender):
-
     def __init__(self, uNum, vNum, latent_dim, maxVenue):
 
         self.uNum = uNum
@@ -28,7 +28,6 @@ class DREAM(Recommender):
         self.negative_venue_embedding = self.venue_embedding(self.negative_input)
         self.hidden_layer = self.rnn(self.venue_embedding(self.user_checkin_sequence))
 
-
         pDot = Dot(axes=-1)([self.hidden_layer, self.positive_venue_embedding])
         nDot = Dot(axes=-1)([self.hidden_layer, self.negative_venue_embedding])
 
@@ -37,11 +36,11 @@ class DREAM(Recommender):
         # Pass difference through sigmoid function.
         self.pred = Activation("sigmoid")(diff)
 
-        self.model = Model(inputs=[self.user_checkin_sequence, self.positive_input, self.negative_input], outputs=self.pred)
+        self.model = Model(inputs=[self.user_checkin_sequence, self.positive_input, self.negative_input],
+                           outputs=self.pred)
 
         self.model.compile(optimizer="adam", loss="binary_crossentropy")
         self.predictor = Model([self.user_checkin_sequence, self.positive_input], [pDot])
-
 
     def init(self, df):
         self.df = df
@@ -90,3 +89,70 @@ class DREAM(Recommender):
 
     def get_params(self):
         return ""
+
+
+class DREAM_TF(DREAM):
+    def __init__(self, uNum, iNum, latent_dim, maxlen):
+        self.uNum = uNum
+        self.iNum = iNum
+        self.dim = latent_dim
+        self.maxlen = maxlen
+
+        self.seq_input = tf.placeholder(tf.int32, shape=[None, self.maxlen], name="seq_input")
+        self.item_input_pos = tf.placeholder(tf.int32, shape=[None, 1], name="item_input_pos")
+        self.item_input_neg = tf.placeholder(tf.int32, shape=[None, 1], name="item_input_neg")
+
+        self.embedding = tf.Variable(
+            tf.truncated_normal(shape=[self.iNum, self.dim], mean=0.0, stddev=0.01),
+            name='embedding', dtype=tf.float32)  # (items, embedding_size)
+
+        self.rnn = tf.contrib.rnn.BasicRNNCell(self.dim)
+
+        # embedding look up
+        seq_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding, self.seq_input), 1)
+        seq_emb = tf.reshape(seq_emb, [-1, self.maxlen, self.dim])
+        pos_item_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding, self.item_input_pos), 1)
+        neg_item_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding, self.item_input_neg), 1)
+
+        outputs, states = tf.nn.dynamic_rnn(self.rnn, seq_emb, dtype=tf.float32)
+
+        final_output = outputs[-1]
+
+        pos_score = tf.matmul(final_output , pos_item_emb , transpose_b=True)
+        neg_score = tf.matmul(final_output , neg_item_emb , transpose_b=True)
+
+        self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(pos_score-neg_score)))
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss)
+
+        # predict_user_embed = tf.nn.embedding_lookup(user_embedding , self.X_predict)
+        # self.predict = tf.matmul(predict_user_embed , item_embedding , transpose_b=True)
+
+
+        self.sess = tf.Session() #create session
+        self.sess.run(tf.global_variables_initializer())
+
+
+        x = np.random.randint(0,4, (10,1))
+        s = np.random.randint(0,4, (10, 5))
+
+
+        _, loss = self.sess.run([self.optimizer, self.loss],
+                                feed_dict={self.seq_input: s, self.item_input_pos: x, self.item_input_neg: x}
+                        )
+
+
+ddd = DREAM_TF(4,4,10,5)
+#
+# ## Define the shape of the tensor
+# X = tf.placeholder(tf.float32, [None, 5])
+# X_batch = np.random.rand(2,5)
+# ## Define the network
+# basic_cell = tf.contrib.rnn.BasicRNNCell(num_units=10)
+# outputs, states = tf.nn.dynamic_rnn(basic_cell, X, dtype=tf.float32)
+# init = tf.global_variables_initializer()
+# init = tf.global_variables_initializer()
+# with tf.Session() as sess:
+#     init.run()
+#     outputs_val = outputs.eval(feed_dict={X: X_batch})
+# print(outputs_val)
+#
