@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="dream-tf")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     # save_model = False
     # filterMode = args.filter
 
-    # pre = "test_bpr-he_d10.best.h5"
+    pre = "test_bpr-he_d10.best.h5"
 
     # num_negatives = 1
     topK = 10
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     # TODO only support BPR-based models
     if pre != "":
         ranker.load_pre_train(path + "h5/" + pre)
-        runName = "%s_%s_%s_d%d_%s" % (data, modelName, pre.split("_")[1], dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        runName = "%s_%s_%s.%s_d%d_%s" % (data, modelName, pre.split("_")[1], pre.split(".")[1], dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     write2file(path + "out/" + runName + ".out", stat)
     write2file(path + "out/" + runName + ".out", runName)
@@ -196,6 +196,7 @@ if __name__ == '__main__':
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + runName + ".out", output)
+
 
     start = time()
     # Training model

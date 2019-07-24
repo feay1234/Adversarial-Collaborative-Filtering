@@ -147,16 +147,16 @@ class APR(BPR):
 
 
     def load_pre_train(self, path):
-        # Keras
-        # pretrainModel = load_model(path)
-        # assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
-        # assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
-        # self.sess.run([assign_P, assign_Q])
-        # with tf.Session() as self.sess:
-
         # Tensorflow
-        ckpt = tf.train.get_checkpoint_state(os.path.dirname(path+"/checkpoint"))
-        self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+        if "-he" in path:
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(path+"/checkpoint"))
+            self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+        # Keras
+        else:
+            pretrainModel = load_model(path)
+            assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+            assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+            self.sess.run([assign_P, assign_Q])
 
     def rank(self, users, items):
         users = np.expand_dims(users, -1)
