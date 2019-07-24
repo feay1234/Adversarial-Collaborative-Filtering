@@ -266,14 +266,19 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             train_time = time() - train_begin
 
             if epoch_count % args.verbose == 0:
-                _, ndcg, cur_res, max_ndcg = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
-                                                   epoch_count, batch_time, train_time, prev_acc, runName, max_ndcg, output_adv=0)
+                _, ndcg, cur_res, raw_result = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
+                                                   epoch_count, batch_time, train_time, prev_acc, runName, output_adv=0)
 
             # print and log the best result
             if max_ndcg < ndcg:
                 max_ndcg = ndcg
                 best_res['result'] = cur_res
                 best_res['epoch'] = epoch_count
+
+                _hrs = raw_result[:, 0, -1]
+                _ndcgs = raw_result[:, 1, -1]
+                prediction2file(args.path + "out/" + runName + ".hr", _hrs)
+                prediction2file(args.path + "out/" + runName + ".ndcg", _ndcgs)
 
             if model.epochs == epoch_count:
                 output = "Epoch %d is the best epoch" % best_res['epoch']
@@ -289,7 +294,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
         saver_ckpt.save(sess, ckpt_save_path + 'weights', global_step=epoch_count)
 
 
-def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, max_ndcg, output_adv):
+def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, output_adv):
     loss_begin = time()
     train_loss, post_acc = training_loss_acc(model, sess, train_batches, output_adv)
     loss_time = time() - loss_begin
@@ -308,14 +313,7 @@ def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_
 
     write2file(args.path + "out/" + runName + ".out", res)
 
-    if max_ndcg < ndcg:
-        max_ndcg = ndcg
-        _hrs = raw_result[:,0, -1]
-        _ndcgs = raw_result[:,1, -1]
-        prediction2file(args.path + "out/" + runName + ".hr", _hrs)
-        prediction2file(args.path + "out/" + runName + ".ndcg", _ndcgs)
-
-    return post_acc, ndcg, result, max_ndcg
+    return post_acc, ndcg, result, raw_result
 
 
 # input: batch_index (shuffled), model, sess, batches
@@ -485,15 +483,18 @@ def parse_args():
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="bpr")
+                        help='Model Name', default="apr")
     parser.add_argument('--dataset', nargs='?', default='brightkite',
                         help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=2,
                         help='Number of epochs.')
+    parser.add_argument('--adv_epoch', type=int, default=1,
+                        help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
+                             'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
     parser.add_argument('--embed_size', type=int, default=64,
                         help='Embedding size.')
     parser.add_argument('--dns', type=int, default=1,
@@ -510,9 +511,6 @@ def parse_args():
                         help='Save the model per X epochs.')
     parser.add_argument('--task', nargs='?', default='',
                         help='Add the task name for launching experiments')
-    parser.add_argument('--adv_epoch', type=int, default=5,
-                        help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
-                             'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
     parser.add_argument('--adv', nargs='?', default='grad',
                         help='Generate the adversarial sample by gradient method or random method')
     parser.add_argument('--eps', type=float, default=0.5,
