@@ -16,21 +16,26 @@ def getDataset(data, path):
 
     # if data in ["ml-1m", "yelp", "pinterest-20"]:
     if data in ["brightkite", "fsq11", "yelp"]:
-        dataset = Dataset(path + "data/" + data)
+        dataset = Dataset(path + "data/" + data, 1)
 
     elif data == "ml-1m":
-        names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/ml-1m.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
-        df = train.append(test)
-        dataset = PreProcessDataset(df)
+        dataset = Dataset(path + "data/ml-1m", 0)
+        # names = ["uid", "iid", "rating", "timestamp"]
+        # train = pd.read_csv(path+"data/ml-1m.train.rating", sep="\t", names=names)
+        # test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
+        # df = train.append(test)
+        # dataset = PreProcessDataset(df)
 
     elif data == "yelp-he":
-        names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
-        df = train.append(test)
-        dataset = PreProcessDataset(df)
+        dataset = Dataset(path + "data/yelp", 0)
+        # names = ["uid", "iid", "rating", "timestamp"]
+        # train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
+        # test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
+        # df = train.append(test)
+        # dataset = PreProcessDataset(df)
+
+    elif data == "pinterest-20":
+        dataset = Dataset(path + "data/pinterest-20", 0)
 
     elif data in ["beauty", "steam", "video", "ml-sas"]:
         names = ["uid", "iid"]
@@ -72,16 +77,18 @@ class Dataset(object):
     classdocs
     '''
 
-    def __init__(self, path):
+    def __init__(self, path, mode=0):
         '''
         Constructor
         '''
-        # self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + ".train.rating")
-        # self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
-        # self.testNegatives = self.load_negative_file(path + ".test.negative")
-        self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + "Train")
-        self.testRatings = self.load_rating_file_as_list(path + "Test")
-        self.testNegatives = self.load_negative_file(path + "TestNegative")
+        if mode == 0:
+            self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + ".train.rating")
+            self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
+            self.testNegatives = self.load_negative_file(path + ".test.negative")
+        else:
+            self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + "Train")
+            self.testRatings = self.load_rating_file_as_list(path + "Test")
+            self.testNegatives = self.load_negative_file(path + "TestNegative")
         assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
@@ -107,7 +114,8 @@ class Dataset(object):
                 for x in arr[1:]:
                     negatives.append(int(x))
                 # print(len(negatives))
-                negativeList.append(negatives[:100])
+                # negativeList.append(negatives[:100])
+                negativeList.append(negatives)
                 line = f.readline()
         return negativeList
 
