@@ -9,7 +9,7 @@ import logging
 from time import time
 from time import strftime
 from time import localtime
-from Dataset import Dataset
+from Dataset import HeDataset
 from utils import write2file
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -520,7 +520,12 @@ if __name__ == '__main__':
     args = parse_args()
 
     # initialize dataset
-    dataset = Dataset(args.path + args.dataset)
+    if args.dataset in ["brightkite", "fsq11", "yelp"]:
+        dataset = HeDataset(args.path + "data/" + args.dataset, mode=1)
+    elif args.dataset in ["ml-1m", "pinterest-20"]:
+        dataset = HeDataset(args.path + "data/" + args.dataset)
+    elif args.dataset == "yelp-he":
+        dataset = HeDataset(args.path + "data/yelp")
 
     runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
 
