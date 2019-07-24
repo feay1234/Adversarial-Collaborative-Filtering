@@ -538,7 +538,7 @@ if __name__ == '__main__':
         write2file(args.path + "out/" + runName + ".out", "Initialize MF_BPR")
 
         # start training
-        training(MF_BPR, dataset, args, runName, epoch_start=0, epoch_end=args.adv_epoch - 1, time_stamp=time_stamp)
+        training(MF_BPR, dataset, args, runName, epoch_start=0, epoch_end=args.epochs, time_stamp=time_stamp)
 
     elif args.model == "apr":
 
