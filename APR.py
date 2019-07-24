@@ -128,9 +128,9 @@ class APR(BPR):
     def _create_optimizer(self):
         with tf.name_scope("optimizer"):
             # original
-            # self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
+            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.learning_rate).minimize(self.opt_loss)
             # fair comparison
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.opt_loss)
+            # self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.opt_loss)
 
     def build_graph(self):
         self._create_placeholders()

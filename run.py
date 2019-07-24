@@ -30,7 +30,7 @@ def parse_args():
                         help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="yelp-he")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # pre = "test_bpr-he_d10.last.h5"
 
     # num_negatives = 1
-    topK = 100
+    topK = 10
     evaluation_threads = 1
 
     columns = ["uid", "iid", "rating", "timestamp"]
