@@ -10,7 +10,7 @@ from time import time
 from time import strftime
 from time import localtime
 from Dataset import HeDataset
-from utils import write2file
+from utils import write2file, prediction2file
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 _user_input = None
@@ -266,8 +266,8 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             train_time = time() - train_begin
 
             if epoch_count % args.verbose == 0:
-                _, ndcg, cur_res = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
-                                                   epoch_count, batch_time, train_time, prev_acc, runName, output_adv=0)
+                _, ndcg, cur_res, max_ndcg = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
+                                                   epoch_count, batch_time, train_time, prev_acc, runName, max_ndcg, output_adv=0)
 
             # print and log the best result
             if max_ndcg < ndcg:
@@ -289,13 +289,13 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
         saver_ckpt.save(sess, ckpt_save_path + 'weights', global_step=epoch_count)
 
 
-def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, output_adv):
+def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, max_ndcg, output_adv):
     loss_begin = time()
     train_loss, post_acc = training_loss_acc(model, sess, train_batches, output_adv)
     loss_time = time() - loss_begin
 
     eval_begin = time()
-    result = evaluate(model, sess, dataset, eval_feed_dicts, output_adv)
+    result, raw_result = evaluate(model, sess, dataset, eval_feed_dicts, output_adv)
     eval_time = time() - eval_begin
 
     # check embedding
@@ -308,7 +308,14 @@ def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_
 
     write2file(args.path + "out/" + runName + ".out", res)
 
-    return post_acc, ndcg, result
+    if max_ndcg < ndcg:
+        max_ndcg = ndcg
+        _hrs = raw_result[:,0, -1]
+        _ndcgs = raw_result[:,1, -1]
+        prediction2file(args.path + "out/" + runName + ".hr", _hrs)
+        prediction2file(args.path + "out/" + runName + ".ndcg", _ndcgs)
+
+    return post_acc, ndcg, result, max_ndcg
 
 
 # input: batch_index (shuffled), model, sess, batches
@@ -434,7 +441,7 @@ def evaluate(model, sess, dataset, feed_dicts, output_adv):
     res = np.array(res)
     hr, ndcg, auc = (res.mean(axis=0)).tolist()
 
-    return hr, ndcg, auc
+    return (hr, ndcg, auc), res
 
 
 def _eval_by_user(user):
@@ -528,6 +535,7 @@ if __name__ == '__main__':
         dataset = HeDataset(args.path + "data/yelp")
 
     runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
+    write2file(args.path + "out/" + runName + ".out", runName)
 
     if args.model == "bpr":
         args.adver = 0
