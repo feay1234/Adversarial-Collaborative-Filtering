@@ -27,10 +27,10 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     # save_model = False
     # filterMode = args.filter
 
-    pre = "test_bpr-he_d10.best.h5"
+    pre = "test_bpr_d10.best.h5"
 
     # num_negatives = 1
     topK = 10

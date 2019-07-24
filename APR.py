@@ -2,7 +2,7 @@ import math
 import numpy as np
 import tensorflow as tf
 from keras.engine.saving import load_model
-from BPR import BPR
+from BPR import BPR, identity_loss
 import os
 
 
@@ -153,7 +153,8 @@ class APR(BPR):
             self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
         # Keras
         else:
-            pretrainModel = load_model(path)
+            # pretrainModel = load_model(path)
+            pretrainModel = load_model(path, custom_objects={'identity_loss': identity_loss})
             assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
             assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
             self.sess.run([assign_P, assign_Q])
