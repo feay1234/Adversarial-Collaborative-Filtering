@@ -30,12 +30,12 @@ def parse_args():
                         help='Model Name: lstm', default="dream-tf")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="test")
+                        help='Dataset name', default="brightkite")
 
-    parser.add_argument('--d', type=int, default=64,
+    parser.add_argument('--d', type=int, default=10,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=50,
+    parser.add_argument('--maxlen', type=int, default=5,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=10,
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     # TODO only support BPR-based models
     if pre != "":
         ranker.load_pre_train(path + "h5/" + pre)
-        runName = "%s_%s_pre_d%d_%s" % (data, modelName, dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        runName = "%s_%s_%s_d%d_%s" % (data, modelName, pre.split("_")[1], dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
     write2file(path + "out/" + runName + ".out", stat)
     write2file(path + "out/" + runName + ".out", runName)

@@ -125,7 +125,7 @@ class DREAM_TF(DREAM):
         neg_score = tf.matmul(final_output * neg_item_emb, h)
 
         self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(pos_score-neg_score)))
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss)
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss)
 
         # predict_user_embed = tf.nn.embedding_lookup(user_embedding , self.X_predict)
         # self.predict = tf.matmul(predict_user_embed , item_embedding , transpose_b=True)
