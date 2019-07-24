@@ -232,7 +232,6 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
-                print("here")
         # initialize the weights
         else:
             # logging.info("Initialized from scratch")
@@ -508,7 +507,7 @@ def parse_args():
                         help='Regularization for adversarial loss')
     parser.add_argument('--restore', type=str, default=None,
                         help='The restore time_stamp for weights in \Pretrain')
-    parser.add_argument('--ckpt', type=int, default=10,
+    parser.add_argument('--ckpt', type=int, default=1,
                         help='Save the model per X epochs.')
     parser.add_argument('--task', nargs='?', default='',
                         help='Add the task name for launching experiments')
