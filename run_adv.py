@@ -232,6 +232,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
+                print("here")
         # initialize the weights
         else:
             # logging.info("Initialized from scratch")
