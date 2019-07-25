@@ -532,10 +532,10 @@ if __name__ == '__main__':
     elif args.dataset == "yelp-he":
         dataset = HeDataset(args.path + "data/yelp")
 
-    runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
-    write2file(args.path + "out/" + runName + ".out", runName)
 
     if args.model == "bpr":
+        runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
+        write2file(args.path + "out/" + runName + ".out", runName)
         args.adver = 0
         # initialize MF_BPR models
         MF_BPR = MF(dataset.num_users, dataset.num_items, args)
@@ -547,6 +547,8 @@ if __name__ == '__main__':
         training(MF_BPR, dataset, args, runName, epoch_start=0, epoch_end=args.epochs, time_stamp=time_stamp)
 
     elif args.model == "apr":
+        runName = "%s_%s_d%d_e%f_l%f_%s" % (args.dataset, args.model, args.embed_size, args.eps, args.reg_adv, time_stamp)
+        write2file(args.path + "out/" + runName + ".out", runName)
 
         args.adver = 0
         # initialize MF_BPR models
