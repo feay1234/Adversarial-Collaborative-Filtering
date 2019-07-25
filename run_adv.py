@@ -429,7 +429,7 @@ def evaluate(model, sess, dataset, feed_dicts, output_adv):
     _dataset = dataset
     _model = model
     _sess = sess
-    _K = 10
+    _K = 100
     _feed_dicts = feed_dicts
     _output = output_adv
 
@@ -569,3 +569,4 @@ if __name__ == '__main__':
 
         # start training
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
+
