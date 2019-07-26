@@ -25,7 +25,7 @@ from Recommender import Recommender
 class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], mode=0, num_blocks=2,
                  num_heads=1,
-                 dropout_rate=0.5,
+                 dropout_rate=0.2,
                  l2_emb=0.0, lr=0.05, reuse=None):
 
         testNegNum = len(testNegatives[0]) + 1  # plus positive one
@@ -172,9 +172,9 @@ class SASRec(Recommender):
 
                 _neg = []
                 for n in range(self.maxlen):
-                    j = np.random.randint(0, self.iNum)
+                    j = np.random.randint(1, self.iNum)
                     while j in self.trainSeq[u]:
-                        j = np.random.randint(0, self.iNum)
+                        j = np.random.randint(1, self.iNum)
                     _neg.append(j)
                 neg.append(_neg)
 
@@ -193,10 +193,10 @@ class SASRec(Recommender):
                 for i in range(1, len(visited)):
                     pos_checkin_.append(visited[i])
                     pos.extend(pad_sequences([pos_checkin_[:]], maxlen=self.maxlen))
-                    j = np.random.randint(self.iNum)
+                    j = np.random.randint(1, self.iNum)
                     # check if j is in training dataset or in user's sequence at state i or not
                     while (u, j) in train or j in visited[:i]:
-                        j = np.random.randint(self.iNum)
+                        j = np.random.randint(1, self.iNum)
                     neg_checkin_.append(j)
                     neg.extend(pad_sequences([neg_checkin_[:]], maxlen=self.maxlen))
 

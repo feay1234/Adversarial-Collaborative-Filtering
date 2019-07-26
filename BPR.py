@@ -86,9 +86,9 @@ class BPR():
             user_input.append(u)
             pos_item_input.append(i)
             # negative instances
-            j = np.random.randint(self.iNum)
+            j = np.random.randint(1, self.iNum)
             while (u, j) in train:
-                j = np.random.randint(self.iNum)
+                j = np.random.randint(1, self.iNum)
             neg_item_input.append(j)
             labels.append(1)
 

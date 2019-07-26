@@ -27,15 +27,15 @@ def parse_args():
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="ml-sas")
 
-    parser.add_argument('--d', type=int, default=64,
+    parser.add_argument('--d', type=int, default=50,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=5,
+    parser.add_argument('--maxlen', type=int, default=200,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=10,
@@ -53,7 +53,7 @@ def parse_args():
     parser.add_argument('--pre', type=str, default="",
                         help='Pre-trained dir:')
 
-    parser.add_argument('--mode', type=int, default=1,
+    parser.add_argument('--mode', type=int, default=0,
                         help='mode')
 
     # parser.add_argument('--filter', type=int, default=2,

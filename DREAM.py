@@ -7,6 +7,7 @@ from Recommender import Recommender
 import tensorflow as tf
 import math
 
+
 class DREAM(Recommender):
     def __init__(self, uNum, iNum, latent_dim, maxlen):
 
@@ -60,10 +61,10 @@ class DREAM(Recommender):
             for i in range(len(visited)):
                 positive_venues.append(visited[i])
 
-                j = np.random.randint(self.iNum)
+                j = np.random.randint(1, self.iNum)
                 # check if j is in training dataset or in user's sequence at state i or not
                 while (u, j) in train or j in visited[:i]:
-                    j = np.random.randint(self.iNum)
+                    j = np.random.randint(1, self.iNum)
 
                 negative_venues.append(j)
                 labels.append(1)
@@ -124,15 +125,14 @@ class DREAM_TF(DREAM):
         pos_score = tf.matmul(final_output * pos_item_emb, h)
         neg_score = tf.matmul(final_output * neg_item_emb, h)
 
-        self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(pos_score-neg_score)))
+        self.loss = tf.reduce_mean(-tf.log(tf.nn.sigmoid(pos_score - neg_score)))
         self.optimizer = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss)
 
         # predict_user_embed = tf.nn.embedding_lookup(user_embedding , self.X_predict)
         # self.predict = tf.matmul(predict_user_embed , item_embedding , transpose_b=True)
         self.predictor = pos_score
 
-
-        self.sess = tf.Session() #create session
+        self.sess = tf.Session()  # create session
         self.sess.run(tf.global_variables_initializer())
 
     def rank(self, users, items):
@@ -143,7 +143,6 @@ class DREAM_TF(DREAM):
         feed_dict = {self.seq_input: checkins, self.item_input_pos: items}
         pred = self.sess.run(self.predictor, feed_dict)
         return pred
-
 
     def train(self, x_train, y_train, batch_size):
         losses = []
@@ -164,8 +163,6 @@ class DREAM_TF(DREAM):
             losses.append(loss)
 
         return np.mean(losses)
-
-
 
 #
 # ## Define the shape of the tensor
