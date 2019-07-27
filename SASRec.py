@@ -23,7 +23,7 @@ from Recommender import Recommender
 
 
 class SASRec(Recommender):
-    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], mode=0, num_blocks=2,
+    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.2,
                  l2_emb=0.0, lr=0.05, reuse=None):
@@ -33,7 +33,6 @@ class SASRec(Recommender):
         self.uNum = usernum
         self.iNum = itemnum
         self.maxlen = maxlen
-        self.mode = mode
         # self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
         self.u = tf.placeholder(tf.int32, shape=(None))
@@ -145,8 +144,9 @@ class SASRec(Recommender):
 
         self.sess.run(tf.initialize_all_variables())
 
-    def init(self, trainSeq):
+    def init(self, trainSeq, batch_size):
         self.trainSeq = trainSeq
+        self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen, n_workers=3)
 
     def rank(self, users, items):
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
@@ -160,68 +160,14 @@ class SASRec(Recommender):
         pass
 
     def get_train_instances(self, train):
-        user, seq, pos, neg = [], [], [], []
-        for u in self.trainSeq:
-
-            if self.mode == 0:
-
-                # Original
-                user.append(u)
-                seq.append(pad_sequences([self.trainSeq[u][:-1]], self.maxlen).squeeze())
-                pos.append(pad_sequences([self.trainSeq[u][1:]], self.maxlen).squeeze())
-
-                _neg = []
-                for n in range(self.maxlen):
-                    j = np.random.randint(1, self.iNum)
-                    while j in self.trainSeq[u]:
-                        j = np.random.randint(1, self.iNum)
-                    _neg.append(j)
-                neg.append(_neg)
-
-            elif self.mode == 1:
-
-                visited = self.trainSeq[u]
-                checkin_ = []
-                for v in visited[:-1]:
-                    checkin_.append(v)
-                    seq.extend(pad_sequences([checkin_[:]], maxlen=self.maxlen))
-                    user.append(u)
-
-                pos_checkin_ = []
-                neg_checkin_ = []
-                # for v in :
-                for i in range(1, len(visited)):
-                    pos_checkin_.append(visited[i])
-                    pos.extend(pad_sequences([pos_checkin_[:]], maxlen=self.maxlen))
-                    j = np.random.randint(1, self.iNum)
-                    # check if j is in training dataset or in user's sequence at state i or not
-                    while (u, j) in train or j in visited[:i]:
-                        j = np.random.randint(1, self.iNum)
-                    neg_checkin_.append(j)
-                    neg.extend(pad_sequences([neg_checkin_[:]], maxlen=self.maxlen))
-
-        user = np.array(user)
-        seq = np.array(seq)
-        pos = np.array(pos)
-        neg = np.array(neg)
-
-        # seq = pad_sequences(seq, self.maxlen)
-        # pos = pad_sequences(pos, self.maxlen)
-        # neg = pad_sequences(neg, self.maxlen)
-
-        # Shuffle
-        # idx = np.arange(len(user))
-        # np.random.shuffle(idx)
-        # return [user[idx], seq[idx], pos[idx], neg[idx]], None
-        return [user, seq, pos, neg], None
+        return None, None
 
     def train(self, x_train, y_train, batch_size):
         losses = []
-        for i in range(math.ceil(len(x_train[0]) / batch_size)):
-            u = x_train[0][i * batch_size:(i * batch_size) + batch_size]
-            seq = x_train[1][i * batch_size:(i * batch_size) + batch_size]
-            pos = x_train[2][i * batch_size:(i * batch_size) + batch_size]
-            neg = x_train[3][i * batch_size:(i * batch_size) + batch_size]
+        num_batch = int(len(self.trainSeq) / batch_size)
+
+        for step in list(range(num_batch)):
+            u, seq, pos, neg = self.sampler.next_batch()
 
             auc, loss, _ = self.sess.run([self.auc, self.loss, self.train_op],
                                          {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
@@ -232,7 +178,7 @@ class SASRec(Recommender):
         return np.mean(losses)
 
     def get_params(self):
-        return "_ml%d_m%d" % (self.maxlen, self.mode)
+        return "_ml%d" % (self.maxlen)
 
 
 # -*- coding: utf-8 -*-

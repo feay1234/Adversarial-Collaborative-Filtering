@@ -150,7 +150,7 @@ if __name__ == '__main__':
         ranker.build_graph()
 
     elif modelName == "sasrec":
-        ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives, mode)
+        ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
         ranker.init(trainSeq)
 
     elif modelName == "drcf":
