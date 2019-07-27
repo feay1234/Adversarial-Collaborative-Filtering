@@ -56,6 +56,8 @@ class MostFrequentlyVisit(MostPopular):
 
     def rank(self, uid, vids):
 
+        uid = uid[0]
+
         if len(self.df[self.df.uid == uid]) == 0:
             return np.zeros(len(vids))
 
@@ -75,7 +77,7 @@ class AlreadyVisit(MostPopular):
         self.train = train
 
     def rank(self, uid, vids):
-
+        uid = uid[0]
         res = []
         for v in vids:
             if (uid, v) in self.train:
