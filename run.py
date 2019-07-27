@@ -151,7 +151,7 @@ if __name__ == '__main__':
 
     elif modelName == "sasrec":
         ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
-        ranker.init(trainSeq)
+        ranker.init(trainSeq, batch_size)
 
     elif modelName == "drcf":
         ranker = DRCF(uNum, iNum, dim, maxlen)
