@@ -30,7 +30,7 @@ def parse_args():
                         help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-sas")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=50,
                         help='Dimension')
