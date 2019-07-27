@@ -73,14 +73,14 @@ class MostFrequentlyVisit(MostPopular):
 
 class AlreadyVisit(MostPopular):
 
-    def __init__(self, train):
-        self.train = train
+    def __init__(self, df):
+        self.df = df
 
     def rank(self, uid, vids):
         uid = uid[0]
         res = []
         for v in vids:
-            if (uid, v) in self.train:
+            if (uid, v) in self.df:
                 res.append(1)
             else:
                 res.append(0)
