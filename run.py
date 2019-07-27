@@ -31,10 +31,10 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="mrv")
+                        help='Model Name: lstm', default="caser")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="fsq11")
 
     parser.add_argument('--d', type=int, default=50,
                         help='Dimension')
@@ -178,6 +178,7 @@ if __name__ == '__main__':
 
     elif modelName == "caser":
         set_seed(2019, cuda=False)
+        maxlen = int(df.groupby("uid").size().mean())
         ranker = CaserModel(uNum, iNum, dim, maxlen, True)
         ranker.init(df)
 

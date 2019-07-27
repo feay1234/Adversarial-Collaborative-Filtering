@@ -216,7 +216,7 @@ class PreProcessDataset():
     def __init__(self, df, doSort=True):
 
         # remove users who has less than 3
-        df = df.groupby("uid").filter(lambda x: len(x) >= 3)
+        # df = df.groupby("uid").filter(lambda x: len(x) >= 3)
 
         # index start at one and index zero is used for masking
         df.uid = df.uid.astype('category').cat.codes.values + 1
