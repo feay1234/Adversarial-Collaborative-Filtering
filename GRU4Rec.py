@@ -19,7 +19,7 @@ class Args():
     layers = 1
     rnn_size = 100
     n_epochs = 3
-    batch_size = 512
+    batch_size = 128
     dropout_p_hidden = 1
     learning_rate = 0.001
     decay = 0.96
