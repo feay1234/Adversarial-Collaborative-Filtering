@@ -197,10 +197,10 @@ if __name__ == '__main__':
         write2file(path + "out/" + opath + runName + ".out", pre)
 
     # Init performance
-    # (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-    #                                topK, evaluation_threads)
-    # hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    hr, ndcg = 0, 0
+    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
+                                   topK, evaluation_threads)
+    hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+    # hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + opath + runName + ".out", output)

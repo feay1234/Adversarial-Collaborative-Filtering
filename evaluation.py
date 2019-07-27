@@ -53,10 +53,10 @@ def evaluate_model(model, testRatings, testNegatives, K, num_thread):
 
 def eval_one_rating(idx):
     rating = _testRatings[idx]
-    items = _testNegatives[idx]
     u = rating[0]
     gtItem = rating[1]
-    items.append(gtItem)
+    items = [gtItem]
+    items.extend(_testNegatives[idx])
     # Get prediction scores
     map_item_score = {}
     users = np.full(len(items), u, dtype='int32')
