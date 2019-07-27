@@ -21,13 +21,16 @@ from evaluation import evaluate_model
 from utils import write2file, prediction2file, set_seed
 import math
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Adversarial Collaborative Filtering")
 
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
+    parser.add_argument('--opath', type=str, help='Path to output', default="")
+
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -71,6 +74,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     path = args.path
+    opath = args.opath
     data = args.data
     modelName = args.model
     dim = args.d
@@ -150,6 +154,8 @@ if __name__ == '__main__':
         ranker.build_graph()
 
     elif modelName == "sasrec":
+        # use mean
+        maxlen = df.groupby("uid").size().mean()
         ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
         ranker.init(trainSeq, batch_size)
 
@@ -175,19 +181,20 @@ if __name__ == '__main__':
         ranker.init(df)
 
     runName = "%s_%s_d%d%s_%s" % (data, modelName, dim, ranker.get_params(),
-                                datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+                                  datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     saveName = "%s_%s_d%d%s" % (data, modelName, dim, ranker.get_params())
 
     # load pretrained
     # TODO only support BPR-based models
     if pre != "":
         ranker.load_pre_train(path + "h5/" + pre)
-        runName = "%s_%s_%s.%s_d%d_%s" % (data, modelName, pre.split("_")[1], pre.split(".")[1], dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        runName = "%s_%s_%s.%s_d%d_%s" % (
+            data, modelName, pre.split("_")[1], pre.split(".")[1], dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
-    write2file(path + "out/" + runName + ".out", stat)
-    write2file(path + "out/" + runName + ".out", runName)
+    write2file(path + "out/" + opath + runName + ".out", stat)
+    write2file(path + "out/" + opath + runName + ".out", runName)
     if pre != "":
-        write2file(path + "out/" + runName + ".out", pre)
+        write2file(path + "out/" + opath + runName + ".out", pre)
 
     # Init performance
     # (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
@@ -196,8 +203,7 @@ if __name__ == '__main__':
     hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
-    write2file(path + "out/" + runName + ".out", output)
-
+    write2file(path + "out/" + opath + runName + ".out", output)
 
     start = time()
     # Training model
@@ -215,8 +221,7 @@ if __name__ == '__main__':
 
         output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
-        write2file(path + "out/" + runName + ".out", output)
-
+        write2file(path + "out/" + opath + runName + ".out", output)
 
         if ndcg > best_ndcg:
 
@@ -225,8 +230,8 @@ if __name__ == '__main__':
                 ranker.save(path + "h5/" + saveName + ".best.h5")
 
             # only save result file for the best model
-            prediction2file(path + "out/" + runName + ".hr", hits)
-            prediction2file(path + "out/" + runName + ".ndcg", ndcgs)
+            prediction2file(path + "out/" + opath + runName + ".hr", hits)
+            prediction2file(path + "out/" + opath + runName + ".ndcg", ndcgs)
 
         if math.isnan(loss):
             break
@@ -237,4 +242,4 @@ if __name__ == '__main__':
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
         best_iter, best_hr, best_ndcg, (time() - start) / 3600)
-    write2file(path + "out/" + runName + ".out", output)
+    write2file(path + "out/" + opath + runName + ".out", output)
