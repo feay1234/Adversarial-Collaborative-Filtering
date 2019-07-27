@@ -15,6 +15,7 @@ from FastAdversarialMF import FastAdversarialMF
 from GRU4Rec import GRU4Rec
 from IRGAN import IRGAN
 from MF import MatrixFactorization, AdversarialMatrixFactorisation
+from NaiveBaselines import MostPopular
 from NeuMF import NeuMF, AdversarialNeuMF
 from SASRec import SASRec
 from evaluation import evaluate_model
@@ -30,7 +31,7 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="pop")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -180,6 +181,9 @@ if __name__ == '__main__':
         ranker = CaserModel(uNum, iNum, dim, maxlen, True)
         ranker.init(df)
 
+    elif modelName == "pop":
+        ranker = MostPopular(df)
+
     runName = "%s_%s_d%d%s_%s" % (data, modelName, dim, ranker.get_params(),
                                   datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
     saveName = "%s_%s_d%d%s" % (data, modelName, dim, ranker.get_params())
@@ -239,6 +243,10 @@ if __name__ == '__main__':
         # save current one
         if save_model:
             ranker.save(path + "h5/" + saveName + ".last.h5")
+
+        # we only need 1 epoch for naive baselines
+        if modelName in ["pop"]:
+            break
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
         best_iter, best_hr, best_ndcg, (time() - start) / 3600)
