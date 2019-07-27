@@ -180,7 +180,7 @@ if __name__ == '__main__':
         set_seed(2019, cuda=False)
         maxlen = int(df.groupby("uid").size().mean())
         ranker = CaserModel(uNum, iNum, dim, maxlen, False)
-        ranker.init(df)
+        ranker.init(df, batch_size)
 
     elif modelName == "pop":
         ranker = MostPopular(df)

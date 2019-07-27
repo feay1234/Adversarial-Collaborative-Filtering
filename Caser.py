@@ -26,8 +26,9 @@ class CaserModel(Recommender):
 
         self._optimizer = optim.Adam(self._net.parameters())
 
-    def init(self, df):
+    def init(self, df, batch_size):
         self.df = df
+        self.batch_size = batch_size
 
     def get_train_instances(self, train):
         """
@@ -100,7 +101,7 @@ class CaserModel(Recommender):
 
     def minibatch(self, *tensors, **kwargs):
 
-        batch_size = kwargs.get('batch_size', 128)
+        batch_size = kwargs.get('batch_size', self.batch_size )
 
         if len(tensors) == 1:
             tensor = tensors[0]
@@ -116,6 +117,9 @@ class CaserModel(Recommender):
         self._net.train()
 
         users_np, sequences_np, targets_np, negatives_np = x_train
+
+        # for i in x_train:
+        #     print(i.shape)
 
         # convert numpy arrays to PyTorch tensors and move it to the corresponding devices
         users, sequences, targets, negatives = (torch.from_numpy(users_np).long(),
