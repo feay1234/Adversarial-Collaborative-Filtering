@@ -152,7 +152,7 @@ class SASRec(Recommender):
     def rank(self, users, items):
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
         return self.sess.run(self.test_logits,
-                             {self.u: users[0], self.input_seq: seq, self.test_item: items[:self.testNegNum], self.is_training: False})[0]
+                             {self.u: users[0], self.input_seq: seq, self.test_item: items, self.is_training: False})[0]
 
     def save(self, path):
         pass

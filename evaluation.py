@@ -56,7 +56,7 @@ def eval_one_rating(idx):
     u = rating[0]
     gtItem = rating[1]
     items = [gtItem]
-    items.extend(_testNegatives[idx])
+    items.extend(_testNegatives[idx][:100])
     # Get prediction scores
     map_item_score = {}
     users = np.full(len(items), u, dtype='int32')
