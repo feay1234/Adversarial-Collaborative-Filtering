@@ -39,7 +39,7 @@ class MostRecentlyVisit(MostPopular):
         if len(self.df[self.df.uid == users[0]]) == 0:
             return np.zeros(len(items))
 
-        mostRecentVenue = self.df[self.df.uid == users[0]].tail(1).vid.values[0]
+        mostRecentVenue = self.df[self.df.uid == users[0]].tail(1).iid.values[0]
 
         res = []
         for v in items:
@@ -61,7 +61,7 @@ class MostFrequentlyVisit(MostPopular):
         if len(self.df[self.df.uid == uid]) == 0:
             return np.zeros(len(vids))
 
-        mostFreVenue = self.df[self.df.uid == uid].groupby("vid")['vid'].count().sort_values(ascending=False).index[0]
+        mostFreVenue = self.df[self.df.uid == uid].groupby("iid")['iid'].count().sort_values(ascending=False).index[0]
 
         res = []
         for v in vids:
