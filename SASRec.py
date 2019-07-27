@@ -20,7 +20,8 @@ from keras_preprocessing.sequence import pad_sequences
 # Self-Attentive Sequential Recommendation
 # https://github.com/kang205/SASRec
 from Recommender import Recommender
-
+import numpy as np
+from multiprocessing import Process, Queue
 
 class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2,
@@ -449,10 +450,6 @@ def feedforward(inputs,
     return outputs
 
 
-import numpy as np
-from multiprocessing import Process, Queue
-
-
 def random_neq(l, r, s):
     t = np.random.randint(l, r)
     while t in s:
@@ -463,8 +460,8 @@ def random_neq(l, r, s):
 def sample_function(user_train, usernum, itemnum, batch_size, maxlen, result_queue, SEED):
     def sample():
 
-        user = np.random.randint(1, usernum + 1)
-        while len(user_train[user]) <= 1: user = np.random.randint(1, usernum + 1)
+        user = np.random.randint(1, usernum)
+        while len(user_train[user]) <= 1: user = np.random.randint(1, usernum)
 
         seq = np.zeros([maxlen], dtype=np.int32)
         pos = np.zeros([maxlen], dtype=np.int32)
@@ -476,7 +473,7 @@ def sample_function(user_train, usernum, itemnum, batch_size, maxlen, result_que
         for i in reversed(user_train[user][:-1]):
             seq[idx] = i
             pos[idx] = nxt
-            if nxt != 0: neg[idx] = random_neq(1, itemnum + 1, ts)
+            if nxt != 0: neg[idx] = random_neq(1, itemnum, ts)
             nxt = i
             idx -= 1
             if idx == -1: break
