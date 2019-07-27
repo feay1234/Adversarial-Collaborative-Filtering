@@ -1,5 +1,5 @@
 from Recommender import Recommender
-
+import numpy as np
 
 class MostPopular(Recommender):
 
@@ -28,4 +28,58 @@ class MostPopular(Recommender):
         return ""
 
     def train(self, x_train, y_train, batch_size):
-        pass
+        return 0
+
+class MostRecentlyVisit(MostPopular):
+    def __init__(self, df):
+        self.df = df
+
+    def rank(self, users, items):
+
+        if len(self.df[self.df.uid == users[0]]) == 0:
+            return np.zeros(len(items))
+
+        mostRecentVenue = self.df[self.df.uid == users[0]].tail(1).vid.values[0]
+
+        res = []
+        for v in items:
+            if v == mostRecentVenue:
+                res.append(1)
+            else:
+                res.append(0)
+        return res
+
+class MostFrequentlyVisit(MostPopular):
+
+    def __init__(self, df):
+        self.df = df
+
+    def rank(self, uid, vids):
+
+        if len(self.df[self.df.uid == uid]) == 0:
+            return np.zeros(len(vids))
+
+        mostFreVenue = self.df[self.df.uid == uid].groupby("vid")['vid'].count().sort_values(ascending=False).index[0]
+
+        res = []
+        for v in vids:
+            if v == mostFreVenue:
+                res.append(1)
+            else:
+                res.append(0)
+        return res
+
+class AlreadyVisit(MostPopular):
+
+    def __init__(self, train):
+        self.train = train
+
+    def rank(self, uid, vids):
+
+        res = []
+        for v in vids:
+            if (uid, v) in self.train:
+                res.append(1)
+            else:
+                res.append(0)
+        return res
