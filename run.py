@@ -34,7 +34,7 @@ def parse_args():
                         help='Model Name: lstm', default="caser")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="fsq11")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=50,
                         help='Dimension')

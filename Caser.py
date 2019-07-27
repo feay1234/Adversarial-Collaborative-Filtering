@@ -77,14 +77,14 @@ class CaserModel(Recommender):
             for i in range(len(visited) - sequence_length):
                 users.append([u])
                 checkins.append(visited[i:i + sequence_length])
-                positive_venues.append(visited[i + sequence_length: i + sequence_length + target_length])
+                positive_venues.extend(pad_sequences([visited[i + sequence_length: i + sequence_length + target_length]], maxlen=target_length))
 
                 neg = []
                 for j in range(target_length):
 
-                    n = np.random.randint(0, self.iNum)
+                    n = np.random.randint(1, self.iNum)
                     while (u, n) in train:
-                        n = np.random.randint(0, self.iNum)
+                        n = np.random.randint(1, self.iNum)
                     neg.append(n)
                 negative_venues.append(neg)
 
@@ -117,9 +117,6 @@ class CaserModel(Recommender):
         self._net.train()
 
         users_np, sequences_np, targets_np, negatives_np = x_train
-
-        # for i in x_train:
-        #     print(i.shape)
 
         # convert numpy arrays to PyTorch tensors and move it to the corresponding devices
         users, sequences, targets, negatives = (torch.from_numpy(users_np).long(),
