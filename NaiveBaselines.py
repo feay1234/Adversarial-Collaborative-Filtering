@@ -4,7 +4,6 @@ from Recommender import Recommender
 class MostPopular(Recommender):
 
     def __init__(self, df):
-        self.df
         self.popular = df.groupby("iid").size().to_dict()
 
     def load_pre_train(self, pre):
