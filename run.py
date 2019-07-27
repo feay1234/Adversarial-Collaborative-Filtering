@@ -155,7 +155,7 @@ if __name__ == '__main__':
 
     elif modelName == "sasrec":
         # use mean
-        maxlen = df.groupby("uid").size().mean()
+        maxlen = int(df.groupby("uid").size().mean())
         ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
         ranker.init(trainSeq, batch_size)
 
