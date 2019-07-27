@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=256,
+    parser.add_argument('--bs', type=int, default=128,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",
@@ -190,9 +190,10 @@ if __name__ == '__main__':
         write2file(path + "out/" + runName + ".out", pre)
 
     # Init performance
-    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-                                   topK, evaluation_threads)
-    hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+    # (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
+    #                                topK, evaluation_threads)
+    # hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+    hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     write2file(path + "out/" + runName + ".out", output)

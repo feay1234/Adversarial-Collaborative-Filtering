@@ -215,6 +215,9 @@ class RawDataset():
 class PreProcessDataset():
     def __init__(self, df, doSort=True):
 
+        # remove users who has less than 3
+        df = df.groupby("uid").filter(lambda x: len(x) >= 3)
+
         # index start at one and index zero is used for masking
         df.uid = df.uid.astype('category').cat.codes.values + 1
         df.iid = df.iid.astype('category').cat.codes.values + 1
@@ -223,6 +226,8 @@ class PreProcessDataset():
         iNum = df.iid.nunique()
         if doSort:
             df.sort_values(["uid", "timestamp"], inplace=True)
+
+
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
