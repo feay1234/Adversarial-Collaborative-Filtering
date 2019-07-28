@@ -162,7 +162,7 @@ class CaserModel(Recommender):
             loss.backward()
             self._optimizer.step()
 
-        return "%.4f" % np.mean(losses)
+        return np.mean(losses)
 
     def rank(self, users, items):
         """

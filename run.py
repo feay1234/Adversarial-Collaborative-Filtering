@@ -34,12 +34,12 @@ def parse_args():
                         help='Model Name: lstm', default="caser")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="test")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=50,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=200,
+    parser.add_argument('--maxlen', type=int, default=5,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=10,
@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
     elif modelName == "caser":
         set_seed(2019, cuda=False)
-        maxlen = int(df.groupby("uid").size().mean())
+        # maxlen = int(df.groupby("uid").size().mean())
         ranker = CaserModel(uNum, iNum, dim, maxlen, False)
         ranker.init(df, batch_size)
 
