@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument('--d', type=int, default=50,
                         help='Dimension')
 
-    parser.add_argument('--maxlen', type=int, default=5,
+    parser.add_argument('--maxlen', type=int, default=10,
                         help='Maxlen')
 
     parser.add_argument('--epochs', type=int, default=10,
