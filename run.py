@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="caser")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="brightkite")
@@ -216,7 +216,7 @@ if __name__ == '__main__':
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-                                   topK, evaluation_threads)
+                                   topK, evaluation_threads) if evalMode == "drcf" else evaluate_apr_mode(ranker, testRatings, testNegatives)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     # hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
