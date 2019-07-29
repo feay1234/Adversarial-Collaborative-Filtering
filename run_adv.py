@@ -9,6 +9,8 @@ import logging
 from time import time
 from time import strftime
 from time import localtime
+
+from BPR import BPR
 from Dataset import HeDataset
 from utils import write2file, prediction2file
 
@@ -403,6 +405,7 @@ def init_eval_model(model, dataset):
     pool.join()
 
     # print(("Load the evaluation model done [%.1f s]" % (time() - begin_time)))
+    print(feed_dicts)
     return feed_dicts
 
 
@@ -483,8 +486,8 @@ def parse_args():
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="apr")
-    parser.add_argument('--dataset', nargs='?', default='brightkite',
+                        help='Model Name', default="bpr-keras")
+    parser.add_argument('--dataset', nargs='?', default='yelp-he',
                         help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
@@ -532,6 +535,7 @@ if __name__ == '__main__':
     elif args.dataset == "yelp-he":
         dataset = HeDataset(args.path + "data/yelp")
 
+    print(dataset.num_users, dataset.num_items, len(dataset.testNegatives))
 
     if args.model == "bpr":
         runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
@@ -569,4 +573,34 @@ if __name__ == '__main__':
 
         # start training
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
+
+    elif args.model == "bpr-keras":
+        ranker = BPR(dataset.num_users, dataset.num_items, args.embed_size)
+
+        samples = sampling(dataset)
+
+        # initialize the max_ndcg to memorize the best result
+        max_ndcg = 0
+        best_res = {}
+
+        # train by epoch
+        for epoch_count in range(101):
+
+            # initialize for training batches
+            batch_begin = time()
+            batches = shuffle(samples, args.batch_size, dataset, ranker)
+            batch_time = time() - batch_begin
+            # print(batches)
+
+            # compute the accuracy before training
+            user_input, item_input_pos, user_dns_list, item_dns_list = batches
+            item_input_neg = item_dns_list
+
+            for i in batches:
+                print(i.shape)
+            break
+
+
+
+
 

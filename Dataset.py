@@ -27,12 +27,12 @@ def getDataset(data, path):
         dataset = PreProcessDataset(df)
 
     elif data == "yelp-he":
-        # dataset = Dataset(path + "data/yelp", 0)
-        names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
-        df = train.append(test)
-        dataset = PreProcessDataset(df)
+        dataset = Dataset(path + "data/yelp", 0)
+        # names = ["uid", "iid", "rating", "timestamp"]
+        # train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
+        # test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
+        # df = train.append(test)
+        # dataset = PreProcessDataset(df)
 
     elif data == "pinterest-20":
         dataset = Dataset(path + "data/pinterest-20", 0)

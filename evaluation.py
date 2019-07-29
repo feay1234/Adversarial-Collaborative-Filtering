@@ -108,7 +108,7 @@ def evaluate_apr_mode(model, testRatings, testNegatives):
         hits.append(hr)
         ndcgs.append(ndcg)
 
-    return hits, ndcgs
+    return (hits, ndcgs)
 
 
 def _eval_by_user_apr_mode(idx):

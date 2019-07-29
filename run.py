@@ -31,12 +31,12 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="bpr-he")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="yelp-he")
 
-    parser.add_argument('--d', type=int, default=50,
+    parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
 
     parser.add_argument('--maxlen', type=int, default=10,
@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=128,
+    parser.add_argument('--bs', type=int, default=512,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",
