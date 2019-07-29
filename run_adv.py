@@ -405,7 +405,6 @@ def init_eval_model(model, dataset):
     pool.join()
 
     # print(("Load the evaluation model done [%.1f s]" % (time() - begin_time)))
-    print(feed_dicts)
     return feed_dicts
 
 
@@ -486,14 +485,14 @@ def parse_args():
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="bpr-keras")
-    parser.add_argument('--dataset', nargs='?', default='yelp-he',
+                        help='Model Name', default="bpr")
+    parser.add_argument('--dataset', nargs='?', default='ml-1m',
                         help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=3,
                         help='Number of epochs.')
     parser.add_argument('--adv_epoch', type=int, default=50,
                         help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
@@ -586,7 +585,7 @@ if __name__ == '__main__':
         best_res = {}
 
         # train by epoch
-        for epoch_count in range(101):
+        for epoch_count in range(3):
 
             # initialize for training batches
             batch_begin = time()
@@ -603,7 +602,7 @@ if __name__ == '__main__':
 
             res = []
             for user in range(dataset.num_users):
-                user_input, item_input = _feed_dicts[user]
+                user_input, item_input = eval_feed_dicts[user]
                 u = np.full(len(item_input), user, dtype='int32')[:, None]
                 predictions = ranker.rank(u , item_input)
 
@@ -612,16 +611,18 @@ if __name__ == '__main__':
 
                 # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
                 hr, ndcg, auc = [], [], []
-                for k in range(1, _K + 1):
+                K = 100
+                for k in range(1, K + 1):
                     hr.append(position < k)
                     ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
                     auc.append(1 - (
                     position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
 
 
-                res.append(hr,ndcg,auc)
+                res.append((hr,ndcg,auc))
             res = np.array(res)
             hr, ndcg, auc = (res.mean(axis=0)).tolist()
+            hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
             print(hr, ndcg)
 
 
