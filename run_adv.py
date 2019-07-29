@@ -579,6 +579,8 @@ if __name__ == '__main__':
 
         samples = sampling(dataset)
 
+        eval_feed_dicts = init_eval_model(ranker, dataset)
+
         # initialize the max_ndcg to memorize the best result
         max_ndcg = 0
         best_res = {}
@@ -596,9 +598,33 @@ if __name__ == '__main__':
             user_input, item_input_pos, user_dns_list, item_dns_list = batches
             item_input_neg = item_dns_list
 
-            for i in batches:
-                print(i.shape)
-            break
+            for i in range(len(user_input)):
+                hist = ranker.model.fit([user_input[i], item_input_pos[i], item_input_neg[i]], np.ones(len(user_input[i])), batch_size=args.batch_size, epochs=1, verbose=0)
+
+            res = []
+            for user in range(dataset.num_users):
+                user_input, item_input = _feed_dicts[user]
+                u = np.full(len(item_input), user, dtype='int32')[:, None]
+                predictions = ranker.rank(u , item_input)
+
+                neg_predict, pos_predict = predictions[:-1], predictions[-1]
+                position = (neg_predict >= pos_predict).sum()
+
+                # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
+                hr, ndcg, auc = [], [], []
+                for k in range(1, _K + 1):
+                    hr.append(position < k)
+                    ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
+                    auc.append(1 - (
+                    position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+
+
+                res.append(hr,ndcg,auc)
+            res = np.array(res)
+            hr, ndcg, auc = (res.mean(axis=0)).tolist()
+            print(hr, ndcg)
+
+
 
 
 
