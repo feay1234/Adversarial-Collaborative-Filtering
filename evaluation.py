@@ -90,51 +90,47 @@ def getNDCG(ranklist, gtItem):
             return math.log(2) / math.log(i + 2)
     return 0
 
-
-def evaluate_apr_mode(model, sess, dataset, feed_dicts, output_adv):
+def evaluate_apr_mode(model, testRatings, testNegatives):
     global _model
+    global _testRatings
+    global _testNegatives
     global _K
-    global _sess
-    global _dataset
-    global _feed_dicts
-    global _output
-    _dataset = dataset
     _model = model
-    _sess = sess
+    _testRatings = testRatings
+    _testNegatives = testNegatives
     _K = 100
-    _feed_dicts = feed_dicts
-    _output = output_adv
 
-    res = []
-    for user in range(_dataset.num_users):
-        res.append(_eval_by_user(user))
-    res = np.array(res)
-    hr, ndcg, auc = (res.mean(axis=0)).tolist()
+    hits, ndcgs = [], []
 
-    return (hr, ndcg, auc), res
+    # Single thread
+    for idx in range(len(_testRatings)):
+        (hr, ndcg) = _eval_by_user_apr_mode(idx)
+        hits.append(hr)
+        ndcgs.append(ndcg)
+
+    return hits, ndcgs
 
 
-def _eval_by_user(user):
+def _eval_by_user_apr_mode(idx):
     # get prredictions of data in testing set
-    user_input, item_input = _feed_dicts[user]
-    feed_dict = {_model.user_input: user_input, _model.item_input_pos: item_input}
-    if _output:
-        predictions = _sess.run(_model.output_adv, feed_dict)
-    else:
-        predictions = _sess.run(_model.output, feed_dict)
+    rating = _testRatings[idx]
+    u = rating[0]
+    gtItem = rating[1]
+    items = _testNegatives[idx][:100]
+    items.append(gtItem)
+    # Get prediction scores
+
+    users = np.full(len(items), u, dtype='int32')
+    predictions = _model.rank(users, np.array(items))
 
     neg_predict, pos_predict = predictions[:-1], predictions[-1]
     position = (neg_predict >= pos_predict).sum()
 
     # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
-    hr, ndcg, auc = [], [], []
+    hr, ndcg = [], []
     for k in range(1, _K + 1):
         hr.append(position < k)
         ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
-        auc.append(1 - (position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
-    # k = 10
-    # hr.append(position < k)
-    # ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
-    # auc.append(1 - (position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
 
-    return hr, ndcg, auc
+    return hr, ndcg
+

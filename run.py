@@ -18,7 +18,7 @@ from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NaiveBaselines import MostPopular, AlreadyVisit, MostFrequentlyVisit, MostRecentlyVisit
 from NeuMF import NeuMF, AdversarialNeuMF
 from SASRec import SASRec
-from evaluation import evaluate_model
+from evaluation import evaluate_model, evaluate_apr_mode
 from utils import write2file, prediction2file, set_seed
 import math
 
@@ -233,15 +233,10 @@ if __name__ == '__main__':
         loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
-        if evalMode == "drcf":
 
-            (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
-            hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+        (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads) if evalMode == "drcf" else evaluate_apr_mode(ranker, testRatings, testNegatives)
+        hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
 
-        elif evalMode == "apr":
-            result, raw_result = evaluate(model, sess, dataset, eval_feed_dicts, output_adv)
-
-            hr, ndcg, auc = np.swapaxes(result, 0, 1)[-1]
 
 
         output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
