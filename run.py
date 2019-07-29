@@ -60,6 +60,8 @@ def parse_args():
     parser.add_argument('--mode', type=int, default=0,
                         help='mode')
 
+    parser.add_argument('--eval', type=str, default="apr", help="DRCF evaluation mode or APR evaluation mode")
+
     # parser.add_argument('--filter', type=int, default=2,
     #                     help='Filter Mode')
 
@@ -86,6 +88,7 @@ if __name__ == '__main__':
     maxlen = args.maxlen
     pre = args.pre
     mode = args.mode
+    evalMode = args.eval
     save_model = True if args.save_model == 1 else False
     # save_model = False
     # filterMode = args.filter
@@ -230,9 +233,16 @@ if __name__ == '__main__':
         loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
-        (hits, ndcgs) = evaluate_model(ranker, testRatings,
-                                       testNegatives, topK, evaluation_threads)
-        hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+        if evalMode == "drcf":
+
+            (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
+            hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+
+        elif evalMode == "apr":
+            result, raw_result = evaluate(model, sess, dataset, eval_feed_dicts, output_adv)
+
+            hr, ndcg, auc = np.swapaxes(result, 0, 1)[-1]
+
 
         output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
