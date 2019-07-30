@@ -89,8 +89,6 @@ def getNDCG(ranklist, gtItem):
         if item == gtItem:
             return math.log(2) / math.log(i + 2)
     return 0
-<<<<<<< HEAD
-=======
 
 def evaluate_apr_mode(model, testRatings, testNegatives):
     global _model
@@ -135,5 +133,3 @@ def _eval_by_user_apr_mode(idx):
         ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
 
     return hr, ndcg
-
->>>>>>> f407b2b633bdbaf55d90de04c2fade8e8242f3cf
