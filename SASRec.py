@@ -105,11 +105,12 @@ class SASRec(Recommender):
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
         # self.test_item = tf.placeholder(tf.int32, shape=(self.testNegNum))
-        self.test_item = tf.placeholder(tf.int32, shape=(1))
+        self.test_item = tf.placeholder(tf.int32, shape=(itemnum+1))
         test_item_emb = tf.nn.embedding_lookup(item_emb_table, self.test_item)
+        # self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         # self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, self.testNegNum])
-        self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, 1])
+        self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, itemnum + 1])
         self.test_logits = self.test_logits[:, -1, :]
 
         # prediction layer
@@ -153,12 +154,15 @@ class SASRec(Recommender):
 
     def rank(self, users, items):
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
-        res = []
-        for i in items:
-            score = self.sess.run(self.test_logits,
-                                 {self.u: users[0], self.input_seq: seq, self.test_item: i, self.is_training: False})[0]
-            res.append(score)
-        return np.array(res)
+
+        score = self.sess.run(self.test_logits,
+                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum+1), self.is_training: False})[0]
+        # res = []
+        # for i in items:
+        #
+        #     res.append(score)
+        # return np.array(res)
+        return score[items.flatten()]
 
     def save(self, path):
         pass

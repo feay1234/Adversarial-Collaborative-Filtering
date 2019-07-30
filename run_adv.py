@@ -142,6 +142,7 @@ if __name__ == '__main__':
 
             res = []
             for user in range(dataset.num_users):
+                print(user, dataset.num_users)
                 user_input, item_input = eval_feed_dicts[user]
                 # u = np.full(len(item_input), user, dtype='int32')[:, None]
                 # predictions = ranker.rank(u , item_input)
