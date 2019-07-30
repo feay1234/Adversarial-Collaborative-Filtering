@@ -65,7 +65,7 @@ class BPR():
         self.model.save(path, overwrite=True)
 
     def rank(self, users, items):
-        return self.predictor.predict([users, items], batch_size=100, verbose=0)
+        return self.predictor.predict([users, items], batch_size=512, verbose=0)
 
     def train(self, x_train, y_train, batch_size):
         # for i in range(math.ceil(len(y_train) / batch_size)):

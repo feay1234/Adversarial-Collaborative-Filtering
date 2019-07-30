@@ -31,10 +31,10 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr-he")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="yelp-he")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument('--mode', type=int, default=0,
                         help='mode')
 
-    parser.add_argument('--eval', type=str, default="apr", help="DRCF evaluation mode or APR evaluation mode")
+    parser.add_argument('--eval', type=str, default="all", help="DRCF evaluation mode or APR evaluation mode")
 
     # parser.add_argument('--filter', type=int, default=2,
     #                     help='Filter Mode')
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     # Loading data
     t1 = time()
 
-    dataset = getDataset(data, path)
+    dataset = getDataset(data, path, evalMode)
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
     uNum, iNum = train.shape
@@ -213,8 +213,8 @@ if __name__ == '__main__':
         write2file(path + "out/" + opath + runName + ".out", pre)
 
     # Init performance
-    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-                                   topK, evaluation_threads) if evalMode == "drcf" else evaluate_apr_mode(ranker, testRatings, testNegatives)
+    (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
+
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     # hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
@@ -232,7 +232,7 @@ if __name__ == '__main__':
         t2 = time()
 
 
-        (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads) if evalMode == "drcf" else evaluate_apr_mode(ranker, testRatings, testNegatives)
+        (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
         hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
 
 

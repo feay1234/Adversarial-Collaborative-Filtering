@@ -12,8 +12,7 @@ import pandas as pd
 import random
 
 
-def getDataset(data, path):
-
+def getDataset(data, path, evalMode):
     # if data in ["ml-1m", "yelp", "pinterest-20"]:
     if data in ["brightkite", "fsq11", "yelp"]:
         dataset = Dataset(path + "data/" + data, 1)
@@ -21,8 +20,8 @@ def getDataset(data, path):
     elif data == "ml-1m":
         # dataset = Dataset(path + "data/ml-1m", 0)
         names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/ml-1m.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/ml-1m.test.rating", sep="\t", names=names)
+        train = pd.read_csv(path + "data/ml-1m.train.rating", sep="\t", names=names)
+        test = pd.read_csv(path + "data/ml-1m.test.rating", sep="\t", names=names)
         df = train.append(test)
         dataset = PreProcessDataset(df)
 
@@ -40,23 +39,20 @@ def getDataset(data, path):
     elif data in ["beauty", "steam", "video", "ml-sas"]:
         names = ["uid", "iid"]
         if data == "beauty":
-            df = pd.read_csv(path+"data/Beauty.txt", sep=" ", names=names)
+            df = pd.read_csv(path + "data/Beauty.txt", sep=" ", names=names)
         elif data == "steam":
-            df = pd.read_csv(path+"data/Steam.txt", sep=" ", names=names)
+            df = pd.read_csv(path + "data/Steam.txt", sep=" ", names=names)
         elif data == "video":
-            df = pd.read_csv(path+"data/Video.txt", sep=" ", names=names)
+            df = pd.read_csv(path + "data/Video.txt", sep=" ", names=names)
         else:
-            df = pd.read_csv(path+"data/ml-1m.txt", sep=" ", names=names)
+            df = pd.read_csv(path + "data/ml-1m.txt", sep=" ", names=names)
         dataset = PreProcessDataset(df, False)
 
     elif data == "steam":
         names = ["uid", "iid"]
-        df = pd.read_csv(path+"data/Steam.txt", sep=" ", names=names)
+        df = pd.read_csv(path + "data/Steam.txt", sep=" ", names=names)
         dataset = PreProcessDataset(df, False)
 
-    elif data == "dating":
-        columns = ["uid", "iid", "rating"]
-        df = pd.read_csv(path + "data/libimseti/ratings.dat", names=columns, sep=",")
     elif data == "brightkite":
         columns = ["uid", "timestamp", "lat", "lng", "iid"]
         df = pd.read_csv(path + "data/brightkite.txt", names=columns, sep="\t")
@@ -72,12 +68,23 @@ def getDataset(data, path):
 
     return dataset
 
+
 class Dataset(object):
     '''
     classdocs
     '''
 
-    def __init__(self, path, mode=0):
+    def get_all_negatives(self):
+        res = []
+        for u in self.trainSeq:
+            gtItem = self.testRatings[u]
+            cands = set(range(self.trainMatrix.shape[1])) - set(self.trainSeq[u])
+            if gtItem in cands:
+                cands.remove(gtItem)
+            res.append(cands)
+        return res
+
+    def __init__(self, path, mode=0, evalMode="sample"):
         '''
         Constructor
         '''
@@ -85,11 +92,17 @@ class Dataset(object):
             print(path)
             self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + ".train.rating")
             self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
-            self.testNegatives = self.load_negative_file(path + ".test.negative")
+            if evalMode == "sample":
+                self.testNegatives = self.load_negative_file(path + ".test.negative")
+            elif evalMode == "all":
+                self.testNegatives = self.get_all_negatives()
         else:
             self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + "Train")
             self.testRatings = self.load_rating_file_as_list(path + "Test")
-            self.testNegatives = self.load_negative_file(path + "TestNegative")
+            if evalMode == "sample":
+                self.testNegatives = self.load_negative_file(path + "TestNegative")
+            elif evalMode == "all":
+                self.testNegatives = self.get_all_negatives()
         assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
@@ -182,7 +195,7 @@ class RawDataset():
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
 
-        mat = sp.dok_matrix((uNum+1, iNum+1), dtype=np.float32)
+        mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
         seq = defaultdict(list)
 
         for u, i in df[["uid", "iid"]].values.tolist():
@@ -195,7 +208,6 @@ class RawDataset():
 
         random.seed(2019)
         candidates = df.iid.tolist()
-
 
         negatives = []
         for u in range(uNum):
@@ -212,6 +224,7 @@ class RawDataset():
 
         self.num_users, self.num_items = self.trainMatrix.shape
 
+
 class PreProcessDataset():
     def __init__(self, df, doSort=True):
 
@@ -227,12 +240,11 @@ class PreProcessDataset():
         if doSort:
             df.sort_values(["uid", "timestamp"], inplace=True)
 
-
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
 
-        mat = sp.dok_matrix((uNum+1, iNum+1), dtype=np.float32)
+        mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
         seq = defaultdict(list)
 
         for u, i in df[["uid", "iid"]].values.tolist():
@@ -318,7 +330,7 @@ class HeDataset(object):
             while line != None and line != "":
                 arr = line.split("\t")
                 negatives = []
-                for x in arr[1: ]:
+                for x in arr[1:]:
                     negatives.append(int(x))
                 negativeList.append(negatives)
                 line = f.readline()
@@ -340,7 +352,7 @@ class HeDataset(object):
                 num_items = max(num_items, i)
                 line = f.readline()
         # Construct matrix
-        mat = sp.dok_matrix((num_users+1, num_items+1), dtype=np.float32)
+        mat = sp.dok_matrix((num_users + 1, num_items + 1), dtype=np.float32)
         with open(filename, "r") as f:
             line = f.readline()
             while line != None and line != "":
@@ -368,7 +380,7 @@ class HeDataset(object):
                     items = []
                     u_ += 1
                 index += 1
-                #if index<300:
+                # if index<300:
                 items.append(i)
                 line = f.readline()
         lists.append(items)
