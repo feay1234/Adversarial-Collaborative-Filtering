@@ -18,7 +18,7 @@ from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NaiveBaselines import MostPopular, AlreadyVisit, MostFrequentlyVisit, MostRecentlyVisit
 from NeuMF import NeuMF, AdversarialNeuMF
 from SASRec import SASRec
-from evaluation import evaluate_model
+from evaluation import evaluate_model, evaluate_apr_mode
 from utils import write2file, prediction2file, set_seed
 import math
 
@@ -31,12 +31,12 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="caser")
+                        help='Model Name: lstm', default="bpr-he")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="yelp-he")
 
-    parser.add_argument('--d', type=int, default=50,
+    parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
 
     parser.add_argument('--maxlen', type=int, default=10,
@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument('--pp', type=float, default=0.2,
                         help='Popularity Percentage:')
 
-    parser.add_argument('--bs', type=int, default=128,
+    parser.add_argument('--bs', type=int, default=512,
                         help='Batch Size:')
 
     parser.add_argument('--pre', type=str, default="",
@@ -59,6 +59,8 @@ def parse_args():
 
     parser.add_argument('--mode', type=int, default=0,
                         help='mode')
+
+    parser.add_argument('--eval', type=str, default="apr", help="DRCF evaluation mode or APR evaluation mode")
 
     # parser.add_argument('--filter', type=int, default=2,
     #                     help='Filter Mode')
@@ -86,6 +88,7 @@ if __name__ == '__main__':
     maxlen = args.maxlen
     pre = args.pre
     mode = args.mode
+    evalMode = args.eval
     save_model = True if args.save_model == 1 else False
     # save_model = False
     # filterMode = args.filter
@@ -95,8 +98,6 @@ if __name__ == '__main__':
     # num_negatives = 1
     topK = 10
     evaluation_threads = 1
-
-    columns = ["uid", "iid", "rating", "timestamp"]
 
     # Loading data
     t1 = time()
@@ -213,7 +214,7 @@ if __name__ == '__main__':
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives,
-                                   topK, evaluation_threads)
+                                   topK, evaluation_threads) if evalMode == "drcf" else evaluate_apr_mode(ranker, testRatings, testNegatives)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     # hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
@@ -230,9 +231,11 @@ if __name__ == '__main__':
         loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
-        (hits, ndcgs) = evaluate_model(ranker, testRatings,
-                                       testNegatives, topK, evaluation_threads)
+
+        (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads) if evalMode == "drcf" else evaluate_apr_mode(ranker, testRatings, testNegatives)
         hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+
+
 
         output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)

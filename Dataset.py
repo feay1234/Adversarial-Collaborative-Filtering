@@ -27,12 +27,12 @@ def getDataset(data, path):
         dataset = PreProcessDataset(df)
 
     elif data == "yelp-he":
-        # dataset = Dataset(path + "data/yelp", 0)
-        names = ["uid", "iid", "rating", "timestamp"]
-        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
-        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
-        df = train.append(test)
-        dataset = PreProcessDataset(df)
+        dataset = Dataset(path + "data/yelp", 0)
+        # names = ["uid", "iid", "rating", "timestamp"]
+        # train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
+        # test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
+        # df = train.append(test)
+        # dataset = PreProcessDataset(df)
 
     elif data == "pinterest-20":
         dataset = Dataset(path + "data/pinterest-20", 0)
@@ -280,6 +280,17 @@ class HeDataset(object):
             self.trainList = self.load_training_file_as_list(path + ".train.rating")
             self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
             self.testNegatives = self.load_negative_file(path + ".test.negative")
+
+            # extract seq data
+            names = ["uid", "iid", "rating", "timestamp"]
+            self.df = pd.read_csv(path + ".train.rating", sep="\t", names=names)
+            self.df.sort_values(["uid", "timestamp"], inplace=True)
+            self.trainSeq = defaultdict(list)
+
+            for u, i in self.df[["uid", "iid"]].values.tolist():
+                self.trainSeq[u].append(i)
+
+
         elif mode == 1:
             self.trainMatrix = self.load_training_file_as_matrix(path + "Train")
             self.trainList = self.load_training_file_as_list(path + "Train")

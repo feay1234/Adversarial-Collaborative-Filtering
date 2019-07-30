@@ -26,6 +26,7 @@ class BPR():
         self.uNum = uNum
         self.iNum = iNum
         self.dim = dim
+        self.dns = 1
 
         self.userInput = Input(shape=(1,), dtype="int32")
         self.itemPosInput = Input(shape=(1,), dtype="int32")
