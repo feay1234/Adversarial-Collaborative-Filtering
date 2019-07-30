@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="bpr-keras")
+                        help='Model Name', default="sasrec")
     parser.add_argument('--dataset', nargs='?', default='ml-1m',
                         help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
@@ -114,10 +114,8 @@ if __name__ == '__main__':
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, dataset.testNegatives)
             ranker.init(dataset.trainSeq, args.batch_size)
 
-        # train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
 
-
-        samples = sampling(dataset)
+        # samples = sampling(dataset)
         # samples = ()
 
         eval_feed_dicts = init_eval_model(ranker, dataset)
@@ -130,25 +128,25 @@ if __name__ == '__main__':
         for epoch_count in range(args.epochs):
 
             # initialize for training batches
-            batch_begin = time()
-            # TODO get all training
-            batches = shuffle(samples, args.batch_size, dataset, ranker)
-            batch_time = time() - batch_begin
-            # print(batches)
+            # batches = shuffle(samples, args.batch_size, dataset, ranker)
 
-            # compute the accuracy before training
-            user_input, item_input_pos, user_dns_list, item_dns_list = batches
-            item_input_neg = item_dns_list
+            # user_input, item_input_pos, user_dns_list, item_dns_list = batches
+            # item_input_neg = item_dns_list
 
+            # for i in range(len(user_input)):
+            #     hist = ranker.model.fit([user_input[i], item_input_pos[i], item_input_neg[i]], np.ones(len(user_input[i])), batch_size=args.batch_size, epochs=1, verbose=0)
 
-            for i in range(len(user_input)):
-                hist = ranker.model.fit([user_input[i], item_input_pos[i], item_input_neg[i]], np.ones(len(user_input[i])), batch_size=args.batch_size, epochs=1, verbose=0)
+            x_train, y_train = ranker.get_train_instances(dataset.train)
+
+            loss = ranker.train(x_train, y_train, args.batch_size)
 
             res = []
             for user in range(dataset.num_users):
                 user_input, item_input = eval_feed_dicts[user]
                 u = np.full(len(item_input), user, dtype='int32')[:, None]
-                predictions = ranker.rank(u , item_input)
+                # predictions = ranker.rank(u , item_input)
+
+                predictions = ranker.rank(u, item_input)
 
                 neg_predict, pos_predict = predictions[:-1], predictions[-1]
                 position = (neg_predict >= pos_predict).sum()
