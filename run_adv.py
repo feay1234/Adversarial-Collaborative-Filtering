@@ -136,7 +136,7 @@ if __name__ == '__main__':
             # for i in range(len(user_input)):
             #     hist = ranker.model.fit([user_input[i], item_input_pos[i], item_input_neg[i]], np.ones(len(user_input[i])), batch_size=args.batch_size, epochs=1, verbose=0)
 
-            x_train, y_train = ranker.get_train_instances(dataset.train)
+            x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
 
             loss = ranker.train(x_train, y_train, args.batch_size)
 
