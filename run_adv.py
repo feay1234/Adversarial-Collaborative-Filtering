@@ -1,9 +1,10 @@
 import argparse
 
+from SASRec import SASRec
 from evaluation_adv import training, MF, sampling, init_eval_model, shuffle
 from utils import write2file, prediction2file
 from BPR import BPR
-from Dataset import HeDataset
+from Dataset import HeDataset, getDataset
 from time import time
 from time import strftime
 from time import localtime
@@ -103,10 +104,21 @@ if __name__ == '__main__':
         # start training
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
 
-    elif args.model == "bpr-keras":
-        ranker = BPR(dataset.num_users, dataset.num_items, args.embed_size)
+    else:
+
+        if args.model == "bpe-keras":
+            ranker = BPR(dataset.num_users, dataset.num_items, args.embed_size)
+        elif args.model == "sasrec":
+
+            maxlen = int(dataset.df.groupby("uid").size().mean())
+            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, dataset.testNegatives)
+            ranker.init(dataset.trainSeq, args.batch_size)
+
+        # train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
+
 
         samples = sampling(dataset)
+        # samples = ()
 
         eval_feed_dicts = init_eval_model(ranker, dataset)
 
@@ -127,7 +139,6 @@ if __name__ == '__main__':
             # compute the accuracy before training
             user_input, item_input_pos, user_dns_list, item_dns_list = batches
             item_input_neg = item_dns_list
-            print(len(user_input))
 
 
             for i in range(len(user_input)):

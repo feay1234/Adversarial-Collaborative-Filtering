@@ -99,8 +99,6 @@ if __name__ == '__main__':
     topK = 10
     evaluation_threads = 1
 
-    columns = ["uid", "iid", "rating", "timestamp"]
-
     # Loading data
     t1 = time()
 

@@ -36,7 +36,15 @@ def sampling(dataset):
         # positive instance
         _user_input.append(u)
         _item_input_pos.append(i)
-    print(len(_user_input))
+    return _user_input, _item_input_pos
+
+def seq_sampling(dataset):
+    _user_input, _item_input_pos = [], []
+    print(len(dataset.trainMatrix))
+    for (u, i) in list(dataset.trainMatrix.keys()):
+        # positive instance
+        _user_input.append(u)
+        _item_input_pos.append(i)
     return _user_input, _item_input_pos
 
 
