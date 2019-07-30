@@ -276,7 +276,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             train_time = time() - train_begin
 
             if epoch_count % args.verbose == 0:
-                _, ndcg, cur_res, raw_result = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
+                _, ndcg, cur_res, raw_result = output_evaluate(args, model, sess, dataset, train_batches, eval_feed_dicts,
                                                    epoch_count, batch_time, train_time, prev_acc, runName, output_adv=0)
 
             # print and log the best result
@@ -304,7 +304,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
         saver_ckpt.save(sess, ckpt_save_path + 'weights', global_step=epoch_count)
 
 
-def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, output_adv):
+def output_evaluate(args, model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, output_adv):
     loss_begin = time()
     train_loss, post_acc = training_loss_acc(model, sess, train_batches, output_adv)
     loss_time = time() - loss_begin

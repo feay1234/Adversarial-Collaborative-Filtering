@@ -105,7 +105,7 @@ if __name__ == '__main__':
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
 
     else:
-
+        runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
         if args.model == "bpe-keras":
             ranker = BPR(dataset.num_users, dataset.num_items, args.embed_size)
         elif args.model == "sasrec":
@@ -113,6 +113,7 @@ if __name__ == '__main__':
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, dataset.testNegatives)
             ranker.init(dataset.trainSeq, args.batch_size)
+
 
 
         # samples = sampling(dataset)
@@ -136,38 +137,42 @@ if __name__ == '__main__':
             # for i in range(len(user_input)):
             #     hist = ranker.model.fit([user_input[i], item_input_pos[i], item_input_neg[i]], np.ones(len(user_input[i])), batch_size=args.batch_size, epochs=1, verbose=0)
 
-            # x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
+            x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
 
-            # loss = ranker.train(x_train, y_train, args.batch_size)
+            loss = ranker.train(x_train, y_train, args.batch_size)
 
-            res = []
-            for user in range(dataset.num_users):
-                print(user, dataset.num_users)
-                user_input, item_input = eval_feed_dicts[user]
-                # u = np.full(len(item_input), user, dtype='int32')[:, None]
-                # predictions = ranker.rank(u , item_input)
-                # print(u)
-                predictions = ranker.rank(user_input[0], item_input)
+            if epoch_count % args.verbose == 0:
 
-                neg_predict, pos_predict = predictions[:-1], predictions[-1]
-                position = (neg_predict >= pos_predict).sum()
+                res = []
+                for user in range(dataset.num_users):
+                    user_input, item_input = eval_feed_dicts[user]
+                    # u = np.full(len(item_input), user, dtype='int32')[:, None]
+                    # predictions = ranker.rank(u , item_input)
+                    # print(u)
+                    predictions = ranker.rank(user_input[0], item_input)
 
-                # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
-                hr, ndcg, auc = [], [], []
-                K = 100
-                for k in range(1, K + 1):
-                    hr.append(position < k)
-                    ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
-                    auc.append(1 - (
-                    position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+                    neg_predict, pos_predict = predictions[:-1], predictions[-1]
+                    position = (neg_predict >= pos_predict).sum()
+
+                    # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
+                    hr, ndcg, auc = [], [], []
+                    K = 100
+                    for k in range(1, K + 1):
+                        hr.append(position < k)
+                        ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
+                        auc.append(1 - (
+                        position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
 
 
-                res.append((hr,ndcg,auc))
-            res = np.array(res)
-            hr, ndcg, auc = (res.mean(axis=0)).tolist()
-            hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
-            print(hr, ndcg)
+                    res.append((hr,ndcg,auc))
+                res = np.array(res)
+                hr, ndcg, auc = (res.mean(axis=0)).tolist()
+                hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
+                res = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
+                      (epoch_count, 0, 0, hr, ndcg, loss,
+                       0, 0, 0, 0)
 
+                write2file(args.path + "out/" + runName + ".out", res)
 
 
 
