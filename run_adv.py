@@ -136,17 +136,17 @@ if __name__ == '__main__':
             # for i in range(len(user_input)):
             #     hist = ranker.model.fit([user_input[i], item_input_pos[i], item_input_neg[i]], np.ones(len(user_input[i])), batch_size=args.batch_size, epochs=1, verbose=0)
 
-            x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
+            # x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
 
-            loss = ranker.train(x_train, y_train, args.batch_size)
+            # loss = ranker.train(x_train, y_train, args.batch_size)
 
             res = []
             for user in range(dataset.num_users):
                 user_input, item_input = eval_feed_dicts[user]
-                u = np.full(len(item_input), user, dtype='int32')[:, None]
+                # u = np.full(len(item_input), user, dtype='int32')[:, None]
                 # predictions = ranker.rank(u , item_input)
-
-                predictions = ranker.rank(u, item_input)
+                # print(u)
+                predictions = ranker.rank(user_input[0], item_input)
 
                 neg_predict, pos_predict = predictions[:-1], predictions[-1]
                 position = (neg_predict >= pos_predict).sum()
