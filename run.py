@@ -10,7 +10,7 @@ from BPR import BPR, AdversarialBPR
 from Caser import CaserModel
 from DRCF import DRCF
 from DREAM import DREAM, DREAM_TF
-from Dataset import Dataset, RawDataset, getDataset
+from utils import getDataset
 from FastAdversarialMF import FastAdversarialMF
 from GRU4Rec import GRU4Rec
 from IRGAN import IRGAN
