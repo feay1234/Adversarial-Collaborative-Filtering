@@ -34,10 +34,13 @@ def parse_args():
                         help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
+
+    parser.add_argument('--verbose_eval', type=int, default=1,
+                        help='Evaluate per X epochs.')
 
     parser.add_argument('--eval', type=str, default="all", help="DRCF evaluation mode or APR evaluation mode")
 
@@ -87,6 +90,7 @@ if __name__ == '__main__':
     pre = args.pre
     mode = args.mode
     evalMode = args.eval
+    verbose_eval = args.verbose_eval
     save_model = True if args.save_model == 1 else False
     # save_model = False
     # filterMode = args.filter
@@ -103,7 +107,7 @@ if __name__ == '__main__':
     dataset = getDataset(data, path, evalMode)
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
-    uNum, iNum = df.uid.nunique()+2, df.iid.nunique()+2
+    uNum, iNum = df.uid.max()+1, df.iid.max()+1
     # uNum = max(uNum, len(testRatings))
 
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (
@@ -231,9 +235,9 @@ if __name__ == '__main__':
         loss = ranker.train(x_train, y_train, batch_size)
         t2 = time()
 
-
-        (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
-        hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+        if epoch % verbose_eval == 0:
+            (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
+            hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
 
 
 
