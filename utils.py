@@ -2,18 +2,22 @@ import numpy as np
 import random
 import torch
 import pandas as pd
-
+import os
 from Dataset import Dataset
 
 
-def write2file(path, output):
+def write2file(path, name, output):
     print(output)
-    thefile = open(path, 'a')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    thefile = open(path+name, 'a')
     thefile.write("%s\n" % output)
     thefile.close()
 
-def prediction2file(path, pred):
-    thefile = open(path, 'w')
+def prediction2file(path, name, pred):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    thefile = open(path+name, 'w')
     for item in pred:
         thefile.write("%f\n" % item)
     thefile.close()

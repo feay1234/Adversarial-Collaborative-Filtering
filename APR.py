@@ -137,7 +137,7 @@ class APR(BPR):
             # fair comparison
             # self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.opt_loss)
 
-    def build_graph(self, path, dataset, runName, restore=False):
+    def build_graph(self, path, opath, dataset, runName, restore=False):
         self._create_placeholders()
         self._create_variables()
         self._create_loss()
@@ -176,7 +176,7 @@ class APR(BPR):
         # initialize the weights
         else:
             # logging.info("Initialized from scratch")
-            write2file(path + "out/" + runName + ".out", "Initialized from scratch")
+            write2file(path + "out/" + opath, runName + ".out", "Initialized from scratch")
 
 
 

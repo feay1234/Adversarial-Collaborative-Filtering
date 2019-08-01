@@ -28,13 +28,13 @@ def parse_args():
 
     parser.add_argument('--path', type=str, help='Path to data', default="")
 
-    parser.add_argument('--opath', type=str, help='Path to output', default="")
+    parser.add_argument('--opath', type=str, help='Path to output', default="test/")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -159,7 +159,7 @@ if __name__ == '__main__':
         ranker = APR(uNum, iNum, dim, False)
         runName = "%s_%s_d%d%s_%s" % (data, modelName, dim, ranker.get_params(),
                                       datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-        ranker.build_graph(path, data, runName)
+        ranker.build_graph(path, opath, data, runName)
 
     elif modelName == "sasrec":
         # use mean
@@ -213,10 +213,10 @@ if __name__ == '__main__':
         runName = "%s_%s_%s.%s_d%d_%s" % (
             data, modelName, pre.split("_")[1], pre.split(".")[1], dim, datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
 
-    write2file(path + "out/" + opath + runName + ".out", stat)
-    write2file(path + "out/" + opath + runName + ".out", runName)
+    write2file(path + "out/" + opath, runName + ".out", stat)
+    write2file(path + "out/" + opath, runName + ".out", runName)
     if pre != "":
-        write2file(path + "out/" + opath + runName + ".out", pre)
+        write2file(path + "out/" + opath, runName + ".out", pre)
 
     # Init performance
     (hits, ndcgs) = evaluate_model(ranker, testRatings, testNegatives, topK, evaluation_threads)
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     # hr, ndcg = 0, 0
     output = 'Init: HR = %f, NDCG = %f' % (hr, ndcg)
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
-    write2file(path + "out/" + opath + runName + ".out", output)
+    write2file(path + "out/" + opath, runName + ".out", output)
 
     start = time()
     # Training model
@@ -234,7 +234,7 @@ if __name__ == '__main__':
         if modelName == "apr":
             if epoch == adv_epochs:
                 ranker = APR(uNum, iNum, dim, True)
-                ranker.build_graph(path, data, runName, True)
+                ranker.build_graph(path, opath, data, runName, True)
 
 
 
@@ -253,7 +253,7 @@ if __name__ == '__main__':
 
         output = 'Iteration %d [%.1f s]: HR = %f, NDCG = %f, loss = %.4f [%.1f s]' % (
             epoch, t2 - t1, hr, ndcg, loss, time() - t2)
-        write2file(path + "out/" + opath + runName + ".out", output)
+        write2file(path + "out/" + opath, runName + ".out", output)
 
         if ndcg > best_ndcg:
 
@@ -262,8 +262,8 @@ if __name__ == '__main__':
                 ranker.save(path + "h5/" + saveName + ".best.h5")
 
             # only save result file for the best model
-            prediction2file(path + "out/" + opath + runName + ".hr", hits)
-            prediction2file(path + "out/" + opath + runName + ".ndcg", ndcgs)
+            prediction2file(path + "out/" + opath, runName + ".hr", hits)
+            prediction2file(path + "out/" + opath, runName + ".ndcg", ndcgs)
 
         if math.isnan(loss):
             break
@@ -278,4 +278,4 @@ if __name__ == '__main__':
 
     output = "End. Best Iteration %d:  HR = %.4f, NDCG = %.4f, Total time = %.2f" % (
         best_iter, best_hr, best_ndcg, (time() - start) / 3600)
-    write2file(path + "out/" + opath + runName + ".out", output)
+    write2file(path + "out/" + opath, runName + ".out", output)
