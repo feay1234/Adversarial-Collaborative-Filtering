@@ -31,10 +31,10 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr")
+                        help='Model Name: lstm', default="sasrec")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="test")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')

@@ -235,3 +235,7 @@ class APR(BPR):
 
     def get_params(self):
         return ""
+
+    def get_embeddings(self):
+        embedding_P, embedding_Q = self.sess.run([self.embedding_P, self.embedding_Q])
+        return embedding_P, embedding_Q
