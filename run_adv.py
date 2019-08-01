@@ -16,16 +16,16 @@ def parse_args():
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="sasrec")
-    parser.add_argument('--dataset', nargs='?', default='yelp-he',
+                        help='Model Name', default="apr")
+    parser.add_argument('--dataset', nargs='?', default='ml-1m',
                         help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=3,
+    parser.add_argument('--epochs', type=int, default=2,
                         help='Number of epochs.')
-    parser.add_argument('--adv_epoch', type=int, default=50,
+    parser.add_argument('--adv_epoch', type=int, default=1,
                         help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
                              'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
     parser.add_argument('--embed_size', type=int, default=64,

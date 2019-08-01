@@ -1,9 +1,14 @@
 import math
+from time import strftime
+from time import localtime
+
 import numpy as np
 import tensorflow as tf
 from keras.engine.saving import load_model
 from BPR import BPR, identity_loss
 import os
+
+from utils import write2file
 
 
 class APR(BPR):
@@ -132,32 +137,62 @@ class APR(BPR):
             # fair comparison
             # self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.opt_loss)
 
-    def build_graph(self):
+    def build_graph(self, path, dataset, runName, restore=False):
         self._create_placeholders()
         self._create_variables()
         self._create_loss()
         self._create_optimizer()
         self._create_adversarial()
-        self.saver_ckpt = tf.train.Saver({'embedding_P': self.embedding_P, 'embedding_Q': self.embedding_Q})
         # start session
         self.sess = tf.Session()
+
+        time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
+
+        # initialized the save op
+        if self.adver:
+            ckpt_save_path = path + "Pretrain/%s/APR/embed_%d/%s/" % (dataset, self.embedding_size, time_stamp)
+            ckpt_restore_path = path + "Pretrain/%s/MF_BPR/embed_%d/%s/" % (
+                dataset, self.embedding_size, time_stamp)
+        else:
+            ckpt_save_path = path + "Pretrain/%s/MF_BPR/embed_%d/%s/" % (dataset, self.embedding_size, time_stamp)
+            ckpt_restore_path = 0
+
+        if not os.path.exists(ckpt_save_path):
+            os.makedirs(ckpt_save_path)
+        if ckpt_restore_path and not os.path.exists(ckpt_restore_path):
+            os.makedirs(ckpt_restore_path)
+
+
+        self.saver_ckpt = tf.train.Saver({'embedding_P': self.embedding_P, 'embedding_Q': self.embedding_Q})
+        # pretrain or not
         self.sess.run(tf.global_variables_initializer())
 
+
+        # restore the weights when pretrained
+        if restore:
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+        # initialize the weights
+        else:
+            # logging.info("Initialized from scratch")
+            write2file(path + "out/" + runName + ".out", "Initialized from scratch")
 
 
 
     def load_pre_train(self, path):
-        # Tensorflow
-        if "-he" in path:
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(path+"/checkpoint"))
-            self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
-        # Keras
-        else:
-            # pretrainModel = load_model(path)
-            pretrainModel = load_model(path, custom_objects={'identity_loss': identity_loss})
-            assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
-            assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
-            self.sess.run([assign_P, assign_Q])
+        pass
+        # # Tensorflow
+        # if "bpr-tf" in path:
+        #     ckpt = tf.train.get_checkpoint_state(os.path.dirname(path+"/checkpoint"))
+        #     self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+        # # Keras
+        # else:
+        #     # pretrainModel = load_model(path)
+        #     pretrainModel = load_model(path, custom_objects={'identity_loss': identity_loss})
+        #     assign_P = self.embedding_P.assign(pretrainModel.get_layer("uEmb").get_weights()[0])
+        #     assign_Q = self.embedding_Q.assign(pretrainModel.get_layer("iEmb").get_weights()[0])
+        #     self.sess.run([assign_P, assign_Q])
 
     def rank(self, users, items):
         users = np.expand_dims(users, -1)
@@ -197,3 +232,6 @@ class APR(BPR):
 
         return np.mean(losses)
         # return 0
+
+    def get_params(self):
+        return ""

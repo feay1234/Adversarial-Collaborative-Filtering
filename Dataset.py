@@ -134,7 +134,6 @@ class HeDataset(object):
             self.df = pd.read_csv(path + ".train.rating", sep="\t", names=names)
             self.df.sort_values(["uid", "timestamp"], inplace=True)
             self.trainSeq = defaultdict(list)
-            print(self.df[self.df.uid == 1])
 
             for u, i in self.df[["uid", "iid"]].values.tolist():
                 self.trainSeq[u].append(i)

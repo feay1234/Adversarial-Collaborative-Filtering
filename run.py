@@ -31,10 +31,10 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="bpr")
+                        help='Model Name: lstm', default="apr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="test")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -49,6 +49,8 @@ def parse_args():
 
     parser.add_argument('--epochs', type=int, default=10,
                         help='Epoch number')
+    parser.add_argument('--adv_epochs', type=int, default=5,
+                        help='Adversarial Epoch number')
 
     parser.add_argument('--w', type=float, default=0.001,
                         help='Weight:')
@@ -65,6 +67,8 @@ def parse_args():
     parser.add_argument('--mode', type=int, default=0,
                         help='mode')
 
+    parser.add_argument('--ckpt', type=int, default=1,
+                        help='Save the model per X epochs.')
 
     parser.add_argument('--save_model', type=int, default=1,
                         help='Save model')
@@ -86,6 +90,7 @@ if __name__ == '__main__':
     pop_percent = args.pp
     batch_size = args.bs
     epochs = args.epochs
+    adv_epochs = args.adv_epochs
     maxlen = args.maxlen
     pre = args.pre
     mode = args.mode
@@ -150,14 +155,11 @@ if __name__ == '__main__':
         ranker = IRGAN(uNum, iNum, dim, batch_size)
         ranker.init(train)
 
-    elif modelName == "apr":
-        # get APR's default params
-        ranker = APR(uNum, iNum, dim)
-        ranker.build_graph()
-
-    elif modelName == "bpr-he":
+    elif modelName in ["bpr-tf", "apr"]:
         ranker = APR(uNum, iNum, dim, False)
-        ranker.build_graph()
+        runName = "%s_%s_d%d%s_%s" % (data, modelName, dim, ranker.get_params(),
+                                      datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        ranker.build_graph(path, data, runName)
 
     elif modelName == "sasrec":
         # use mean
@@ -228,6 +230,14 @@ if __name__ == '__main__':
     start = time()
     # Training model
     for epoch in range(epochs):
+
+        if modelName == "apr":
+            if epoch == adv_epochs:
+                ranker = APR(uNum, iNum, dim, True)
+                ranker.build_graph(path, data, runName, True)
+
+
+
         t1 = time()
         # Generate training instances
         x_train, y_train = ranker.get_train_instances(train)
