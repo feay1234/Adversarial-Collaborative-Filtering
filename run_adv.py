@@ -4,7 +4,7 @@ from SASRec import SASRec
 from evaluation_adv import training, MF, sampling, init_eval_model, shuffle
 from utils import write2file, prediction2file
 from BPR import BPR
-from Dataset import HeDataset, getDataset
+from Dataset import HeDataset
 from time import time
 from time import strftime
 from time import localtime

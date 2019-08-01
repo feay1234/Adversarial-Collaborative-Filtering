@@ -55,7 +55,7 @@ def eval_one_rating(idx):
     rating = _testRatings[idx]
     u = rating[0]
     gtItem = rating[1]
-    items = _testNegatives[idx][:100]
+    items = _testNegatives[idx]
     items.append(gtItem)
     # Get prediction scores
     map_item_score = {}

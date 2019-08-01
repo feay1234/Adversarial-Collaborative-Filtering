@@ -69,6 +69,7 @@ class Dataset():
         df.sort_values(["uid", "timestamp"], inplace=True)
 
         self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
+
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
 
@@ -88,8 +89,9 @@ class Dataset():
 
         if evalMode == "all":
             self.testNegatives = defaultdict(list)
-            for u in self.trainSeq:
-                gtItem = self.testRatings[u][1]
+            for idx in range(len(self.testRatings)):
+                u = self.testRatings[idx][0]
+                gtItem = self.testRatings[idx][1]
                 if evalMode == "all":
                     negs = set(range(uNum)) - set(self.trainSeq[u])
                     if gtItem in negs:
@@ -101,7 +103,7 @@ class Dataset():
                         while (u, r) in mat or self.testRatings[u][1] == r:
                             r = random.choice(candidates)
                         negs.append(r)
-                self.testNegatives[u] = negs
+                self.testNegatives[u] = list(negs)
 
             assert len(self.testRatings) == len(self.testNegatives)
 
