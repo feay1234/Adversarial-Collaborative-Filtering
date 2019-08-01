@@ -93,7 +93,7 @@ class Dataset():
                 u = self.testRatings[idx][0]
                 gtItem = self.testRatings[idx][1]
                 if evalMode == "all":
-                    negs = set(range(uNum)) - set(self.trainSeq[u])
+                    negs = set(range(iNum)) - set(self.trainSeq[u])
                     if gtItem in negs:
                         negs.remove(gtItem)
                     negs.remove(0) # remove masking venue, i.e. 0

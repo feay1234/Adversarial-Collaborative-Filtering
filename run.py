@@ -103,11 +103,13 @@ if __name__ == '__main__':
     dataset = getDataset(data, path, evalMode)
 
     train, trainSeq, df, testRatings, testNegatives = dataset.trainMatrix, dataset.trainSeq, dataset.df, dataset.testRatings, dataset.testNegatives
-    uNum, iNum = df.uid.nunique(), df.iid.nunique()
+    uNum, iNum = df.uid.nunique()+2, df.iid.nunique()+2
     # uNum = max(uNum, len(testRatings))
+
     stat = "Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d" % (
-        time() - t1, uNum - 1, iNum - 1, len(df),
+        time() - t1, uNum , iNum , len(df),
         len(testRatings))  # user and item index start at 1, not zero, so the exact number of users and items = num - 1
+
 
     # Initialise Model
 
