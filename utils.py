@@ -31,8 +31,8 @@ def getDataset(data, path, evalMode):
     # if data in ["ml-1m", "yelp", "pinterest-20"]:
     if data in ["brightkite", "fsq11", "yelp"]:
         columns = ['uid', 'iid', 'rating', 'hour', 'day', 'month', 'timestamp']
-        train = pd.read_csv(path + "Train", names=columns, sep="\t")
-        test = pd.read_csv(path + "Test")
+        train = pd.read_csv(path + "data/%sTrain" % data, names=columns, sep="\t")
+        test = pd.read_csv(path + "data/%sTest" % data, names=columns, sep="\t")
         df = train.append(test)
         df.sort_values(["uid", "timestamp"], inplace=True)
         dataset = Dataset(df, evalMode)

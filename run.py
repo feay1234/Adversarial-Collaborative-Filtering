@@ -18,7 +18,7 @@ from MF import MatrixFactorization, AdversarialMatrixFactorisation
 from NaiveBaselines import MostPopular, AlreadyVisit, MostFrequentlyVisit, MostRecentlyVisit
 from NeuMF import NeuMF, AdversarialNeuMF
 from SASRec import SASRec
-from evaluation import evaluate_model, evaluate_apr_mode
+from evaluation import evaluate_model
 from utils import write2file, prediction2file, set_seed
 import math
 
@@ -34,10 +34,12 @@ def parse_args():
                         help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="ml-1m")
+                        help='Dataset name', default="brightkite")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
+
+    parser.add_argument('--eval', type=str, default="all", help="DRCF evaluation mode or APR evaluation mode")
 
     parser.add_argument('--maxlen', type=int, default=10,
                         help='Maxlen')
@@ -60,10 +62,6 @@ def parse_args():
     parser.add_argument('--mode', type=int, default=0,
                         help='mode')
 
-    parser.add_argument('--eval', type=str, default="all", help="DRCF evaluation mode or APR evaluation mode")
-
-    # parser.add_argument('--filter', type=int, default=2,
-    #                     help='Filter Mode')
 
     parser.add_argument('--save_model', type=int, default=1,
                         help='Save model')
