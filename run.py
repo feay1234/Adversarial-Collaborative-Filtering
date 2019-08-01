@@ -34,7 +34,7 @@ def parse_args():
                         help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
-                        help='Dataset name', default="brightkite")
+                        help='Dataset name', default="ml-1m")
 
     parser.add_argument('--d', type=int, default=64,
                         help='Dimension')
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     # pre = "test_bpr-he_d10.last.h5"
 
     # num_negatives = 1
-    topK = 10
+    topK = 100 if evalMode == "all" else 10
     evaluation_threads = 1
 
     # Loading data
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     elif modelName == "sasrec":
         # use mean
         maxlen = int(df.groupby("uid").size().mean())
-        ranker = SASRec(uNum, iNum, dim, maxlen, testNegatives)
+        ranker = SASRec(uNum, iNum, dim, maxlen)
         ranker.init(trainSeq, batch_size)
 
     elif modelName == "drcf":

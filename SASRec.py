@@ -24,12 +24,11 @@ import numpy as np
 from multiprocessing import Process, Queue
 
 class SASRec(Recommender):
-    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, testNegatives=[], num_blocks=2,
+    def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.5,
                  l2_emb=0.0, lr=0.001, reuse=None):
 
-        self.testNegNum = len(testNegatives[0]) + 1  # plus positive one
 
         self.uNum = usernum
         self.iNum = itemnum
@@ -104,12 +103,9 @@ class SASRec(Recommender):
         neg_emb = tf.nn.embedding_lookup(item_emb_table, neg)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        # self.test_item = tf.placeholder(tf.int32, shape=(self.testNegNum))
         self.test_item = tf.placeholder(tf.int32, shape=(itemnum+1))
         test_item_emb = tf.nn.embedding_lookup(item_emb_table, self.test_item)
-        # self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
-        # self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, self.testNegNum])
         self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, itemnum + 1])
         self.test_logits = self.test_logits[:, -1, :]
 

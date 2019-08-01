@@ -17,7 +17,7 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--model', type=str,
                         help='Model Name', default="sasrec")
-    parser.add_argument('--dataset', nargs='?', default='ml-1m',
+    parser.add_argument('--dataset', nargs='?', default='yelp-he',
                         help='Choose a dataset.')
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')

@@ -18,7 +18,6 @@ def getDataset(data, path, evalMode):
         dataset = Dataset(path + "data/" + data, 1, evalMode)
 
     elif data == "ml-1m":
-        # dataset = Dataset(path + "data/ml-1m", 0)
         names = ["uid", "iid", "rating", "timestamp"]
         train = pd.read_csv(path + "data/ml-1m.train.rating", sep="\t", names=names)
         test = pd.read_csv(path + "data/ml-1m.test.rating", sep="\t", names=names)
@@ -26,12 +25,11 @@ def getDataset(data, path, evalMode):
         dataset = PreProcessDataset(df)
 
     elif data == "yelp-he":
-        dataset = Dataset(path + "data/yelp", 0)
-        # names = ["uid", "iid", "rating", "timestamp"]
-        # train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
-        # test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
-        # df = train.append(test)
-        # dataset = PreProcessDataset(df)
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(path+"data/yelp.train.rating", sep="\t", names=names)
+        test = pd.read_csv(path+"data/yelp.test.rating", sep="\t", names=names)
+        df = train.append(test)
+        dataset = PreProcessDataset(df)
 
     elif data == "pinterest-20":
         dataset = Dataset(path + "data/pinterest-20", 0)
@@ -77,32 +75,24 @@ class Dataset(object):
     def get_all_negatives(self):
         res = []
         for u in self.trainSeq:
-            gtItem = self.testRatings[u]
+            gtItem = self.testRatings[u][1]
             cands = set(range(self.trainMatrix.shape[1])) - set(self.trainSeq[u])
             if gtItem in cands:
                 cands.remove(gtItem)
             res.append(cands)
         return res
 
-    def __init__(self, path, mode=0, evalMode="sample"):
+    def __init__(self, path, evalMode="sample"):
         '''
         Constructor
         '''
-        if mode == 0:
-            print(path)
-            self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + ".train.rating")
-            self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
-            if evalMode == "sample":
-                self.testNegatives = self.load_negative_file(path + ".test.negative")
-            elif evalMode == "all":
-                self.testNegatives = self.get_all_negatives()
-        else:
-            self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + "Train")
-            self.testRatings = self.load_rating_file_as_list(path + "Test")
-            if evalMode == "sample":
-                self.testNegatives = self.load_negative_file(path + "TestNegative")
-            elif evalMode == "all":
-                self.testNegatives = self.get_all_negatives()
+
+        self.trainMatrix, self.trainSeq, self.df = self.load_rating_file_as_matrix(path + "Train")
+        self.testRatings = self.load_rating_file_as_list(path + "Test")
+        if evalMode == "sample":
+            self.testNegatives = self.load_negative_file(path + "TestNegative")
+        elif evalMode == "all":
+            self.testNegatives = self.get_all_negatives()
         assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
@@ -226,7 +216,7 @@ class RawDataset():
 
 
 class PreProcessDataset():
-    def __init__(self, df, doSort=True):
+    def __init__(self, df, doSort=True, evalMode="all"):
 
         # remove users who has less than 3
         # df = df.groupby("uid").filter(lambda x: len(x) >= 3)
@@ -258,18 +248,25 @@ class PreProcessDataset():
         random.seed(2019)
         candidates = df.iid.tolist()
 
-        negatives = []
-        for u in range(uNum):
-            neg = []
-            for i in range(100):
-                r = random.choice(candidates)
-                while (u, r) in mat or self.testRatings[u] == r:
-                    r = random.choice(candidates)
-                neg.append(r)
-            negatives.append(neg)
+        if evalMode == "all":
+            self.testNegatives = defaultdict(list)
+            for u in self.trainSeq:
+                print(self.testRatings[u])
+                gtItem = self.testRatings[u][1]
+                if evalMode == "all":
+                    negs = set(range(uNum)) - set(self.trainSeq[u])
+                    if gtItem in negs:
+                        negs.remove(gtItem)
+                    negs.remove(0) # remove masking venue, i.e. 0
+                else:
+                    for i in range(100):
+                        r = random.choice(candidates)
+                        while (u, r) in mat or self.testRatings[u][1] == r:
+                            r = random.choice(candidates)
+                        negs.append(r)
+                self.testNegatives[u] = negs
 
-        self.testNegatives = negatives
-        assert len(self.testRatings) == len(self.testNegatives)
+            assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
 
@@ -298,6 +295,7 @@ class HeDataset(object):
             self.df = pd.read_csv(path + ".train.rating", sep="\t", names=names)
             self.df.sort_values(["uid", "timestamp"], inplace=True)
             self.trainSeq = defaultdict(list)
+            print(self.df[self.df.uid == 1])
 
             for u, i in self.df[["uid", "iid"]].values.tolist():
                 self.trainSeq[u].append(i)
