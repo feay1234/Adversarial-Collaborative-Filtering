@@ -31,7 +31,6 @@ _output = None
 # output: [_user_input_list, _item_input_pos_list]
 def sampling(dataset):
     _user_input, _item_input_pos = [], []
-    print(len(dataset.trainMatrix))
     for (u, i) in list(dataset.trainMatrix.keys()):
         # positive instance
         _user_input.append(u)
@@ -41,7 +40,6 @@ def sampling(dataset):
 
 def seq_sampling(dataset):
     _user_input, _item_input_pos = [], []
-    print(len(dataset.trainMatrix))
     for (u, i) in list(dataset.trainMatrix.keys()):
         # positive instance
         _user_input.append(u)
@@ -417,7 +415,6 @@ def init_eval_model(model, dataset):
     pool.close()
     pool.join()
 
-    # print(len(feed_dicts), _dataset.num_users)
     tmp = {i+1: feed_dicts[i] for i in range(len(feed_dicts))}
     feed_dicts = tmp
 
@@ -427,8 +424,6 @@ def init_eval_model(model, dataset):
 
 def _evaluate_input(user):
     # generate items_list
-    # print(_dataset.trainList.keys(), user, _dataset.num_users)
-    # test_item = _dataset.testRatings[user][1]
     test_item = _dataset.testRatings[user]
     item_input = set(range(_dataset.num_items)) - set(_dataset.trainList[user])
     if test_item in item_input:

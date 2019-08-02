@@ -16,7 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run AMF.")
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
-    parser.add_argument('--opath', nargs='?', default='',
+    parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
     parser.add_argument('--model', type=str,
                         help='Model Name', default="apr")

@@ -7,7 +7,6 @@ from Dataset import Dataset
 
 
 def write2file(path, name, output):
-    print(output)
     if not os.path.exists(path):
         os.makedirs(path)
     thefile = open(path+name, 'a')
