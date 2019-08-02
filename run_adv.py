@@ -4,12 +4,13 @@ from SASRec import SASRec
 from evaluation_adv import training, MF, sampling, init_eval_model, shuffle
 from utils import write2file, prediction2file
 from BPR import BPR
-from Dataset import HeDataset
+from Dataset import HeDataset, Dataset
 from time import time
 from time import strftime
 from time import localtime
 import math
 import numpy as np
+import pandas as pd
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run AMF.")
@@ -61,9 +62,20 @@ if __name__ == '__main__':
     if args.dataset in ["brightkite", "fsq11", "yelp"]:
         dataset = HeDataset(args.path + "data/" + args.dataset, mode=1)
     elif args.dataset in ["ml-1m", "pinterest-20"]:
-        dataset = HeDataset(args.path + "data/" + args.dataset)
+        # dataset = HeDataset(args.path + "data/" + args.dataset)
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(args.path + "data/%s.train.rating" % args.dataset, sep="\t", names=names)
+        test = pd.read_csv(args.path + "data/%s.test.rating" % args.dataset, sep="\t", names=names)
+        df = train.append(test)
+        dataset = Dataset(df, "all")
     elif args.dataset == "yelp-he":
-        dataset = HeDataset(args.path + "data/yelp")
+        # dataset = HeDataset(args.path + "data/yelp")
+        data = "yelp"
+        names = ["uid", "iid", "rating", "timestamp"]
+        train = pd.read_csv(args.path + "data/%s.train.rating" % data, sep="\t", names=names)
+        test = pd.read_csv(args.path + "data/%s.test.rating" % data, sep="\t", names=names)
+        df = train.append(test)
+        dataset = Dataset(df, "all")
 
     print(dataset.num_users, dataset.num_items, len(dataset.testNegatives))
 
