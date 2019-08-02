@@ -84,7 +84,8 @@ def _get_train_batch(i):
             user = _user_input[_index[idx]]
             user_neg_batch.append(user)
             # negtive k
-            gtItem = _dataset.testRatings[user][1]
+            # gtItem = _dataset.testRatings[user][1]
+            gtItem = _dataset.testRatings[user]
             j = np.random.randint(_dataset.num_items)
             while j in _dataset.trainList[_user_input[_index[idx]]]:
                 j = np.random.randint(_dataset.num_items)
@@ -245,7 +246,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
         # initialize the weights
         else:
             # logging.info("Initialized from scratch")
-            write2file(args.path + "out/" + runName + ".out", "Initialized from scratch")
+            write2file(args.path + "out/" + args.opath, runName + ".out", "Initialized from scratch")
 
         # initialize for Evaluate
         eval_feed_dicts = init_eval_model(model, dataset)
@@ -287,15 +288,15 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
 
                 _hrs = raw_result[:, 0, -1]
                 _ndcgs = raw_result[:, 1, -1]
-                prediction2file(args.path + "out/" + runName + ".hr", _hrs)
-                prediction2file(args.path + "out/" + runName + ".ndcg", _ndcgs)
+                prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
+                prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
 
             if model.epochs == epoch_count:
                 output = "Epoch %d is the best epoch" % best_res['epoch']
-                write2file(args.path + "out/" + runName + ".out", output)
+                write2file(args.path + "out/" + args.opath, runName + ".out", output)
                 for idx, (hr_k, ndcg_k, auc_k) in enumerate(np.swapaxes(best_res['result'], 0, 1)):
                     res = "K = %d: HR = %.4f, NDCG = %.4f AUC = %.4f" % (idx + 1, hr_k, ndcg_k, auc_k)
-                    write2file(args.path + "out/" + runName + ".out", res)
+                    write2file(args.path + "out/" + args.opath, runName + ".out", res)
 
             # save the embedding weights
             if args.ckpt > 0 and epoch_count % args.ckpt == 0:
@@ -321,7 +322,7 @@ def output_evaluate(args, model, sess, dataset, train_batches, eval_feed_dicts, 
           (epoch_count, batch_time, train_time, hr, ndcg, prev_acc,
            post_acc, eval_time, np.linalg.norm(embedding_P), np.linalg.norm(embedding_Q))
 
-    write2file(args.path + "out/" + runName + ".out", res)
+    write2file(args.path + "out/" + args.opath, runName + ".out", res)
 
     return post_acc, ndcg, result, raw_result
 
@@ -418,10 +419,16 @@ def init_eval_model(model, dataset):
 
 def _evaluate_input(user):
     # generate items_list
-    test_item = _dataset.testRatings[user][1]
+    # user id starts from 1
+    user = user + 1
+    # print(_dataset.trainList.keys(), user, _dataset.num_users)
+    # test_item = _dataset.testRatings[user][1]
+    test_item = _dataset.testRatings[user]
     item_input = set(range(_dataset.num_items)) - set(_dataset.trainList[user])
     if test_item in item_input:
         item_input.remove(test_item)
+    # item id starts from 1
+    item_input.remove(0)
     item_input = list(item_input)
     item_input.append(test_item)
     user_input = np.full(len(item_input), user, dtype='int32')[:, None]

@@ -63,17 +63,17 @@ class Dataset():
         df.uid = df.uid.astype('category').cat.codes.values + 1
         df.iid = df.iid.astype('category').cat.codes.values + 1
 
-        uNum = df.uid.nunique()
-        iNum = df.iid.nunique()
+        uNum = df.uid.max() + 1
+        iNum = df.iid.max() + 1
 
         df.sort_values(["uid", "timestamp"], inplace=True)
 
-        self.testRatings = df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()
+        self.testRatings = {i[0]:i[1] for i in df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()}
 
         # for each user, remove last interaction from training set
         df = df.groupby("uid", as_index=False).apply(lambda x: x.iloc[:-1])
 
-        mat = sp.dok_matrix((uNum + 1, iNum + 1), dtype=np.float32)
+        mat = sp.dok_matrix((uNum, iNum), dtype=np.float32)
         seq = defaultdict(list)
 
         for u, i in df[["uid", "iid"]].values.tolist():
@@ -83,29 +83,28 @@ class Dataset():
         self.trainMatrix = mat
         self.trainSeq = seq
         self.df = df
+        self.trainList = seq
 
         random.seed(2019)
         candidates = df.iid.tolist()
 
-        if evalMode == "all":
-            self.testNegatives = defaultdict(list)
-            for idx in range(len(self.testRatings)):
-                u = self.testRatings[idx][0]
-                gtItem = self.testRatings[idx][1]
-                if evalMode == "all":
-                    negs = set(range(iNum)) - set(self.trainSeq[u])
-                    if gtItem in negs:
-                        negs.remove(gtItem)
-                    negs.remove(0) # remove masking venue, i.e. 0
-                else:
-                    for i in range(100):
+        self.testNegatives = defaultdict(list)
+        for u in self.testRatings:
+            gtItem = self.testRatings[u]
+            if evalMode == "all":
+                negs = set(range(iNum)) - set(self.trainSeq[u])
+                if gtItem in negs:
+                    negs.remove(gtItem)
+                negs.remove(0) # remove masking venue, i.e. 0
+            else:
+                for i in range(100):
+                    r = random.choice(candidates)
+                    while (u, r) in mat or self.testRatings[u][1] == r:
                         r = random.choice(candidates)
-                        while (u, r) in mat or self.testRatings[u][1] == r:
-                            r = random.choice(candidates)
-                        negs.append(r)
-                self.testNegatives[u] = list(negs)
+                    negs.append(r)
+            self.testNegatives[u] = list(negs)
 
-            assert len(self.testRatings) == len(self.testNegatives)
+        assert len(self.testRatings) == len(self.testNegatives)
 
         self.num_users, self.num_items = self.trainMatrix.shape
 
