@@ -38,6 +38,7 @@ def sampling(dataset):
         _item_input_pos.append(i)
     return _user_input, _item_input_pos
 
+
 def seq_sampling(dataset):
     _user_input, _item_input_pos = [], []
     print(len(dataset.trainMatrix))
@@ -277,8 +278,10 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             train_time = time() - train_begin
 
             if epoch_count % args.verbose == 0:
-                _, ndcg, cur_res, raw_result = output_evaluate(args, model, sess, dataset, train_batches, eval_feed_dicts,
-                                                   epoch_count, batch_time, train_time, prev_acc, runName, output_adv=0)
+                _, ndcg, cur_res, raw_result = output_evaluate(args, model, sess, dataset, train_batches,
+                                                               eval_feed_dicts,
+                                                               epoch_count, batch_time, train_time, prev_acc, runName,
+                                                               output_adv=0)
 
             # print and log the best result
             if max_ndcg < ndcg:
@@ -305,7 +308,8 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
         saver_ckpt.save(sess, ckpt_save_path + 'weights', global_step=epoch_count)
 
 
-def output_evaluate(args, model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc, runName, output_adv):
+def output_evaluate(args, model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time,
+                    prev_acc, runName, output_adv):
     loss_begin = time()
     train_loss, post_acc = training_loss_acc(model, sess, train_batches, output_adv)
     loss_time = time() - loss_begin
@@ -409,9 +413,13 @@ def init_eval_model(model, dataset):
     _model = model
 
     pool = Pool(cpu_count())
-    feed_dicts = pool.map(_evaluate_input, list(range(_dataset.num_users)))
+    feed_dicts = pool.map(_evaluate_input, list(range(1, _dataset.num_users)))
     pool.close()
     pool.join()
+
+    # print(len(feed_dicts), _dataset.num_users)
+    tmp = {i+1: feed_dicts[i] for i in range(len(feed_dicts))}
+    feed_dicts = tmp
 
     # print(("Load the evaluation model done [%.1f s]" % (time() - begin_time)))
     return feed_dicts
@@ -419,8 +427,6 @@ def init_eval_model(model, dataset):
 
 def _evaluate_input(user):
     # generate items_list
-    # user id starts from 1
-    user = user + 1
     # print(_dataset.trainList.keys(), user, _dataset.num_users)
     # test_item = _dataset.testRatings[user][1]
     test_item = _dataset.testRatings[user]
@@ -451,7 +457,7 @@ def evaluate(model, sess, dataset, feed_dicts, output_adv):
     _output = output_adv
 
     res = []
-    for user in range(_dataset.num_users):
+    for user in range(1, _dataset.num_users):
         res.append(_eval_by_user(user))
     res = np.array(res)
     hr, ndcg, auc = (res.mean(axis=0)).tolist()
