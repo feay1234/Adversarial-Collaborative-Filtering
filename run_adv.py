@@ -16,6 +16,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run AMF.")
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
+    parser.add_argument('--opath', nargs='?', default='',
+                        help='Output path.')
     parser.add_argument('--model', type=str,
                         help='Model Name', default="apr")
     parser.add_argument('--dataset', nargs='?', default='ml-1m',
@@ -81,27 +83,28 @@ if __name__ == '__main__':
 
     if args.model == "bpr":
         runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
-        write2file(args.path + "out/" + runName + ".out", runName)
+        write2file(args.path + "out/" + args.opath, runName + ".out", runName)
         args.adver = 0
         # initialize MF_BPR models
         MF_BPR = MF(dataset.num_users, dataset.num_items, args)
         MF_BPR.build_graph()
 
-        write2file(args.path + "out/" + runName + ".out", "Initialize MF_BPR")
+        write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize MF_BPR")
 
         # start training
         training(MF_BPR, dataset, args, runName, epoch_start=0, epoch_end=args.epochs, time_stamp=time_stamp)
 
     elif args.model == "apr":
         runName = "%s_%s_d%d_e%f_l%f_%s" % (args.dataset, args.model, args.embed_size, args.eps, args.reg_adv, time_stamp)
-        write2file(args.path + "out/" + runName + ".out", runName)
+        write2file(args.path + "out/" + args.opath,  runName + ".out", runName)
+
 
         args.adver = 0
         # initialize MF_BPR models
         MF_BPR = MF(dataset.num_users, dataset.num_items, args)
         MF_BPR.build_graph()
 
-        write2file(args.path + "out/" + runName + ".out", "Initialize BPR")
+        write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize BPR")
 
         # start training
         training(MF_BPR, dataset, args, runName, epoch_start=0, epoch_end=args.adv_epoch - 1, time_stamp=time_stamp)
@@ -111,7 +114,7 @@ if __name__ == '__main__':
         AMF = MF(dataset.num_users, dataset.num_items, args)
         AMF.build_graph()
 
-        write2file(args.path + "out/" + runName + ".out", "Initialize APR")
+        write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize APR")
 
         # start training
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
@@ -184,7 +187,7 @@ if __name__ == '__main__':
                       (epoch_count, 0, 0, hr, ndcg, loss,
                        0, 0, 0, 0)
 
-                write2file(args.path + "out/" + runName + ".out", res)
+                write2file(args.path + "out/" + args.opath, runName + ".out", res)
 
 
 
