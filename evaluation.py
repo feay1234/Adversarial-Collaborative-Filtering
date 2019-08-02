@@ -37,14 +37,14 @@ def evaluate_model(model, testRatings, testNegatives, K, num_thread):
     hits, ndcgs = [], []
     if (num_thread > 1):  # Multi-thread
         pool = multiprocessing.Pool(processes=num_thread)
-        res = pool.map(eval_one_rating, range(len(_testRatings)))
+        res = pool.map(eval_one_rating, range(1, len(_testRatings)))
         pool.close()
         pool.join()
         hits = [r[0] for r in res]
         ndcgs = [r[1] for r in res]
         return (hits, ndcgs)
     # Single thread
-    for idx in range(len(_testRatings)):
+    for idx in range(1, len(_testRatings)):
         (hr, ndcg) = eval_one_rating(idx)
         hits.append(hr)
         ndcgs.append(ndcg)
@@ -52,9 +52,9 @@ def evaluate_model(model, testRatings, testNegatives, K, num_thread):
 
 
 def eval_one_rating(idx):
-    rating = _testRatings[idx]
-    u = rating[0]
-    gtItem = rating[1]
+    u = idx
+    gtItem = _testRatings[idx]
+    # gtItem = rating[1]
     items = _testNegatives[idx]
     items.append(gtItem)
     # Get prediction scores
