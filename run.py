@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="test/")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="apr")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="test")
