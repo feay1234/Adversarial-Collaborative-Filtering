@@ -240,7 +240,7 @@ class OriginalDataset(object):
         self.trainList = self.load_training_file_as_list(path + ".train.rating")
         self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
         # self.testNegatives = self.load_negative_file(path + ".test.negative")
-        assert len(self.testRatings) == len(self.testNegatives)
+        # assert len(self.testRatings) == len(self.testNegatives)
         self.num_users, self.num_items = self.trainMatrix.shape
 
     def load_rating_file_as_list(self, filename):
