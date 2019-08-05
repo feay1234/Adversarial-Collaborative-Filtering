@@ -31,6 +31,7 @@ def set_seed(seed, cuda=False):
     else:
         torch.manual_seed(seed)
 
+
 def getDataset(data, path, evalMode):
     # if data in ["ml-1m", "yelp", "pinterest-20"]:
     if data in ["brightkite", "fsq11", "yelp"]:
