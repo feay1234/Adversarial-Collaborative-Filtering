@@ -43,6 +43,7 @@ def getDataset(data, path, evalMode):
 
     elif data in ["ml-1m", "yelp-he"]:
         names = ["uid", "iid", "rating", "timestamp"]
+        data = "yelp" if data == "yelp-he" else data
         train = pd.read_csv(path + "data/%s.train.rating" % data, sep="\t", names=names)
         test = pd.read_csv(path + "data/%s.test.rating" % data, sep="\t", names=names)
         df = train.append(test)
