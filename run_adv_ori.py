@@ -588,7 +588,7 @@ if __name__ == '__main__':
         eval_feed_dicts = init_eval_model(ranker, dataset)
 
         # initialize the max_ndcg to memorize the best result
-        max_ndcg = 0
+        max_ndcg = -1
         best_res = {}
 
         # train by epoch
@@ -596,14 +596,19 @@ if __name__ == '__main__':
 
             x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
 
-            loss = ranker.train(x_train, y_train, args.batch_size)
+            # training the model
+            train_begin = time()
+            # loss = ranker.train(x_train, y_train, args.batch_size)
+            train_time = time() - train_begin
+            loss = 0
 
             if epoch_count % args.verbose == 0:
 
+                eval_begin = time()
                 res = []
                 for user in range(dataset.num_users):
                     user_input, item_input = eval_feed_dicts[user]
-                    predictions = ranker.rank(user_input[0], item_input)
+                    predictions = ranker.rank(user_input, item_input)
 
                     neg_predict, pos_predict = predictions[:-1], predictions[-1]
                     position = (neg_predict >= pos_predict).sum()
@@ -616,17 +621,37 @@ if __name__ == '__main__':
                         ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
                         auc.append(1 - (
                         position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
-
-
                     res.append((hr,ndcg,auc))
+                    break
+
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
                 hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
-                res = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
-                      (epoch_count, 0, 0, hr, ndcg, loss,
-                       0, 0, 0, 0)
 
-                write2file(args.path + "out/" + args.opath, runName + ".out", res)
+                eval_time = time() - eval_begin
+
+                output = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
+                      (epoch_count, train_time, 0, hr, ndcg, loss,
+                       loss, eval_time, 0, 0)
+
+                write2file(args.path + "out/" + args.opath, runName + ".out", output)
+
+            # print and log the best result
+            if max_ndcg < ndcg:
+                max_ndcg = ndcg
+                best_res['result'] = res
+                best_res['epoch'] = epoch_count
+
+                _hrs = res[:, 0, -1]
+                _ndcgs = res[:, 1, -1]
+                prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
+                prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
+
+        output = "Epoch %d is the best epoch" % best_res['epoch']
+        write2file(args.path + "out/" + args.opath, runName + ".out", output)
+        for idx, (hr_k, ndcg_k, auc_k) in enumerate(np.swapaxes(best_res['result'], 0, 1)):
+            res = "K = %d: HR = %.4f, NDCG = %.4f AUC = %.4f" % (idx + 1, hr_k, ndcg_k, auc_k)
+            write2file(args.path + "out/" + args.opath, runName + ".out", res)
 
 
 

@@ -149,6 +149,7 @@ class SASRec(Recommender):
         self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen, n_workers=3)
 
     def rank(self, users, items):
+        users = users[0]
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
 
         score = self.sess.run(self.test_logits,

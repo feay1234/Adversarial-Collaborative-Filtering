@@ -169,9 +169,14 @@ class DRCF(BPR):
         self.predictor = Model([self.user_input, self.checkin_input, self.item_input], [prediction])
 
     def rank(self, users, items):
-        checkins = [self.trainSeq[users[0]]] * len(items)
+        checkins = [self.trainSeq[users[0][0]]] * len(items)
         checkins = sequence.pad_sequences(checkins, maxlen=self.maxlen)
-        return self.predictor.predict([users, checkins, items], batch_size=100, verbose=0)
+        return self.predictor.predict([users, checkins, items], batch_size=512, verbose=0)
+        # res = []
+        # for i in items:
+        #     res.append(self.predictor.predict([users, checkins, [i]], verbose=0))
+        # return res
+
 
 
     def get_train_instances(self, train):
