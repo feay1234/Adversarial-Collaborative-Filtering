@@ -574,7 +574,7 @@ if __name__ == '__main__':
         if args.model == "sasrec":
 
             maxlen = int(dataset.df.groupby("uid").size().mean())
-            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, dataset.testNegatives)
+            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq, args.batch_size)
 
         eval_feed_dicts = init_eval_model(ranker, dataset)
