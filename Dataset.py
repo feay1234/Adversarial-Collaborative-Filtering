@@ -243,6 +243,14 @@ class OriginalDataset(object):
         # assert len(self.testRatings) == len(self.testNegatives)
         self.num_users, self.num_items = self.trainMatrix.shape
 
+        # extract seq data
+        names = ["uid", "iid", "rating", "timestamp"]
+        self.df = pd.read_csv(path + ".train.rating", sep="\t", names=names)
+        self.trainSeq = defaultdict(list)
+
+        for u, i in self.df[["uid", "iid"]].values.tolist():
+            self.trainSeq[u].append(i)
+
     def load_rating_file_as_list(self, filename):
         ratingList = []
         with open(filename, "r") as f:

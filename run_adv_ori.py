@@ -11,6 +11,7 @@ from time import time
 from time import strftime
 from time import localtime
 from Dataset import Dataset, OriginalDataset
+from SASRec import SASRec
 from utils import write2file, prediction2file
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -484,7 +485,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='ml-1m-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="apr")
+                        help='Model Name', default="sasrec")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -566,3 +567,59 @@ if __name__ == '__main__':
 
         # start training
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
+
+    else:
+        runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
+
+        if args.model == "sasrec":
+
+            maxlen = int(dataset.df.groupby("uid").size().mean())
+            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, dataset.testNegatives)
+            ranker.init(dataset.trainSeq, args.batch_size)
+
+        eval_feed_dicts = init_eval_model(ranker, dataset)
+
+        # initialize the max_ndcg to memorize the best result
+        max_ndcg = 0
+        best_res = {}
+
+        # train by epoch
+        for epoch_count in range(args.epochs):
+
+            x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
+
+            loss = ranker.train(x_train, y_train, args.batch_size)
+
+            if epoch_count % args.verbose == 0:
+
+                res = []
+                for user in range(dataset.num_users):
+                    user_input, item_input = eval_feed_dicts[user]
+                    predictions = ranker.rank(user_input[0], item_input)
+
+                    neg_predict, pos_predict = predictions[:-1], predictions[-1]
+                    position = (neg_predict >= pos_predict).sum()
+
+                    # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
+                    hr, ndcg, auc = [], [], []
+                    K = 100
+                    for k in range(1, K + 1):
+                        hr.append(position < k)
+                        ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
+                        auc.append(1 - (
+                        position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+
+
+                    res.append((hr,ndcg,auc))
+                res = np.array(res)
+                hr, ndcg, auc = (res.mean(axis=0)).tolist()
+                hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
+                res = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
+                      (epoch_count, 0, 0, hr, ndcg, loss,
+                       0, 0, 0, 0)
+
+                write2file(args.path + "out/" + args.opath, runName + ".out", res)
+
+
+
+
