@@ -66,7 +66,7 @@ class Dataset():
         uNum = df.uid.max() + 1
         iNum = df.iid.max() + 1
 
-        df.sort_values(["uid", "timestamp"], inplace=True)
+        df = df.sort_values(["uid", "timestamp"], inplace=True)
 
         self.testRatings = {i[0]:i[1] for i in df.groupby("uid").tail(1)[["uid", "iid"]].values.tolist()}
 
