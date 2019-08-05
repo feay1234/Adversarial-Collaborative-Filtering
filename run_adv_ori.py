@@ -10,6 +10,8 @@ import logging
 from time import time
 from time import strftime
 from time import localtime
+
+from DRCF import DRCF
 from Dataset import Dataset, OriginalDataset
 from SASRec import SASRec
 from utils import write2file, prediction2file
@@ -485,7 +487,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='ml-1m-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="sasrec")
+                        help='Model Name', default="drcf")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -576,6 +578,12 @@ if __name__ == '__main__':
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq, args.batch_size)
+
+        elif args.model == "drcf":
+            maxlen = 10
+            runName = "%s_%s_d%d_ml%d_%s" % (args.dataset, args.model, args.embed_size, maxlen, time_stamp)
+            ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
+            ranker.init(dataset.trainSeq)
 
         eval_feed_dicts = init_eval_model(ranker, dataset)
 
