@@ -622,10 +622,10 @@ if __name__ == '__main__':
                         auc.append(1 - (
                         position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                     res.append((hr,ndcg,auc))
-                    break
 
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
+                cur_res = (hr, ndcg, auc)
                 hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
 
                 eval_time = time() - eval_begin
@@ -639,7 +639,7 @@ if __name__ == '__main__':
             # print and log the best result
             if max_ndcg < ndcg:
                 max_ndcg = ndcg
-                best_res['result'] = res
+                best_res['result'] = cur_res
                 best_res['epoch'] = epoch_count
 
                 _hrs = res[:, 0, -1]
