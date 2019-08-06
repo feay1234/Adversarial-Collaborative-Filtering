@@ -600,7 +600,6 @@ if __name__ == '__main__':
             train_begin = time()
             loss = ranker.train(x_train, y_train, args.batch_size)
             train_time = time() - train_begin
-            loss = 0
 
             if epoch_count % args.verbose == 0:
 
