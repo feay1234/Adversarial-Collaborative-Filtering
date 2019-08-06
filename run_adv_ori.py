@@ -487,7 +487,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='ml-1m-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="drcf")
+                        help='Model Name', default="sasrec")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -598,7 +598,7 @@ if __name__ == '__main__':
 
             # training the model
             train_begin = time()
-            # loss = ranker.train(x_train, y_train, args.batch_size)
+            loss = ranker.train(x_train, y_train, args.batch_size)
             train_time = time() - train_begin
             loss = 0
 
