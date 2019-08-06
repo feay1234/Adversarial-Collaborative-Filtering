@@ -3,13 +3,14 @@ import sys
 
 # convert He's dataset to seq-based dataset
 def process_data(path, data):
-    names = ["uid", "iid", "rating", "timestamp"]
+    # names = ["uid", "iid", "rating", "timestamp"]
+    names = ["uid", "iid", "rating", "hour", "day", "datetime"]
     train = pd.read_csv(path + "data/%s.train.rating" % data, sep="\t", names=names)
     test = pd.read_csv(path + "data/%s.test.rating" % data, sep="\t", names=names)
     df = train.append(test)
 
     # sort interactions for each user
-    df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
+    # df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
     df = df.sort_values(['uid', 'datetime'])
     save2file(df, path, data, "-sort")
 
@@ -26,10 +27,12 @@ def save2file(df, path, data, name):
 
     assert len(df) == len(train) + len(test)
 
-    train[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False,
-                                                        sep="\t")
-    test[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False,
-                                                       sep="\t")
+    # train[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
+    # test[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
+
+    train[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
+    test[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
+
 # print(sys.argv[1])
 # print(sys.argv[2])
 process_data(sys.argv[1], sys.argv[2])
