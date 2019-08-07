@@ -630,7 +630,7 @@ if __name__ == '__main__':
 
                     # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
                     hr, ndcg, auc = [], [], []
-                    K = 100
+                    K = 100 if args.eval_mode == "all" else 10
                     for k in range(1, K + 1):
                         hr.append(position < k)
                         ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
