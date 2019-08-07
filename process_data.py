@@ -4,7 +4,7 @@ import sys
 # convert He's dataset to seq-based dataset
 def process_data(path, data):
     # names = ["uid", "iid", "rating", "timestamp"]
-    if data in ["Video", "Steam"]:
+    if data in ["Video", "Beauty", "Steam"]:
         names = ["uid", "iid"]
         df = pd.read_csv("data/%s.txt" % data, sep=" ", names=names)
         df["uid"] = df["uid"] - 1
