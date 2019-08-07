@@ -239,7 +239,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             logging.info("Initialized from scratch")
 
         # initialize for Evaluate
-        eval_feed_dicts = init_eval_model(model, dataset)
+        eval_feed_dicts = init_eval_model(model, dataset, args)
 
         # sample the data
         samples = sampling(dataset)
@@ -268,7 +268,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
 
             if epoch_count % args.verbose == 0:
                 _, ndcg, cur_res, raw_result = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
-                                                   epoch_count, batch_time, train_time, prev_acc, runName, output_adv=0)
+                                                   epoch_count, batch_time, train_time, prev_acc, runName, args, output_adv=0)
 
             # print and log the best result
             if max_ndcg < ndcg:
@@ -296,13 +296,13 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
 
 
 def output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts, epoch_count, batch_time, train_time, prev_acc,
-                    runName, output_adv):
+                    runName, args, output_adv):
     loss_begin = time()
     train_loss, post_acc = training_loss_acc(model, sess, train_batches, output_adv)
     loss_time = time() - loss_begin
 
     eval_begin = time()
-    result, raw_result = evaluate(model, sess, dataset, eval_feed_dicts, output_adv)
+    result, raw_result = evaluate(model, sess, dataset, eval_feed_dicts, output_adv, args)
     eval_time = time() - eval_begin
 
     # check embedding
@@ -435,7 +435,7 @@ def _evaluate_input(user):
     return user_input, item_input
 
 
-def evaluate(model, sess, dataset, feed_dicts, output_adv):
+def evaluate(model, sess, dataset, feed_dicts, output_adv, args):
     global _model
     global _K
     global _sess
@@ -445,7 +445,7 @@ def evaluate(model, sess, dataset, feed_dicts, output_adv):
     _dataset = dataset
     _model = model
     _sess = sess
-    _K = 100
+    _K = 100 if args.eval_mode == "all" else 10
     _feed_dicts = feed_dicts
     _output = output_adv
 
