@@ -10,7 +10,7 @@ import logging
 from time import time
 from time import strftime
 from time import localtime
-
+import random
 from DRCF import DRCF
 from Dataset import Dataset, OriginalDataset
 from SASRec import SASRec
@@ -392,12 +392,16 @@ def training_loss_acc(model, sess, train_batches, output_adv):
     return train_loss / num_batch, acc / num_batch
 
 
-def init_eval_model(model, dataset):
+def init_eval_model(model, dataset, args):
     begin_time = time()
     global _dataset
     global _model
+    global _args
+    global _candidates
     _dataset = dataset
     _model = model
+    _args = args
+    _candidates = dataset.df.iid.tolist()
 
     pool = Pool(cpu_count())
     feed_dicts = pool.map(_evaluate_input, list(range(_dataset.num_users)))
@@ -411,9 +415,19 @@ def init_eval_model(model, dataset):
 def _evaluate_input(user):
     # generate items_list
     test_item = _dataset.testRatings[user][1]
-    item_input = set(range(_dataset.num_items)) - set(_dataset.trainList[user])
-    if test_item in item_input:
-        item_input.remove(test_item)
+    if _args.eval_mode == "sample":
+
+        random.seed(2019)
+        item_input = []
+        for i in range(100):
+            r = random.choice(_candidates)
+            while r in _dataset.trainList[user] or test_item == r:
+                r = random.choice(_candidates)
+            item_input.append(r)
+    else:
+        item_input = set(range(_dataset.num_items)) - set(_dataset.trainList[user])
+        if test_item in item_input:
+            item_input.remove(test_item)
     item_input = list(item_input)
     item_input.append(test_item)
     user_input = np.full(len(item_input), user, dtype='int32')[:, None]
@@ -517,6 +531,8 @@ def parse_args():
                         help='Generate the adversarial sample by gradient method or random method')
     parser.add_argument('--eps', type=float, default=0.5,
                         help='Epsilon for adversarial weights.')
+    parser.add_argument('--eval_mode', type=str, default="sample",
+                        help='Eval mode: sample or all')
     return parser.parse_args()
 
 
