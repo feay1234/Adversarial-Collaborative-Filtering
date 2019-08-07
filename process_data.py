@@ -6,7 +6,9 @@ def process_data(path, data):
     # names = ["uid", "iid", "rating", "timestamp"]
     if data in ["Video", "Steam"]:
         names = ["uid", "iid"]
-        df = pd.read_csv("data/Video.txt", sep=" ", names=names)
+        df = pd.read_csv("data/%s.txt" % data, sep=" ", names=names)
+        df["uid"] = df["uid"] - 1
+        df["iid"] = df["iid"] - 1
         save2file(df, path, data, "")
     else:
         names = ["uid", "iid", "rating", "hour", "day", "datetime"]
@@ -32,10 +34,20 @@ def save2file(df, path, data, name):
 
     assert len(df) == len(train) + len(test)
 
-    # train[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
-    # test[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
+    if data in ["ml-1m", "yelp"]:
+        train[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
+        test[['uid', 'iid', 'rating', 'timestamp']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
 
-    train[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
-    test[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
+    elif data in ["brightkite", "fsq11"]:
+        train[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
+        test[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
+
+    elif data in ["Video", "Beauty"]:
+        train['rating'] = [1] * len(train) # dummy column
+        train['datetime'] = [1] * len(train) # dummy column
+        test['rating'] = [1] * len(test) # dummy column
+        test['datetime'] = [1] * len(test) # dummy column
+        train[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.train.rating" % (data+name), index=False, header=False, sep="\t")
+        test[['uid', 'iid', 'rating', 'datetime']].to_csv(path + "data/%s.test.rating" % (data+name), index=False, header=False, sep="\t")
 
 process_data(sys.argv[1], sys.argv[2])
