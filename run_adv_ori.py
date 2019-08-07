@@ -498,10 +498,10 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='Video',
+    parser.add_argument('--dataset', nargs='?', default='brightkite-sort-dup',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="bpr")
+                        help='Model Name', default="sasrec")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -601,7 +601,7 @@ if __name__ == '__main__':
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
 
-        eval_feed_dicts = init_eval_model(ranker, dataset)
+        eval_feed_dicts = init_eval_model(ranker, dataset, args)
 
         # initialize the max_ndcg to memorize the best result
         max_ndcg = -1
