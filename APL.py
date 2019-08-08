@@ -51,11 +51,11 @@ def gumbel_softmax(logits, temperature=0.2):
 # https://github.com/ZhongchuanSun/APL
 class APL(BPR):
     def __init__(self, uNum, iNum, dim):
-        self.uNum = uNum
-        self.iNum = iNum
+        self.uNum = uNum + 1
+        self.iNum = iNum + 1
         self.dim = dim
-        self.users_num = uNum
-        self.items_num = iNum
+        self.users_num = uNum + 1
+        self.items_num = iNum + 1
         self.factors_num = dim
         self.lr = 0.05
         self.regs = eval('[0, 0.05]', )
