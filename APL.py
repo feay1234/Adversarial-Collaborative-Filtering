@@ -6,6 +6,7 @@ import tensorflow as tf
 import math
 
 from keras.engine.saving import load_model
+from tensorflow.python import pywrap_tensorflow
 from tqdm import tqdm
 
 from BPR import BPR
@@ -63,18 +64,27 @@ class APL(BPR):
 
         self.u = tf.placeholder(tf.int32, name="user_holder")
         self.i = tf.placeholder(tf.int32, name="item_holder")
-        self.g_params, self.c_params = self._def_params(None)
+
+        latest_ckp = tf.train.latest_checkpoint('./Pretrain/ml-1m-sort/MF_BPR/embed_64/2019_08_08_11_13_03/')
+        reader = pywrap_tensorflow.NewCheckpointReader(latest_ckp)
+        var_to_shape_map = reader.get_variable_to_shape_map()
+        param = []
+        for key in sorted(var_to_shape_map):
+            print("tensor_name: ", key)
+            print()
+            param.append(reader.get_tensor(key))
+
+        param[0] = np.reshape(param[0], [self.users_num, self.factors_num])
+        param[1] = np.reshape(param[1], [self.items_num, self.factors_num])
+
+
+        self.g_params, self.c_params = self._def_params(param)
         self._build_graph()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
     def load_pre_train(self, path):
-
-        pretrainModel = load_model(path)
-        assign_P = self.g_params[0].assign(pretrainModel.get_layer("uEmb").get_weights()[0])
-        assign_Q = self.g_params[1].assign(pretrainModel.get_layer("iEmb").get_weights()[0])
-        self.sess.run([assign_P, assign_Q])
-        # pass
+        pass
 
     def _def_params(self, g_init_param=None):
         with tf.variable_scope("g_params"):

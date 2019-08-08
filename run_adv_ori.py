@@ -11,6 +11,8 @@ from time import time
 from time import strftime
 from time import localtime
 import random
+
+from APL import APL
 from DRCF import DRCF
 from Dataset import Dataset, OriginalDataset
 from SASRec import SASRec
@@ -498,15 +500,15 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='brightkite-sort-dup',
+    parser.add_argument('--dataset', nargs='?', default='ml-1m-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="sasrec")
-    parser.add_argument('--verbose', type=int, default=1,
+                        help='Model Name', default="apl")
+    parser.add_argument('--verbose', type=int, default=20,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=2,
+    parser.add_argument('--epochs', type=int, default=500,
                         help='Number of epochs.')
     parser.add_argument('--adv_epoch', type=int, default=1,
                         help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
@@ -594,6 +596,10 @@ if __name__ == '__main__':
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq, args.batch_size)
+
+        elif args.model == "apl":
+            ranker = APL(dataset.num_users, dataset.num_items, args.embed_size)
+            ranker.init(dataset.trainMatrix)
 
         elif args.model == "drcf":
             maxlen = 10
