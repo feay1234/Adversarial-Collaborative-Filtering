@@ -27,7 +27,7 @@ class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.5,
-                 l2_emb=0.0, lr=0.001, reuse=None):
+                 l2_emb=0.0, lr=0.001, reuse=None, args=None):
 
 
         self.uNum = usernum
@@ -136,6 +136,9 @@ class SASRec(Recommender):
             tf.summary.scalar('test_auc', self.auc)
 
         self.merged = tf.summary.merge_all()
+
+        if args.adver:
+
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True

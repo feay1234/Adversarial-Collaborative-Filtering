@@ -588,6 +588,11 @@ if __name__ == '__main__':
         # start training
         training(AMF, dataset, args, runName, epoch_start=args.adv_epoch, epoch_end=args.epochs, time_stamp=time_stamp)
 
+    elif args.model == "apl":
+        # TODO first train bpr to 1000
+        # then train APL
+        pass
+
     else:
         runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
 
