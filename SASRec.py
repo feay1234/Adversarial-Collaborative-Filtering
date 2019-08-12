@@ -196,7 +196,7 @@ class SASRec(Recommender):
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
 
         score = self.sess.run(self.test_logits,
-                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum+1), self.is_training: False})[0]
+                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum), self.is_training: False})[0]
         # res = []
         # for i in items:
         #
