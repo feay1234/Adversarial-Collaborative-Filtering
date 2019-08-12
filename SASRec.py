@@ -171,8 +171,7 @@ class SASRec(Recommender):
         emb = tf.nn.embedding_lookup(self.emb, item_input)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, self.user_input),
-                                                             1)
+        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input),1)
 
         return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
 
