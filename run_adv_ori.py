@@ -595,7 +595,7 @@ if __name__ == '__main__':
 
     else:
         runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
-
+        print(dataset.num_users, dataset.num_items)
         if args.model == "sasrec":
 
             args.adver = 1

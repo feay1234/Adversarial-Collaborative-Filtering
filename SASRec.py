@@ -30,9 +30,10 @@ class SASRec(Recommender):
                  l2_emb=0.0, lr=0.001, reuse=None, args=None, eps=0.5):
 
 
-        self.uNum = usernum
-        self.iNum = itemnum
+        self.uNum = usernum + 1
+        self.iNum = itemnum + 1
         self.maxlen = maxlen
+        self.hidden_units = hidden_units
         self.eps = eps
         self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
@@ -147,9 +148,11 @@ class SASRec(Recommender):
         self.merged = tf.summary.merge_all()
 
         if args.adver:
-
-            self.output_adv, embed_seq_pos = self._create_inference_adv(self.pos, maxlen, hidden_units)
-            self.output_neg_adv, embed_seq_neg = self._create_inference_adv(self.neg, maxlen, hidden_units)
+            #
+            # self.output_adv, embed_seq_pos = self._create_inference_adv(self.pos, maxlen, hidden_units)
+            self.output_adv = self._create_inference_adv(self.pos, maxlen, hidden_units)
+            # self.output_neg_adv, embed_seq_neg = self._create_inference_adv(self.neg, maxlen, hidden_units)
+            self.output_neg_adv = self._create_inference_adv(self.neg, maxlen, hidden_units)
             # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
 
             self.adv_loss = tf.reduce_sum(
@@ -159,6 +162,7 @@ class SASRec(Recommender):
             reg_adv_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             self.adv_loss += sum(reg_adv_losses)
 
+        self._create_adversarial()
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -168,7 +172,8 @@ class SASRec(Recommender):
         self.sess.run(tf.initialize_all_variables())
 
     def _create_inference_adv(self, item_input, maxlen, hidden_units):
-        emb = tf.nn.embedding_lookup(self.emb, item_input)
+        # emb = tf.nn.embedding_lookup(self.item_emb_table, item_input)
+        emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
         emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input),1)
@@ -176,9 +181,11 @@ class SASRec(Recommender):
         return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
 
     def _create_adversarial(self):
-        self.grad_emb = tf.gradients(self.loss, [self.emb])
-        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
+        # self.grad_emb = tf.gradients(self.loss, [self.emb])
+        # self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
+        self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
+
 
     def init(self, trainSeq, batch_size):
         self.trainSeq = trainSeq
