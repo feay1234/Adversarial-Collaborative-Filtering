@@ -73,7 +73,7 @@ class SASRec(Recommender):
                 with_t=True
             )
 
-            self.seq += self.emb + self.t
+            self.seq = self.emb + self.t
 
             # Dropout
             self.seq = tf.layers.dropout(self.seq,

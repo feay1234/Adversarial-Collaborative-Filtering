@@ -503,7 +503,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='ml-1m-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="apl")
+                        help='Model Name', default="sasrec")
     parser.add_argument('--verbose', type=int, default=20,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -598,8 +598,9 @@ if __name__ == '__main__':
 
         if args.model == "sasrec":
 
+            args.adver = 1
             maxlen = int(dataset.df.groupby("uid").size().mean())
-            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
+            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args)
             ranker.init(dataset.trainSeq, args.batch_size)
 
         elif args.model == "apl":
