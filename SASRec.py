@@ -27,13 +27,14 @@ class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.5,
-                 l2_emb=0.0, lr=0.001, reuse=None, args=None):
+                 l2_emb=0.0, lr=0.001, reuse=None, args=None, eps=0.5):
 
 
         self.uNum = usernum
         self.iNum = itemnum
         self.maxlen = maxlen
-        # self.args = args
+        self.eps = eps
+        self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
         self.u = tf.placeholder(tf.int32, shape=(None))
         self.input_seq = tf.placeholder(tf.int32, shape=(None, maxlen))
@@ -45,7 +46,7 @@ class SASRec(Recommender):
 
         with tf.variable_scope("SASRec", reuse=reuse):
             # sequence embedding, item embedding table
-            self.seq, item_emb_table = embedding(self.input_seq,
+            self.emb, self.item_emb_table = embedding(self.input_seq,
                                                  vocab_size=itemnum + 1,
                                                  num_units=hidden_units,
                                                  zero_pad=True,
@@ -56,8 +57,11 @@ class SASRec(Recommender):
                                                  reuse=reuse
                                                  )
 
+            self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
+            self.h = tf.constant(1.0, tf.float32, [hidden_units, 1], name="h")
+
             # Positional Encoding
-            t, pos_emb_table = embedding(
+            self.t, pos_emb_table = embedding(
                 tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0), [tf.shape(self.input_seq)[0], 1]),
                 vocab_size=maxlen,
                 num_units=hidden_units,
@@ -68,7 +72,8 @@ class SASRec(Recommender):
                 reuse=reuse,
                 with_t=True
             )
-            self.seq += t
+
+            self.seq += self.emb + self.t
 
             # Dropout
             self.seq = tf.layers.dropout(self.seq,
@@ -99,12 +104,12 @@ class SASRec(Recommender):
 
         pos = tf.reshape(pos, [tf.shape(self.input_seq)[0] * maxlen])
         neg = tf.reshape(neg, [tf.shape(self.input_seq)[0] * maxlen])
-        pos_emb = tf.nn.embedding_lookup(item_emb_table, pos)
-        neg_emb = tf.nn.embedding_lookup(item_emb_table, neg)
+        pos_emb = tf.nn.embedding_lookup(self.item_emb_table, pos)
+        neg_emb = tf.nn.embedding_lookup(self.item_emb_table, neg)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
         self.test_item = tf.placeholder(tf.int32, shape=(itemnum+1))
-        test_item_emb = tf.nn.embedding_lookup(item_emb_table, self.test_item)
+        test_item_emb = tf.nn.embedding_lookup(self.item_emb_table, self.test_item)
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, itemnum + 1])
         self.test_logits = self.test_logits[:, -1, :]
@@ -112,6 +117,10 @@ class SASRec(Recommender):
         # prediction layer
         self.pos_logits = tf.reduce_sum(pos_emb * seq_emb, -1)
         self.neg_logits = tf.reduce_sum(neg_emb * seq_emb, -1)
+
+
+
+
 
         # ignore padding items (0)
         istarget = tf.reshape(tf.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * maxlen])
@@ -139,6 +148,17 @@ class SASRec(Recommender):
 
         if args.adver:
 
+            self.output_adv, embed_seq_pos = self._create_inference_adv(self.pos, maxlen, hidden_units)
+            self.output_neg_adv, embed_seq_neg = self._create_inference_adv(self.neg, maxlen, hidden_units)
+            # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
+
+            self.adv_loss = tf.reduce_sum(
+                - tf.log(tf.sigmoid(self.output_adv) + 1e-24) * istarget -
+                tf.log(1 - tf.sigmoid(self.output_neg_adv) + 1e-24) * istarget
+            ) / tf.reduce_sum(istarget)
+            reg_adv_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            self.adv_loss += sum(reg_adv_losses)
+
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -146,6 +166,20 @@ class SASRec(Recommender):
         self.sess = tf.Session(config=config)
 
         self.sess.run(tf.initialize_all_variables())
+
+    def _create_inference_adv(self, item_input, maxlen, hidden_units):
+        emb = tf.nn.embedding_lookup(self.emb, item_input)
+        seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
+
+        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, self.user_input),
+                                                             1)
+
+        return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
+
+    def _create_adversarial(self):
+        self.grad_emb = tf.gradients(self.loss, [self.emb])
+        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
+        self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
     def init(self, trainSeq, batch_size):
         self.trainSeq = trainSeq
@@ -183,6 +217,11 @@ class SASRec(Recommender):
             auc, loss, _ = self.sess.run([self.auc, self.loss, self.train_op],
                                          {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
                                           self.is_training: True})
+
+            if self.args.adver:
+                self.sess.run([self.update_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                          self.is_training: True})
+
 
             losses.append(loss)
 
