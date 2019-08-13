@@ -58,7 +58,8 @@ class SASRec(Recommender):
                                                  reuse=reuse
                                                  )
 
-            self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
+            # self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
+            self.delta_emb = tf.Variable(tf.zeros(shape=[1, 512, maxlen, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
             self.h = tf.constant(1.0, tf.float32, [hidden_units, 1], name="h")
 
             # Positional Encoding
@@ -181,9 +182,10 @@ class SASRec(Recommender):
         return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
 
     def _create_adversarial(self):
-        # self.grad_emb = tf.gradients(self.loss, [self.emb])
-        # self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
-        self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
+        self.grad_emb = tf.gradients(self.loss, [self.seq])
+        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
+        print(self.maxlen)
+        # self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
 
