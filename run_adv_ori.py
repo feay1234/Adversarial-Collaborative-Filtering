@@ -241,7 +241,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             logging.info("Initialized from scratch")
 
         # initialize for Evaluate
-        eval_feed_dicts = init_eval_model(model, dataset, args)
+        eval_feed_dicts = init_eval_model(dataset, args)
 
         # sample the data
         samples = sampling(dataset)
@@ -394,14 +394,14 @@ def training_loss_acc(model, sess, train_batches, output_adv):
     return train_loss / num_batch, acc / num_batch
 
 
-def init_eval_model(model, dataset, args):
+def init_eval_model(dataset, args):
     begin_time = time()
     global _dataset
-    global _model
+    # global _model
     global _args
     global _candidates
     _dataset = dataset
-    _model = model
+    # _model = model
     _args = args
     _candidates = dataset.df.iid.tolist()
 
@@ -494,13 +494,72 @@ def init_logging(args, time_stamp):
     logging.info(args)
     print(args)
 
+
+def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset):
+    # train by epoch
+    for epoch_count in range(epoch_start, epoch_end + 1):
+
+        x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
+
+        # training the model
+        train_begin = time()
+        loss = ranker.train(x_train, y_train, args.batch_size)
+        train_time = time() - train_begin
+
+        if epoch_count % args.verbose == 0:
+
+            eval_begin = time()
+            res = []
+            for user in range(dataset.num_users):
+                user_input, item_input = eval_feed_dicts[user]
+                predictions = ranker.rank(user_input, item_input)
+
+                neg_predict, pos_predict = predictions[:-1], predictions[-1]
+                position = (neg_predict >= pos_predict).sum()
+
+                # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
+                hr, ndcg, auc = [], [], []
+                K = 100 if args.eval_mode == "all" else 10
+                for k in range(1, K + 1):
+                    hr.append(position < k)
+                    ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
+                    auc.append(1 - (
+                        position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+                res.append((hr, ndcg, auc))
+
+            res = np.array(res)
+            hr, ndcg, auc = (res.mean(axis=0)).tolist()
+            cur_res = (hr, ndcg, auc)
+            hr, ndcg, auc = np.swapaxes((hr, ndcg, auc), 0, 1)[-1]
+
+            eval_time = time() - eval_begin
+
+            output = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
+                     (epoch_count, train_time, 0, hr, ndcg, loss,
+                      loss, eval_time, 0, 0)
+
+            write2file(args.path + "out/" + args.opath, runName + ".out", output)
+
+        # print and log the best result
+        if max_ndcg < ndcg:
+            max_ndcg = ndcg
+            best_res['result'] = cur_res
+            best_res['epoch'] = epoch_count
+
+            _hrs = res[:, 0, -1]
+            _ndcgs = res[:, 1, -1]
+            prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
+            prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
+    return max_ndcg, best_res
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Run AMF.")
     parser.add_argument('--path', nargs='?', default='',
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='ml-1m-sort',
+    parser.add_argument('--dataset', nargs='?', default='brightkite-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
                         help='Model Name', default="sasrec")
@@ -508,9 +567,9 @@ def parse_args():
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=500,
+    parser.add_argument('--epochs', type=int, default=3,
                         help='Number of epochs.')
-    parser.add_argument('--adv_epoch', type=int, default=1,
+    parser.add_argument('--adv_epoch', type=int, default=2,
                         help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
                              'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
     parser.add_argument('--embed_size', type=int, default=64,
@@ -594,86 +653,42 @@ if __name__ == '__main__':
         pass
 
     else:
+        # initialize the max_ndcg to memorize the best result
+        max_ndcg = -1
+        best_res = {}
+
+        eval_feed_dicts = init_eval_model(dataset, args)
+
         runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
         print(dataset.num_users, dataset.num_items)
-        if args.model == "sasrec":
 
+        if args.model in ["sasrec", "asasrec"]:
+            time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
             args.adver = 0
             maxlen = int(dataset.df.groupby("uid").size().mean())
-            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args)
+            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
             ranker.init(dataset.trainSeq, args.batch_size)
+            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1, max_ndcg, best_res, ranker, dataset)
+
+            if args.model == "asasrec":
+                args.adver = 1
+                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
+                ranker.init(dataset.trainSeq, args.batch_size)
+                max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset)
 
         elif args.model == "apl":
             ranker = APL(dataset.num_users, dataset.num_items, args.embed_size)
             ranker.init(dataset.trainMatrix)
+            max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
 
         elif args.model == "drcf":
             maxlen = 10
             runName = "%s_%s_d%d_ml%d_%s" % (args.dataset, args.model, args.embed_size, maxlen, time_stamp)
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
+            max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
 
-        eval_feed_dicts = init_eval_model(ranker, dataset, args)
 
-        # initialize the max_ndcg to memorize the best result
-        max_ndcg = -1
-        best_res = {}
-
-        # train by epoch
-        for epoch_count in range(args.epochs):
-
-            x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
-
-            # training the model
-            train_begin = time()
-            loss = ranker.train(x_train, y_train, args.batch_size)
-            train_time = time() - train_begin
-
-            if epoch_count % args.verbose == 0:
-
-                eval_begin = time()
-                res = []
-                for user in range(dataset.num_users):
-                    user_input, item_input = eval_feed_dicts[user]
-                    predictions = ranker.rank(user_input, item_input)
-
-                    neg_predict, pos_predict = predictions[:-1], predictions[-1]
-                    position = (neg_predict >= pos_predict).sum()
-
-                    # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
-                    hr, ndcg, auc = [], [], []
-                    K = 100 if args.eval_mode == "all" else 10
-                    for k in range(1, K + 1):
-                        hr.append(position < k)
-                        ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
-                        auc.append(1 - (
-                        position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
-                    res.append((hr,ndcg,auc))
-                    break
-
-                res = np.array(res)
-                hr, ndcg, auc = (res.mean(axis=0)).tolist()
-                cur_res = (hr, ndcg, auc)
-                hr, ndcg, auc = np.swapaxes((hr,ndcg, auc), 0, 1)[-1]
-
-                eval_time = time() - eval_begin
-
-                output = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
-                      (epoch_count, train_time, 0, hr, ndcg, loss,
-                       loss, eval_time, 0, 0)
-
-                write2file(args.path + "out/" + args.opath, runName + ".out", output)
-
-            # print and log the best result
-            if max_ndcg < ndcg:
-                max_ndcg = ndcg
-                best_res['result'] = cur_res
-                best_res['epoch'] = epoch_count
-
-                _hrs = res[:, 0, -1]
-                _ndcgs = res[:, 1, -1]
-                prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
-                prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
 
         output = "Epoch %d is the best epoch" % best_res['epoch']
         write2file(args.path + "out/" + args.opath, runName + ".out", output)

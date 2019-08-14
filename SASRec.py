@@ -31,7 +31,7 @@ class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.5,
-                 l2_emb=0.0, lr=0.001, reuse=None, args=None, eps=0.5):
+                 l2_emb=0.0, lr=0.001, reuse=None, args=None, eps=0.5, time_stamp=None):
 
 
         self.uNum = usernum + 1
@@ -170,10 +170,10 @@ class SASRec(Recommender):
         self._create_adversarial()
 
         # initialized the save op
-        time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
+
         if args.adver:
             ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
         else:
             ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
             ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
@@ -261,7 +261,6 @@ class SASRec(Recommender):
 
 
             losses.append(loss)
-            break
 
         return np.mean(losses)
 
