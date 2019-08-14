@@ -552,7 +552,9 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
             prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
         # save the embedding weights
         if args.ckpt > 0 and epoch_count % args.ckpt == 0:
+            print("save")
             ranker.saver_ckpt.save(ranker.sess, ranker.ckpt_save_path + 'weights', global_step=epoch_count)
+        break
 
     return max_ndcg, best_res
 
@@ -566,7 +568,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='brightkite-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="apr")
+                        help='Model Name', default="asasrec")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -669,14 +671,16 @@ if __name__ == '__main__':
         if args.model in ["sasrec", "asasrec"]:
             time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
             args.adver = 0
+            write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
             ranker.init(dataset.trainSeq, args.batch_size)
             max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1, max_ndcg, best_res, ranker, dataset)
 
             if args.model == "asasrec":
+                write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize Adversarial_SASREC")
                 args.adver = 1
-                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
+                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp, reuse=tf.AUTO_REUSE)
                 ranker.init(dataset.trainSeq, args.batch_size)
                 max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset)
 
