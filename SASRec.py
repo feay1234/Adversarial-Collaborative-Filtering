@@ -1,3 +1,5 @@
+from time import localtime, strftime
+
 import tensorflow as tf
 import numpy as np
 import math
@@ -21,6 +23,8 @@ from keras_preprocessing.sequence import pad_sequences
 # https://github.com/kang205/SASRec
 from Recommender import Recommender
 import numpy as np
+import logging
+import os
 from multiprocessing import Process, Queue
 
 class SASRec(Recommender):
@@ -165,12 +169,38 @@ class SASRec(Recommender):
 
         self._create_adversarial()
 
+        # initialized the save op
+        time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
+        if args.adver:
+            ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+        else:
+            ckpt_save_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+
+        if not os.path.exists(ckpt_save_path):
+            os.makedirs(ckpt_save_path)
+        if ckpt_restore_path and not os.path.exists(ckpt_restore_path):
+            os.makedirs(ckpt_restore_path)
+
+        saver_ckpt = tf.train.Saver()
+
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         config.allow_soft_placement = True
         self.sess = tf.Session(config=config)
 
         self.sess.run(tf.initialize_all_variables())
+
+        # restore the weights when pretrained
+        if args.restore is not None:
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+
+        # initialize the weights
+        else:
+            logging.info("Initialized from scratch")
 
     def _create_inference_adv(self, item_input, maxlen, hidden_units):
         # emb = tf.nn.embedding_lookup(self.item_emb_table, item_input)
