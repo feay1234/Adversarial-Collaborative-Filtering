@@ -550,6 +550,10 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
             _ndcgs = res[:, 1, -1]
             prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
             prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
+        # save the embedding weights
+        if args.ckpt > 0 and epoch_count % args.ckpt == 0:
+            ranker.saver_ckpt.save(ranker.sess, ranker.ckpt_save_path + 'weights', global_step=epoch_count)
+
     return max_ndcg, best_res
 
 
@@ -562,8 +566,8 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='brightkite-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="sasrec")
-    parser.add_argument('--verbose', type=int, default=20,
+                        help='Model Name', default="apr")
+    parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')

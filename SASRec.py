@@ -172,18 +172,18 @@ class SASRec(Recommender):
         # initialized the save op
 
         if args.adver:
-            ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            self.ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            self.ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
         else:
-            ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+            self.ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            self.ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
 
-        if not os.path.exists(ckpt_save_path):
-            os.makedirs(ckpt_save_path)
-        if ckpt_restore_path and not os.path.exists(ckpt_restore_path):
-            os.makedirs(ckpt_restore_path)
+        if not os.path.exists(self.ckpt_save_path):
+            os.makedirs(self.ckpt_save_path)
+        if self.ckpt_restore_path and not os.path.exists(self.ckpt_restore_path):
+            os.makedirs(self.ckpt_restore_path)
 
-        saver_ckpt = tf.train.Saver()
+        self.saver_ckpt = tf.train.Saver()
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -194,9 +194,9 @@ class SASRec(Recommender):
 
         # restore the weights when pretrained
         if args.restore is not None:
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(self.ckpt_restore_path + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
-                saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+                self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
 
         # initialize the weights
         else:
