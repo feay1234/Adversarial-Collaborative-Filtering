@@ -173,10 +173,10 @@ class SASRec(Recommender):
         time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
         if args.adver:
             ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
         else:
-            ckpt_save_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+            ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
 
         if not os.path.exists(ckpt_save_path):
             os.makedirs(ckpt_save_path)
@@ -261,6 +261,7 @@ class SASRec(Recommender):
 
 
             losses.append(loss)
+            break
 
         return np.mean(losses)
 

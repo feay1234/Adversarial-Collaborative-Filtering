@@ -598,7 +598,7 @@ if __name__ == '__main__':
         print(dataset.num_users, dataset.num_items)
         if args.model == "sasrec":
 
-            args.adver = 1
+            args.adver = 0
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args)
             ranker.init(dataset.trainSeq, args.batch_size)
@@ -649,6 +649,7 @@ if __name__ == '__main__':
                         auc.append(1 - (
                         position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                     res.append((hr,ndcg,auc))
+                    break
 
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
