@@ -270,7 +270,6 @@ class SASRec(Recommender):
 
 
             losses.append(loss)
-            break
 
         return np.mean(losses)
 

@@ -519,9 +519,10 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
 
         # restore the weights when pretrained
         if args.restore is not None or epoch_start:
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(str(ckpt_restore_path) + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
+                print("restored")
         # initialize the weights
         else:
             print("Initialized from scratch")
@@ -557,7 +558,6 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
                         auc.append(1 - (
                             position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                     res.append((hr, ndcg, auc))
-                    break
 
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
