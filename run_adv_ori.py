@@ -236,6 +236,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
+                print("restored")
         # initialize the weights
         else:
             logging.info("Initialized from scratch")
@@ -517,13 +518,13 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
         sess.run(tf.global_variables_initializer())
 
         # restore the weights when pretrained
-        if args.restore is not None:
+        if args.restore is not None or epoch_start:
             ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
         # initialize the weights
         else:
-            logging.info("Initialized from scratch")
+            print("Initialized from scratch")
 
 
         # train by epoch
