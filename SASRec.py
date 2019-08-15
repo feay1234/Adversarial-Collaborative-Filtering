@@ -50,6 +50,7 @@ class SASRec(Recommender):
         mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
 
         with tf.variable_scope("SASRec", reuse=reuse):
+        # with tf.name_scope("SASRec"):
             # sequence embedding, item embedding table
             self.emb, self.item_emb_table = embedding(self.input_seq,
                                                  vocab_size=itemnum + 1,
@@ -90,6 +91,7 @@ class SASRec(Recommender):
             # Build blocks
 
             for i in range(num_blocks):
+                # with tf.variable_scope("num_blocks_%d" % i):
                 with tf.variable_scope("num_blocks_%d" % i):
                     # Self-attention
                     self.seq = multihead_attention(queries=normalize(self.seq),
@@ -142,13 +144,17 @@ class SASRec(Recommender):
             ((tf.sign(self.pos_logits - self.neg_logits) + 1) / 2) * istarget
         ) / tf.reduce_sum(istarget)
 
-        if reuse is None:
-            tf.summary.scalar('auc', self.auc)
-            self.global_step = tf.Variable(0, name='global_step', trainable=False)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta2=0.98)
-            self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
-        else:
-            tf.summary.scalar('test_auc', self.auc)
+        # if reuse is None:
+        #     tf.summary.scalar('auc', self.auc)
+        #     self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        #     self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta2=0.98)
+        #     self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
+        # else:
+        #     tf.summary.scalar('test_auc', self.auc)
+        tf.summary.scalar('auc', self.auc)
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta2=0.98)
+        self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
 
         self.merged = tf.summary.merge_all()
 
@@ -169,38 +175,38 @@ class SASRec(Recommender):
 
         self._create_adversarial()
 
-        # initialized the save op
-
-        if args.adver:
-            self.ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            self.ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-        else:
-            self.ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            self.ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
-
-        if not os.path.exists(self.ckpt_save_path):
-            os.makedirs(self.ckpt_save_path)
-        if self.ckpt_restore_path and not os.path.exists(self.ckpt_restore_path):
-            os.makedirs(self.ckpt_restore_path)
-
-        self.saver_ckpt = tf.train.Saver()
-
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.allow_soft_placement = True
-        self.sess = tf.Session(config=config)
-
-        self.sess.run(tf.initialize_all_variables())
-
-        # restore the weights when pretrained
-        if args.restore is not None:
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(self.ckpt_restore_path + 'checkpoint'))
-            if ckpt and ckpt.model_checkpoint_path:
-                self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
-
-        # initialize the weights
-        else:
-            logging.info("Initialized from scratch")
+        # # initialized the save op
+        #
+        # if args.adver:
+        #     self.ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+        #     self.ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+        # else:
+        #     self.ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+        #     self.ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+        #
+        # if not os.path.exists(self.ckpt_save_path):
+        #     os.makedirs(self.ckpt_save_path)
+        # if self.ckpt_restore_path and not os.path.exists(self.ckpt_restore_path):
+        #     os.makedirs(self.ckpt_restore_path)
+        #
+        # self.saver_ckpt = tf.train.Saver()
+        #
+        # config = tf.ConfigProto()
+        # config.gpu_options.allow_growth = True
+        # config.allow_soft_placement = True
+        # self.sess = tf.Session(config=config)
+        #
+        # self.sess.run(tf.initialize_all_variables())
+        #
+        # # restore the weights when pretrained
+        # if args.restore is not None:
+        #     ckpt = tf.train.get_checkpoint_state(os.path.dirname(self.ckpt_restore_path + 'checkpoint'))
+        #     if ckpt and ckpt.model_checkpoint_path:
+        #         self.saver_ckpt.restore(self.sess, ckpt.model_checkpoint_path)
+        #
+        # # initialize the weights
+        # else:
+        #     logging.info("Initialized from scratch")
 
     def _create_inference_adv(self, item_input, maxlen, hidden_units):
         # emb = tf.nn.embedding_lookup(self.item_emb_table, item_input)
@@ -218,9 +224,12 @@ class SASRec(Recommender):
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
 
-    def init(self, trainSeq, batch_size):
+    def init(self, trainSeq, batch_size, sess):
         self.trainSeq = trainSeq
         self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen, n_workers=3)
+        self.sess = sess
+
+        # self.saver_ckpt.save(self.sess, self.ckpt_save_path + 'weights', global_step=0)
 
     def rank(self, users, items):
         users = users[0]
@@ -261,6 +270,7 @@ class SASRec(Recommender):
 
 
             losses.append(loss)
+            break
 
         return np.mean(losses)
 
@@ -303,6 +313,7 @@ def normalize(inputs,
       A tensor with the same shape and data dtype as `inputs`.
     '''
     with tf.variable_scope(scope, reuse=reuse):
+    # with tf.name_scope(scope):
         inputs_shape = inputs.get_shape()
         params_shape = inputs_shape[-1:]
 
@@ -381,6 +392,7 @@ def embedding(inputs,
     ```
     '''
     with tf.variable_scope(scope, reuse=reuse):
+    # with tf.name_scope(scope):
         lookup_table = tf.get_variable('lookup_table',
                                        dtype=tf.float32,
                                        shape=[vocab_size, num_units],
@@ -427,6 +439,7 @@ def multihead_attention(queries,
       A 3d tensor with shape of (N, T_q, C)
     '''
     with tf.variable_scope(scope, reuse=reuse):
+    # with tf.name_scope(scope):
         # Set the fall back option for num_units
         if num_units is None:
             num_units = queries.get_shape().as_list[-1]
@@ -516,6 +529,7 @@ def feedforward(inputs,
       A 3d tensor with the same shape and dtype as inputs
     '''
     with tf.variable_scope(scope, reuse=reuse):
+    # with tf.name_scope(scope):
         # Inner layer
         params = {"inputs": inputs, "filters": num_units[0], "kernel_size": 1,
                   "activation": tf.nn.relu, "use_bias": True}

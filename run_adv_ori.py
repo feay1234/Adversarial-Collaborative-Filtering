@@ -495,68 +495,97 @@ def init_logging(args, time_stamp):
     print(args)
 
 
-def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset):
-    # train by epoch
-    for epoch_count in range(epoch_start, epoch_end + 1):
+def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset, args):
+    with tf.Session() as sess:
+        ranker.init(dataset.trainSeq, args.batch_size, sess)
 
-        x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
+        # initialized the save op
 
-        # training the model
-        train_begin = time()
-        loss = ranker.train(x_train, y_train, args.batch_size)
-        train_time = time() - train_begin
+        if args.adver:
+            ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+        else:
+            ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
 
-        if epoch_count % args.verbose == 0:
+        if not os.path.exists(ckpt_save_path):
+            os.makedirs(ckpt_save_path)
+        if ckpt_restore_path and not os.path.exists(ckpt_restore_path):
+            os.makedirs(ckpt_restore_path)
 
-            eval_begin = time()
-            res = []
-            for user in range(dataset.num_users):
-                user_input, item_input = eval_feed_dicts[user]
-                predictions = ranker.rank(user_input, item_input)
+        saver_ckpt = tf.train.Saver()
+        sess.run(tf.global_variables_initializer())
 
-                neg_predict, pos_predict = predictions[:-1], predictions[-1]
-                position = (neg_predict >= pos_predict).sum()
+        # restore the weights when pretrained
+        if args.restore is not None:
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_restore_path + 'checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
+        # initialize the weights
+        else:
+            logging.info("Initialized from scratch")
 
-                # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
-                hr, ndcg, auc = [], [], []
-                K = 100 if args.eval_mode == "all" else 10
-                for k in range(1, K + 1):
-                    hr.append(position < k)
-                    ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
-                    auc.append(1 - (
-                        position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
-                res.append((hr, ndcg, auc))
 
-            res = np.array(res)
-            hr, ndcg, auc = (res.mean(axis=0)).tolist()
-            cur_res = (hr, ndcg, auc)
-            hr, ndcg, auc = np.swapaxes((hr, ndcg, auc), 0, 1)[-1]
+        # train by epoch
+        for epoch_count in range(epoch_start, epoch_end + 1):
 
-            eval_time = time() - eval_begin
+            x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
 
-            output = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
-                     (epoch_count, train_time, 0, hr, ndcg, loss,
-                      loss, eval_time, 0, 0)
+            # training the model
+            train_begin = time()
+            loss = ranker.train(x_train, y_train, args.batch_size)
+            train_time = time() - train_begin
 
-            write2file(args.path + "out/" + args.opath, runName + ".out", output)
+            if epoch_count % args.verbose == 0:
 
-        # print and log the best result
-        if max_ndcg < ndcg:
-            max_ndcg = ndcg
-            best_res['result'] = cur_res
-            best_res['epoch'] = epoch_count
+                eval_begin = time()
+                res = []
+                for user in range(dataset.num_users):
+                    user_input, item_input = eval_feed_dicts[user]
+                    predictions = ranker.rank(user_input, item_input)
 
-            _hrs = res[:, 0, -1]
-            _ndcgs = res[:, 1, -1]
-            prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
-            prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
-        # save the embedding weights
-        if args.ckpt > 0 and epoch_count % args.ckpt == 0:
-            print("save")
-            ranker.saver_ckpt.save(ranker.sess, ranker.ckpt_save_path + 'weights', global_step=epoch_count)
-        break
+                    neg_predict, pos_predict = predictions[:-1], predictions[-1]
+                    position = (neg_predict >= pos_predict).sum()
 
-    return max_ndcg, best_res
+                    # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
+                    hr, ndcg, auc = [], [], []
+                    K = 100 if args.eval_mode == "all" else 10
+                    for k in range(1, K + 1):
+                        hr.append(position < k)
+                        ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
+                        auc.append(1 - (
+                            position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+                    res.append((hr, ndcg, auc))
+                    break
+
+                res = np.array(res)
+                hr, ndcg, auc = (res.mean(axis=0)).tolist()
+                cur_res = (hr, ndcg, auc)
+                hr, ndcg, auc = np.swapaxes((hr, ndcg, auc), 0, 1)[-1]
+
+                eval_time = time() - eval_begin
+
+                output = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
+                         (epoch_count, train_time, 0, hr, ndcg, loss,
+                          loss, eval_time, 0, 0)
+
+                write2file(args.path + "out/" + args.opath, runName + ".out", output)
+
+            # print and log the best result
+            if max_ndcg < ndcg:
+                max_ndcg = ndcg
+                best_res['result'] = cur_res
+                best_res['epoch'] = epoch_count
+
+                _hrs = res[:, 0, -1]
+                _ndcgs = res[:, 1, -1]
+                prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
+                prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
+            # save the embedding weights
+            if args.ckpt > 0 and epoch_count % args.ckpt == 0:
+                saver_ckpt.save(sess, ckpt_save_path + 'weights', global_step=epoch_count)
+
+        return max_ndcg, best_res
 
 
 def parse_args():
@@ -674,27 +703,26 @@ if __name__ == '__main__':
             write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
-            ranker.init(dataset.trainSeq, args.batch_size)
-            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1, max_ndcg, best_res, ranker, dataset)
+            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1, max_ndcg, best_res, ranker, dataset, args)
 
             if args.model == "asasrec":
+                tf.reset_default_graph()
                 write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize Adversarial_SASREC")
                 args.adver = 1
-                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp, reuse=tf.AUTO_REUSE)
-                ranker.init(dataset.trainSeq, args.batch_size)
-                max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset)
+                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
+                max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset, args)
 
         elif args.model == "apl":
             ranker = APL(dataset.num_users, dataset.num_items, args.embed_size)
             ranker.init(dataset.trainMatrix)
-            max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
+            # max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
 
         elif args.model == "drcf":
             maxlen = 10
             runName = "%s_%s_d%d_ml%d_%s" % (args.dataset, args.model, args.embed_size, maxlen, time_stamp)
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
-            max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
+            # max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
 
 
 
