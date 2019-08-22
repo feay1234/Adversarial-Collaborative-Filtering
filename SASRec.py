@@ -23,6 +23,7 @@ from keras_preprocessing.sequence import pad_sequences
 # https://github.com/kang205/SASRec
 from tensorflow.python.layers.convolutional import Conv1D
 from tensorflow.python.layers.core import Dense
+from tensorflow.python.ops import init_ops
 
 from Recommender import Recommender
 import numpy as np
@@ -42,6 +43,7 @@ class SASRec(Recommender):
         self.maxlen = maxlen
         self.hidden_units = hidden_units
         self.num_blocks = num_blocks
+        self.dropout_rate = dropout_rate
         self.eps = eps
         self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
@@ -51,7 +53,8 @@ class SASRec(Recommender):
         self.neg = tf.placeholder(tf.int32, shape=(None, maxlen))
         pos = self.pos
         neg = self.neg
-        mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
+        self.mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
+
 
         with tf.variable_scope("SASRec", reuse=reuse):
             # with tf.name_scope("SASRec"):
@@ -76,7 +79,16 @@ class SASRec(Recommender):
                 self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]),
                                              name='delta_emb', dtype=tf.float32, trainable=False)
                 self.delta_pos_emb = tf.Variable(tf.zeros(shape=[maxlen, hidden_units]),
-                                               name='delta_emb', dtype=tf.float32, trainable=False)
+                                               name='delta_pos_emb', dtype=tf.float32, trainable=False)
+
+                self.delta_q_denses, self.delta_k_denses, self.delta_v_denses, self.delta_ff1, self.delta_ff2 = [], [], [], [], []
+                for i in range(num_blocks):
+                    self.delta_q_denses.append(Dense(hidden_units, kernel_initializer=init_ops.zeros_initializer(), trainable=False))
+                    self.delta_k_denses.append(Dense(hidden_units, kernel_initializer=init_ops.zeros_initializer(), trainable=False))
+                    self.delta_v_denses.append(Dense(hidden_units, kernel_initializer=init_ops.zeros_initializer(), trainable=False))
+
+                    self.delta_ff1.append(Conv1D(filters=hidden_units, kernel_size=1, activation=tf.nn.relu, use_bias=True, trainable=False))
+                    self.delta_ff2.append(Conv1D(filters=hidden_units, kernel_size=1, activation=None, use_bias=True, trainable=False))
 
 
 
@@ -101,7 +113,7 @@ class SASRec(Recommender):
             embed_input = tf.layers.dropout(embed_input,
                                             rate=dropout_rate,
                                             training=tf.convert_to_tensor(self.is_training))
-            embed_input *= mask
+            embed_input *= self.mask
 
             # Build blocks
 
@@ -139,7 +151,7 @@ class SASRec(Recommender):
                     # Residual Connection
                     embed_input += ff_output
 
-                    embed_input *= mask
+                    embed_input *= self.mask
 
             embed_input = normalize(embed_input)
 
@@ -238,15 +250,52 @@ class SASRec(Recommender):
         #     logging.info("Initialized from scratch")
 
     def _create_inference_adv(self, item_input, maxlen, hidden_units):
-        # emb = tf.nn.embedding_lookup(self.item_emb_table, item_input)
-        emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
-        seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
+        if self.args.mode == 1:
+            emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
+            seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
+            emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input), 1)
+            return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
 
-        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input), 1)
-        # TODO
-        # p_emb_plus_delta
+        elif self.args.mode == 2:
+            emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
+            emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input), 1)
 
-        return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
+            pos_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.pos_emb_table, tf.tile(tf.expand_dims(tf.range(tf.shape(item_input)[1]), 0), [tf.shape(item_input)[0], 1]),), 1)
+            pos_emb_plus_delta = pos_emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_pos_emb, tf.tile(tf.expand_dims(tf.range(tf.shape(item_input)[1]), 0), [tf.shape(item_input)[0], 1]),), 1)
+
+            embed_input = emb_plus_delta + pos_emb_plus_delta
+
+            embed_input = tf.layers.dropout(embed_input,
+                                            rate=self.dropout_rate,
+                                            training=tf.convert_to_tensor(self.is_training))
+            embed_input *= self.mask
+
+            for i in range(self.num_blocks):
+
+
+
+                embed_input = multihead_attention(self.q_denses[i], self.k_denses[i], self.v_denses[i],
+                                                  queries=normalize(embed_input),
+                                                  keys=embed_input,
+                                                  num_units=hidden_units,
+                                                  num_heads=self.num_heads,
+                                                  dropout_rate=self.dropout_rate,
+                                                  is_training=self.is_training,
+                                                  causality=True,
+                                                  scope="self_adv_attention")
+
+                ff_output = self.feedforwards1[i].apply(embed_input)
+                ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
+                ff_output = self.feedforwards2[i].apply(ff_output)
+                ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
+
+                # Residual Connection
+                embed_input += ff_output
+
+                embed_input *= self.mask
+
+            embed_input = normalize(embed_input)
+
 
     def _create_adversarial(self):
         if self.args.mode == 1:
@@ -485,6 +534,9 @@ def embedding(inputs,
 def multihead_attention(q_dense, k_dense, v_dense,
                         queries,
                         keys,
+                        delta_q_dense=None,
+                        delta_k_dense=None,
+                        delta_v_dense=None,
                         num_units=None,
                         num_heads=8,
                         dropout_rate=0,
@@ -530,6 +582,11 @@ def multihead_attention(q_dense, k_dense, v_dense,
         Q = q_dense.apply(queries)
         K = k_dense.apply(keys)
         V = v_dense.apply(keys)
+
+        if delta_q_dense != None:
+            Q += tf.reduce_sum(delta_q_dense.apply(queries), 1)
+            K += tf.reduce_sum(delta_k_dense.apply(keys), 1)
+            V += tf.reduce_sum(delta_v_dense.apply(keys), 1)
 
         # Split and concat
         Q_ = tf.concat(tf.split(Q, num_heads, axis=2), axis=0)  # (h*N, T_q, C/h)
