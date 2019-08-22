@@ -558,6 +558,7 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
                         auc.append(1 - (
                             position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                     res.append((hr, ndcg, auc))
+                    break
 
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
@@ -630,7 +631,7 @@ def parse_args():
                         help='Epsilon for adversarial weights.')
     parser.add_argument('--eval_mode', type=str, default="sample",
                         help='Eval mode: sample or all')
-    parser.add_argument('--mode', type=int, default=1)
+    parser.add_argument('--mode', type=int, default=2)
     return parser.parse_args()
 
 

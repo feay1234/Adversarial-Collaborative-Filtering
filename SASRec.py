@@ -43,6 +43,7 @@ class SASRec(Recommender):
         self.maxlen = maxlen
         self.hidden_units = hidden_units
         self.num_blocks = num_blocks
+        self.num_heads = num_heads
         self.dropout_rate = dropout_rate
         self.eps = eps
         self.args = args
@@ -76,10 +77,12 @@ class SASRec(Recommender):
                                              name='delta_emb', dtype=tf.float32, trainable=False)
 
             if args.mode == 2:
-                self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]),
+                self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
                                              name='delta_emb', dtype=tf.float32, trainable=False)
                 self.delta_pos_emb = tf.Variable(tf.zeros(shape=[maxlen, hidden_units]),
                                                name='delta_pos_emb', dtype=tf.float32, trainable=False)
+                # self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+                #                                  name='delta_pos_emb', dtype=tf.float32, trainable=False)
 
                 self.delta_q_denses, self.delta_k_denses, self.delta_v_denses, self.delta_ff1, self.delta_ff2 = [], [], [], [], []
                 for i in range(num_blocks):
@@ -138,9 +141,9 @@ class SASRec(Recommender):
 
                     # Feed forward
 
-                    self.feedforwards1.apend(
+                    self.feedforwards1.append(
                         Conv1D(filters=hidden_units, kernel_size=1, activation=tf.nn.relu, use_bias=True))
-                    self.feedforwards2.apend(
+                    self.feedforwards2.append(
                         Conv1D(filters=hidden_units, kernel_size=1, activation=None, use_bias=True))
 
                     ff_output = self.feedforwards1[i].apply(embed_input)
@@ -214,7 +217,7 @@ class SASRec(Recommender):
             reg_adv_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             self.adv_loss += sum(reg_adv_losses)
 
-        self._create_adversarial()
+            self._create_adversarial()
 
         # # initialized the save op
         #
@@ -271,35 +274,37 @@ class SASRec(Recommender):
             embed_input *= self.mask
 
             for i in range(self.num_blocks):
+                with tf.variable_scope("num_adv_blocks_%d" % i):
 
-                embed_input = multihead_attention(self.q_denses[i], self.k_denses[i], self.v_denses[i],
-                                                  queries=normalize(embed_input),
-                                                  keys=embed_input,
-                                                  delta_q_dense=self.delta_q_denses[i],
-                                                  delta_k_dense=self.delta_k_denses[i],
-                                                  delta_v_dense=self.delta_v_denses[i],
-                                                  num_units=hidden_units,
-                                                  num_heads=self.num_heads,
-                                                  dropout_rate=self.dropout_rate,
-                                                  is_training=self.is_training,
-                                                  causality=True,
-                                                  scope="self_adv_attention")
 
-                ff_output = self.feedforwards1[i].apply(embed_input)
-                ff_output += tf.reduce_sum(self.delta_ff1[i].apply(embed_input), 1)
-                ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
-                ff_output = self.feedforwards2[i].apply(ff_output)
-                ff_output += tf.reduce_sum(self.delta_ff2[i].apply(ff_output), 1)
-                ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
+                    embed_input = multihead_attention(self.q_denses[i], self.k_denses[i], self.v_denses[i],
+                                                      queries=normalize(embed_input),
+                                                      keys=embed_input,
+                                                      delta_q_dense=self.delta_q_denses[i],
+                                                      delta_k_dense=self.delta_k_denses[i],
+                                                      delta_v_dense=self.delta_v_denses[i],
+                                                      num_units=hidden_units,
+                                                      num_heads=self.num_heads,
+                                                      dropout_rate=self.dropout_rate,
+                                                      is_training=self.is_training,
+                                                      causality=True,
+                                                      scope="self_adv_attention")
 
-                # Residual Connection
-                embed_input += ff_output
+                    ff_output = self.feedforwards1[i].apply(embed_input)
+                    ff_output += tf.reduce_sum(self.delta_ff1[i].apply(embed_input), 1)
+                    ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
+                    ff_output = self.feedforwards2[i].apply(ff_output)
+                    ff_output += tf.reduce_sum(self.delta_ff2[i].apply(ff_output), 1)
+                    ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
 
-                embed_input *= self.mask
+                    # Residual Connection
+                    embed_input += ff_output
+
+                    embed_input *= self.mask
 
             embed_input = normalize(embed_input)
             embed_input = tf.reshape(embed_input, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
-            return tf.reduce_sume(emb_plus_delta * embed_input, -1)
+            return tf.reduce_sum(emb_plus_delta * embed_input, -1)
 
 
 
@@ -311,7 +316,7 @@ class SASRec(Recommender):
             self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
         elif self.args.mode == 2:
-            grad_emb = tf.gradients(self.loss, [self.emb])
+            grad_emb = tf.gradients(self.loss, self.emb)
             grad_emb_dense = tf.stop_gradient(grad_emb)
             self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(grad_emb_dense, 1) * self.eps)
 
@@ -397,6 +402,7 @@ class SASRec(Recommender):
                                                   self.is_training: True})
 
             losses.append(loss)
+            break
 
         return np.mean(losses)
 
