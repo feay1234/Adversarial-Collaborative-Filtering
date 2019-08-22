@@ -41,6 +41,7 @@ class SASRec(Recommender):
         self.iNum = itemnum + 1
         self.maxlen = maxlen
         self.hidden_units = hidden_units
+        self.num_blocks = num_blocks
         self.eps = eps
         self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
@@ -67,12 +68,21 @@ class SASRec(Recommender):
                                                       )
 
             # self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
-            self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
-                                         name='delta_emb', dtype=tf.float32, trainable=False)
-            self.h = tf.constant(1.0, tf.float32, [hidden_units, 1], name="h")
+            if args.mode == 1:
+                self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+                                             name='delta_emb', dtype=tf.float32, trainable=False)
+
+            if args.mode == 2:
+                self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]),
+                                             name='delta_emb', dtype=tf.float32, trainable=False)
+                self.delta_pos_emb = tf.Variable(tf.zeros(shape=[maxlen, hidden_units]),
+                                               name='delta_emb', dtype=tf.float32, trainable=False)
+
+
+
 
             # Positional Encoding
-            self.t, self.pos_emb_table = embedding(
+            self.pos_emb, self.pos_emb_table = embedding(
                 tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0), [tf.shape(self.input_seq)[0], 1]),
                 vocab_size=maxlen,
                 num_units=hidden_units,
@@ -83,10 +93,9 @@ class SASRec(Recommender):
                 reuse=reuse,
                 with_t=True
             )
-            self.delta_p_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
-                                         name='delta_emb', dtype=tf.float32, trainable=False)
 
-            embed_input = self.emb + self.t
+
+            embed_input = self.emb + self.pos_emb
 
             # Dropout
             embed_input = tf.layers.dropout(embed_input,
@@ -117,8 +126,10 @@ class SASRec(Recommender):
 
                     # Feed forward
 
-                    self.feedforwards1.apend(Conv1D(filters=hidden_units, kernel_size=1, activation=tf.nn.relu, use_bias=True))
-                    self.feedforwards2.apend(Conv1D(filters=hidden_units, kernel_size=1, activation=None, use_bias=True))
+                    self.feedforwards1.apend(
+                        Conv1D(filters=hidden_units, kernel_size=1, activation=tf.nn.relu, use_bias=True))
+                    self.feedforwards2.apend(
+                        Conv1D(filters=hidden_units, kernel_size=1, activation=None, use_bias=True))
 
                     ff_output = self.feedforwards1[i].apply(embed_input)
                     ff_output = tf.layers.dropout(ff_output, rate=dropout_rate, training=tf.convert_to_tensor(True))
@@ -130,7 +141,7 @@ class SASRec(Recommender):
 
                     embed_input *= mask
 
-            embed_input= normalize(embed_input)
+            embed_input = normalize(embed_input)
 
         pos = tf.reshape(pos, [tf.shape(self.input_seq)[0] * maxlen])
         neg = tf.reshape(neg, [tf.shape(self.input_seq)[0] * maxlen])
@@ -238,13 +249,51 @@ class SASRec(Recommender):
         return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
 
     def _create_adversarial(self):
-        self.grad_emb = tf.gradients(self.loss, [self.seq])
-        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
-        # self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
-        self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
+        if self.args.mode == 1:
+            self.grad_emb = tf.gradients(self.loss, [self.seq])
+            self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
+            # self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
+            self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
-        if self.args.mode == 2:
-            self.update_pos_emb = self.delta_pos_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
+        elif self.args.mode == 2:
+            grad_emb = tf.gradients(self.loss, [self.emb])
+            grad_emb_dense = tf.stop_gradient(grad_emb)
+            self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(grad_emb_dense, 1) * self.eps)
+
+            grad_pos_emb = tf.gradients(self.loss, [self.pos_emb])
+            grad_pos_emb_dense = tf.stop_gradient(grad_pos_emb)
+            self.update_pos_emb = self.delta_pos_emb.assign(tf.nn.l2_normalize(grad_pos_emb_dense, 1) * self.eps)
+
+            self.update_q_denses, self.update_k_denses, self.update_v_denses = [], [], []
+            self.update_ff1, self.update_ff2 = [], []
+
+            for i in range(self.num_blocks):
+                # TODO gradient over multihead as a whole or individual dense
+                grad_q = tf.gradients(self.loss, [self.q_denses[i]])
+                grad_k = tf.gradients(self.loss, [self.k_denses[i]])
+                grad_v = tf.gradients(self.loss, [self.v_denses[i]])
+
+                grad_q_dense = tf.stop_gradient(grad_q)
+                grad_k_dense = tf.stop_gradient(grad_k)
+                grad_v_dense = tf.stop_gradient(grad_v)
+
+                self.update_q_denses.append(self.delta_q_denses[i].assign(tf.nn.l2_normalize(grad_q_dense, 1) * self.eps))
+                self.update_k_denses.append(self.delta_k_denses[i].assign(tf.nn.l2_normalize(grad_k_dense, 1) * self.eps))
+                self.update_v_denses.append(self.delta_v_denses[i].assign(tf.nn.l2_normalize(grad_v_dense, 1) * self.eps))
+
+                grad_ff1 = tf.gradients(self.loss, [self.feedforwards1[i]])
+                grad_ff2 = tf.gradients(self.loss, [self.feedforwards2[i]])
+
+                grad_ff1_dense = tf.stop_gradient(grad_ff1)
+                grad_ff2_dense = tf.stop_gradient(grad_ff2)
+
+                self.update_ff1.append(self.delta_ff1[i].assign(tf.nn.l2_normalize(grad_ff1_dense, 1) * self.eps))
+                self.update_ff2.append(self.delta_ff2[i].assign(tf.nn.l2_normalize(grad_ff2_dense, 1) * self.eps))
+
+
+
+
+
 
     def init(self, trainSeq, batch_size, sess):
         self.trainSeq = trainSeq
