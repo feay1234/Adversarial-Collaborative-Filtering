@@ -21,18 +21,21 @@ from keras_preprocessing.sequence import pad_sequences
 
 # Self-Attentive Sequential Recommendation
 # https://github.com/kang205/SASRec
+from tensorflow.python.layers.convolutional import Conv1D
+from tensorflow.python.layers.core import Dense
+
 from Recommender import Recommender
 import numpy as np
 import logging
 import os
 from multiprocessing import Process, Queue
 
+
 class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.5,
                  l2_emb=0.0, lr=0.001, reuse=None, args=None, eps=0.5, time_stamp=None):
-
 
         self.uNum = usernum + 1
         self.iNum = itemnum + 1
@@ -50,25 +53,26 @@ class SASRec(Recommender):
         mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
 
         with tf.variable_scope("SASRec", reuse=reuse):
-        # with tf.name_scope("SASRec"):
+            # with tf.name_scope("SASRec"):
             # sequence embedding, item embedding table
             self.emb, self.item_emb_table = embedding(self.input_seq,
-                                                 vocab_size=itemnum + 1,
-                                                 num_units=hidden_units,
-                                                 zero_pad=True,
-                                                 scale=True,
-                                                 l2_reg=l2_emb,
-                                                 scope="input_embeddings",
-                                                 with_t=True,
-                                                 reuse=reuse
-                                                 )
+                                                      vocab_size=itemnum + 1,
+                                                      num_units=hidden_units,
+                                                      zero_pad=True,
+                                                      scale=True,
+                                                      l2_reg=l2_emb,
+                                                      scope="input_embeddings",
+                                                      with_t=True,
+                                                      reuse=reuse
+                                                      )
 
             # self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
-            self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
+            self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+                                         name='delta_emb', dtype=tf.float32, trainable=False)
             self.h = tf.constant(1.0, tf.float32, [hidden_units, 1], name="h")
 
             # Positional Encoding
-            self.t, pos_emb_table = embedding(
+            self.t, self.pos_emb_table = embedding(
                 tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0), [tf.shape(self.input_seq)[0], 1]),
                 vocab_size=maxlen,
                 num_units=hidden_units,
@@ -79,47 +83,62 @@ class SASRec(Recommender):
                 reuse=reuse,
                 with_t=True
             )
+            self.delta_p_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+                                         name='delta_emb', dtype=tf.float32, trainable=False)
 
-            if self.args.mode == 2:
-                self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]), name='delta_position_emb', dtype=tf.float32, trainable=False)
-
-            self.seq = self.emb + self.t
+            embed_input = self.emb + self.t
 
             # Dropout
-            self.seq = tf.layers.dropout(self.seq,
-                                         rate=dropout_rate,
-                                         training=tf.convert_to_tensor(self.is_training))
-            self.seq *= mask
+            embed_input = tf.layers.dropout(embed_input,
+                                            rate=dropout_rate,
+                                            training=tf.convert_to_tensor(self.is_training))
+            embed_input *= mask
 
             # Build blocks
 
+            self.q_denses, self.k_denses, self.v_denses, self.feedforwards1, self.feedforwards2 = [], [], [], [], []
             for i in range(num_blocks):
                 # with tf.variable_scope("num_blocks_%d" % i):
                 with tf.variable_scope("num_blocks_%d" % i):
                     # Self-attention
-                    self.seq = multihead_attention(queries=normalize(self.seq),
-                                                   keys=self.seq,
-                                                   num_units=hidden_units,
-                                                   num_heads=num_heads,
-                                                   dropout_rate=dropout_rate,
-                                                   is_training=self.is_training,
-                                                   causality=True,
-                                                   scope="self_attention")
+                    self.q_denses.append(Dense(hidden_units, activation=None))
+                    self.k_denses.append(Dense(hidden_units, activation=None))
+                    self.v_denses.append(Dense(hidden_units, activation=None))
+
+                    embed_input = multihead_attention(self.q_denses[i], self.k_denses[i], self.v_denses[i],
+                                                      queries=normalize(embed_input),
+                                                      keys=embed_input,
+                                                      num_units=hidden_units,
+                                                      num_heads=num_heads,
+                                                      dropout_rate=dropout_rate,
+                                                      is_training=self.is_training,
+                                                      causality=True,
+                                                      scope="self_attention")
 
                     # Feed forward
-                    self.seq = feedforward(normalize(self.seq), num_units=[hidden_units, hidden_units],
-                                           dropout_rate=dropout_rate, is_training=self.is_training)
-                    self.seq *= mask
 
-            self.seq = normalize(self.seq)
+                    self.feedforwards1.apend(Conv1D(filters=hidden_units, kernel_size=1, activation=tf.nn.relu, use_bias=True))
+                    self.feedforwards2.apend(Conv1D(filters=hidden_units, kernel_size=1, activation=None, use_bias=True))
+
+                    ff_output = self.feedforwards1[i].apply(embed_input)
+                    ff_output = tf.layers.dropout(ff_output, rate=dropout_rate, training=tf.convert_to_tensor(True))
+                    ff_output = self.feedforwards2[i].apply(ff_output)
+                    ff_output = tf.layers.dropout(ff_output, rate=dropout_rate, training=tf.convert_to_tensor(True))
+
+                    # Residual Connection
+                    embed_input += ff_output
+
+                    embed_input *= mask
+
+            embed_input= normalize(embed_input)
 
         pos = tf.reshape(pos, [tf.shape(self.input_seq)[0] * maxlen])
         neg = tf.reshape(neg, [tf.shape(self.input_seq)[0] * maxlen])
         pos_emb = tf.nn.embedding_lookup(self.item_emb_table, pos)
         neg_emb = tf.nn.embedding_lookup(self.item_emb_table, neg)
-        seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
+        seq_emb = tf.reshape(embed_input, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        self.test_item = tf.placeholder(tf.int32, shape=(itemnum+1))
+        self.test_item = tf.placeholder(tf.int32, shape=(itemnum + 1))
         test_item_emb = tf.nn.embedding_lookup(self.item_emb_table, self.test_item)
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, itemnum + 1])
@@ -128,10 +147,6 @@ class SASRec(Recommender):
         # prediction layer
         self.pos_logits = tf.reduce_sum(pos_emb * seq_emb, -1)
         self.neg_logits = tf.reduce_sum(neg_emb * seq_emb, -1)
-
-
-
-
 
         # ignore padding items (0)
         istarget = tf.reshape(tf.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * maxlen])
@@ -216,7 +231,9 @@ class SASRec(Recommender):
         emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input),1)
+        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input), 1)
+        # TODO
+        # p_emb_plus_delta
 
         return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
 
@@ -225,13 +242,14 @@ class SASRec(Recommender):
         self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
         # self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
+
         if self.args.mode == 2:
             self.update_pos_emb = self.delta_pos_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
-
     def init(self, trainSeq, batch_size, sess):
         self.trainSeq = trainSeq
-        self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen, n_workers=3)
+        self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen,
+                                   n_workers=3)
         self.sess = sess
 
         # self.saver_ckpt.save(self.sess, self.ckpt_save_path + 'weights', global_step=0)
@@ -241,7 +259,8 @@ class SASRec(Recommender):
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
 
         score = self.sess.run(self.test_logits,
-                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum), self.is_training: False})[0]
+                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum),
+                               self.is_training: False})[0]
         # res = []
         # for i in items:
         #
@@ -271,8 +290,7 @@ class SASRec(Recommender):
 
             if self.args.adver:
                 self.sess.run([self.update_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
-                                          self.is_training: True})
-
+                                                  self.is_training: True})
 
             losses.append(loss)
 
@@ -317,7 +335,7 @@ def normalize(inputs,
       A tensor with the same shape and data dtype as `inputs`.
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         inputs_shape = inputs.get_shape()
         params_shape = inputs_shape[-1:]
 
@@ -396,7 +414,7 @@ def embedding(inputs,
     ```
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         lookup_table = tf.get_variable('lookup_table',
                                        dtype=tf.float32,
                                        shape=[vocab_size, num_units],
@@ -415,7 +433,8 @@ def embedding(inputs,
         return outputs
 
 
-def multihead_attention(queries,
+def multihead_attention(q_dense, k_dense, v_dense,
+                        queries,
                         keys,
                         num_units=None,
                         num_heads=8,
@@ -443,7 +462,7 @@ def multihead_attention(queries,
       A 3d tensor with shape of (N, T_q, C)
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         # Set the fall back option for num_units
         if num_units is None:
             num_units = queries.get_shape().as_list[-1]
@@ -452,9 +471,16 @@ def multihead_attention(queries,
         # Q = tf.layers.dense(queries, num_units, activation=tf.nn.relu) # (N, T_q, C)
         # K = tf.layers.dense(keys, num_units, activation=tf.nn.relu) # (N, T_k, C)
         # V = tf.layers.dense(keys, num_units, activation=tf.nn.relu) # (N, T_k, C)
-        Q = tf.layers.dense(queries, num_units, activation=None)  # (N, T_q, C)
-        K = tf.layers.dense(keys, num_units, activation=None)  # (N, T_k, C)
-        V = tf.layers.dense(keys, num_units, activation=None)  # (N, T_k, C)
+
+
+
+
+        # Q = tf.layers.dense(queries, num_units, activation=None)  # (N, T_q, C)
+        # K = tf.layers.dense(keys, num_units, activation=None)  # (N, T_k, C)
+        # V = tf.layers.dense(keys, num_units, activation=None)  # (N, T_k, C)
+        Q = q_dense.apply(queries)
+        K = k_dense.apply(keys)
+        V = v_dense.apply(keys)
 
         # Split and concat
         Q_ = tf.concat(tf.split(Q, num_heads, axis=2), axis=0)  # (h*N, T_q, C/h)
@@ -533,7 +559,7 @@ def feedforward(inputs,
       A 3d tensor with the same shape and dtype as inputs
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         # Inner layer
         params = {"inputs": inputs, "filters": num_units[0], "kernel_size": 1,
                   "activation": tf.nn.relu, "use_bias": True}
