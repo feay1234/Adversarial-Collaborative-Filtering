@@ -80,6 +80,9 @@ class SASRec(Recommender):
                 with_t=True
             )
 
+            if self.args.mode == 2:
+                self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]), name='delta_position_emb', dtype=tf.float32, trainable=False)
+
             self.seq = self.emb + self.t
 
             # Dropout
@@ -222,6 +225,8 @@ class SASRec(Recommender):
         self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
         # self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
+        if self.args.mode == 2:
+            self.update_pos_emb = self.delta_pos_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
 
     def init(self, trainSeq, batch_size, sess):
@@ -274,7 +279,7 @@ class SASRec(Recommender):
         return np.mean(losses)
 
     def get_params(self):
-        return "_ml%d" % (self.maxlen)
+        return "_m%d" % (self.args.mode)
 
 
 # -*- coding: utf-8 -*-

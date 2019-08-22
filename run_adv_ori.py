@@ -630,6 +630,7 @@ def parse_args():
                         help='Epsilon for adversarial weights.')
     parser.add_argument('--eval_mode', type=str, default="sample",
                         help='Eval mode: sample or all')
+    parser.add_argument('--mode', type=int, default=1)
     return parser.parse_args()
 
 
@@ -699,18 +700,19 @@ if __name__ == '__main__':
         print(dataset.num_users, dataset.num_items)
 
         if args.model in ["sasrec", "asasrec"]:
-            time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
             args.adver = 0
-            write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
+            runName = "%s_%s_d%d_m%d_%s" % (args.dataset, args.model, args.embed_size, args.mode, time_stamp)
             maxlen = int(dataset.df.groupby("uid").size().mean())
             ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
+
+            write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
             max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1, max_ndcg, best_res, ranker, dataset, args)
 
             if args.model == "asasrec":
                 tf.reset_default_graph()
-                write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize Adversarial_SASREC")
                 args.adver = 1
                 ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
+                write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize Adversarial_SASREC")
                 max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset, args)
 
         elif args.model == "apl":
