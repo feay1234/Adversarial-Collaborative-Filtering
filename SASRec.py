@@ -272,11 +272,12 @@ class SASRec(Recommender):
 
             for i in range(self.num_blocks):
 
-
-
                 embed_input = multihead_attention(self.q_denses[i], self.k_denses[i], self.v_denses[i],
                                                   queries=normalize(embed_input),
                                                   keys=embed_input,
+                                                  delta_q_dense=self.delta_q_denses[i],
+                                                  delta_k_dense=self.delta_k_denses[i],
+                                                  delta_v_dense=self.delta_v_denses[i],
                                                   num_units=hidden_units,
                                                   num_heads=self.num_heads,
                                                   dropout_rate=self.dropout_rate,
@@ -285,8 +286,10 @@ class SASRec(Recommender):
                                                   scope="self_adv_attention")
 
                 ff_output = self.feedforwards1[i].apply(embed_input)
+                ff_output += tf.reduce_sum(self.delta_ff1[i].apply(embed_input), 1)
                 ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
                 ff_output = self.feedforwards2[i].apply(ff_output)
+                ff_output += tf.reduce_sum(self.delta_ff2[i].apply(ff_output), 1)
                 ff_output = tf.layers.dropout(ff_output, rate=self.dropout_rate, training=tf.convert_to_tensor(True))
 
                 # Residual Connection
@@ -295,6 +298,9 @@ class SASRec(Recommender):
                 embed_input *= self.mask
 
             embed_input = normalize(embed_input)
+            embed_input = tf.reshape(embed_input, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
+            return tf.reduce_sume(emb_plus_delta * embed_input, -1)
+
 
 
     def _create_adversarial(self):
