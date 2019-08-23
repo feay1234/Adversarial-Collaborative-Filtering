@@ -79,10 +79,10 @@ class SASRec(Recommender):
             if args.mode == 2:
                 self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
                                              name='delta_emb', dtype=tf.float32, trainable=False)
-                self.delta_pos_emb = tf.Variable(tf.zeros(shape=[maxlen, hidden_units]),
-                                               name='delta_pos_emb', dtype=tf.float32, trainable=False)
-                # self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
-                #                                  name='delta_pos_emb', dtype=tf.float32, trainable=False)
+                # self.delta_pos_emb = tf.Variable(tf.zeros(shape=[maxlen, hidden_units]),
+                #                                name='delta_pos_emb', dtype=tf.float32, trainable=False)
+                self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+                                                 name='delta_pos_emb', dtype=tf.float32, trainable=False)
 
                 self.delta_q_denses, self.delta_k_denses, self.delta_v_denses, self.delta_ff1, self.delta_ff2 = [], [], [], [], []
                 for i in range(num_blocks):
@@ -121,6 +121,8 @@ class SASRec(Recommender):
             # Build blocks
 
             self.q_denses, self.k_denses, self.v_denses, self.feedforwards1, self.feedforwards2 = [], [], [], [], []
+            self.denses = []
+            self.ffs = []
             for i in range(num_blocks):
                 # with tf.variable_scope("num_blocks_%d" % i):
                 with tf.variable_scope("num_blocks_%d" % i):
@@ -138,6 +140,7 @@ class SASRec(Recommender):
                                                       is_training=self.is_training,
                                                       causality=True,
                                                       scope="self_attention")
+                    self.denses.append(embed_input)
 
                     # Feed forward
 
@@ -153,10 +156,12 @@ class SASRec(Recommender):
 
                     # Residual Connection
                     embed_input += ff_output
-
                     embed_input *= self.mask
 
+                    self.ffs.append(embed_input)
+
             embed_input = normalize(embed_input)
+
 
         pos = tf.reshape(pos, [tf.shape(self.input_seq)[0] * maxlen])
         neg = tf.reshape(neg, [tf.shape(self.input_seq)[0] * maxlen])
@@ -266,7 +271,8 @@ class SASRec(Recommender):
             pos_emb = tf.reduce_sum(tf.nn.embedding_lookup(self.pos_emb_table, tf.tile(tf.expand_dims(tf.range(tf.shape(item_input)[1]), 0), [tf.shape(item_input)[0], 1]),), 1)
             pos_emb_plus_delta = pos_emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_pos_emb, tf.tile(tf.expand_dims(tf.range(tf.shape(item_input)[1]), 0), [tf.shape(item_input)[0], 1]),), 1)
 
-            embed_input = emb_plus_delta + pos_emb_plus_delta
+            # embed_input = emb_plus_delta + pos_emb_plus_delta
+            embed_input = emb_plus_delta + pos_emb
 
             embed_input = tf.layers.dropout(embed_input,
                                             rate=self.dropout_rate,
@@ -280,9 +286,9 @@ class SASRec(Recommender):
                     embed_input = multihead_attention(self.q_denses[i], self.k_denses[i], self.v_denses[i],
                                                       queries=normalize(embed_input),
                                                       keys=embed_input,
-                                                      delta_q_dense=self.delta_q_denses[i],
-                                                      delta_k_dense=self.delta_k_denses[i],
-                                                      delta_v_dense=self.delta_v_denses[i],
+                                                      # delta_q_dense=self.delta_denses[i],
+                                                      # delta_k_dense=self.delta_k_denses[i],
+                                                      # delta_v_dense=self.delta_v_denses[i],
                                                       num_units=hidden_units,
                                                       num_heads=self.num_heads,
                                                       dropout_rate=self.dropout_rate,
@@ -316,7 +322,7 @@ class SASRec(Recommender):
             self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
         elif self.args.mode == 2:
-            grad_emb = tf.gradients(self.loss, self.emb)
+            grad_emb = tf.gradients(self.loss, self.seq)
             grad_emb_dense = tf.stop_gradient(grad_emb)
             self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(grad_emb_dense, 1) * self.eps)
 
@@ -324,31 +330,38 @@ class SASRec(Recommender):
             grad_pos_emb_dense = tf.stop_gradient(grad_pos_emb)
             self.update_pos_emb = self.delta_pos_emb.assign(tf.nn.l2_normalize(grad_pos_emb_dense, 1) * self.eps)
 
-            self.update_q_denses, self.update_k_denses, self.update_v_denses = [], [], []
-            self.update_ff1, self.update_ff2 = [], []
+            self.update_denses, self.update_k_denses, self.update_v_denses = [], [], []
+            self.update_ff, self.update_ff2 = [], []
 
             for i in range(self.num_blocks):
                 # TODO gradient over multihead as a whole or individual dense
-                grad_q = tf.gradients(self.loss, [self.q_denses[i]])
-                grad_k = tf.gradients(self.loss, [self.k_denses[i]])
-                grad_v = tf.gradients(self.loss, [self.v_denses[i]])
+                # grad_q = tf.gradients(self.loss, [self.q_denses[i]])
+                # grad_k = tf.gradients(self.loss, [self.k_denses[i]])
+                # grad_v = tf.gradients(self.loss, [self.v_denses[i]])
+                grad_d = tf.gradients(self.loss, [self.denses[i]])
 
-                grad_q_dense = tf.stop_gradient(grad_q)
-                grad_k_dense = tf.stop_gradient(grad_k)
-                grad_v_dense = tf.stop_gradient(grad_v)
+                # grad_q_dense = tf.stop_gradient(grad_q)
+                # grad_k_dense = tf.stop_gradient(grad_k)
+                # grad_v_dense = tf.stop_gradient(grad_v)
+                grad_d_dense = tf.stop_gradient(grad_d)
 
-                self.update_q_denses.append(self.delta_q_denses[i].assign(tf.nn.l2_normalize(grad_q_dense, 1) * self.eps))
-                self.update_k_denses.append(self.delta_k_denses[i].assign(tf.nn.l2_normalize(grad_k_dense, 1) * self.eps))
-                self.update_v_denses.append(self.delta_v_denses[i].assign(tf.nn.l2_normalize(grad_v_dense, 1) * self.eps))
+                # TODO assigne to delta
+                self.update_denses.append(tf.nn.l2_normalize(grad_d_dense, 1) * self.eps)
+                # self.update_q_denses.append(self.delta_q_denses[i].assign(tf.nn.l2_normalize(grad_d_dense, 1) * self.eps))
+                # self.update_k_denses.append(self.delta_k_denses[i].assign(tf.nn.l2_normalize(grad_d_dense, 1) * self.eps))
+                # self.update_v_denses.append(self.delta_v_denses[i].assign(tf.nn.l2_normalize(grad_d_dense, 1) * self.eps))
 
-                grad_ff1 = tf.gradients(self.loss, [self.feedforwards1[i]])
-                grad_ff2 = tf.gradients(self.loss, [self.feedforwards2[i]])
+                # grad_ff1 = tf.gradients(self.loss, [self.feedforwards1[i]])
+                # grad_ff2 = tf.gradients(self.loss, [self.feedforwards2[i]])
+                grad_ff = tf.gradients(self.loss, [self.ffs[i]])
 
-                grad_ff1_dense = tf.stop_gradient(grad_ff1)
-                grad_ff2_dense = tf.stop_gradient(grad_ff2)
+                # grad_ff1_dense = tf.stop_gradient(grad_ff1)
+                # grad_ff2_dense = tf.stop_gradient(grad_ff2)
+                grad_ff_dense = tf.stop_gradient(grad_ff)
 
-                self.update_ff1.append(self.delta_ff1[i].assign(tf.nn.l2_normalize(grad_ff1_dense, 1) * self.eps))
-                self.update_ff2.append(self.delta_ff2[i].assign(tf.nn.l2_normalize(grad_ff2_dense, 1) * self.eps))
+                # self.update_ff1.append(self.delta_ff1[i].assign(tf.nn.l2_normalize(grad_ff1_dense, 1) * self.eps))
+                # self.update_ff2.append(self.delta_ff2[i].assign(tf.nn.l2_normalize(grad_ff2_dense, 1) * self.eps))
+                self.update_ff.append(tf.nn.l2_normalize(grad_ff_dense, 1) * self.eps)
 
 
 
