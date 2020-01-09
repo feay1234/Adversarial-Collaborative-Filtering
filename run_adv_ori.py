@@ -1,4 +1,3 @@
-
 import os
 import math
 import numpy as np
@@ -29,8 +28,6 @@ _dataset = None
 _K = None
 _feed_dict = None
 _output = None
-
-
 
 
 # data sampling and shuffling
@@ -134,7 +131,8 @@ class MF:
             self.embedding_p = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_P, self.user_input), 1)
             self.embedding_q = tf.reduce_sum(tf.nn.embedding_lookup(self.embedding_Q, item_input),
                                              1)  # (b, embedding_size)
-            return tf.matmul(self.embedding_p * self.embedding_q, self.h), self.embedding_p, self.embedding_q # (b, embedding_size) * (embedding_size, 1)
+            return tf.matmul(self.embedding_p * self.embedding_q,
+                             self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
 
     def _create_inference_adv(self, item_input):
         with tf.name_scope("inference_adv"):
@@ -146,7 +144,8 @@ class MF:
             self.P_plus_delta = self.embedding_p + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_P, self.user_input),
                                                                  1)
             self.Q_plus_delta = self.embedding_q + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_Q, item_input), 1)
-            return tf.matmul(self.P_plus_delta * self.Q_plus_delta, self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
+            return tf.matmul(self.P_plus_delta * self.Q_plus_delta,
+                             self.h), self.embedding_p, self.embedding_q  # (b, embedding_size) * (embedding_size, 1)
 
     def _create_loss(self):
         with tf.name_scope("loss"):
@@ -157,9 +156,9 @@ class MF:
             # self.loss = tf.reduce_sum(tf.log(1 + tf.exp(-self.result))) # this is numerically unstable
             self.loss = tf.reduce_sum(tf.nn.softplus(-self.result))
 
-
             # loss to be omptimized
-            self.opt_loss = self.loss + self.reg * tf.reduce_mean(tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg)) # embed_p_pos == embed_q_neg
+            self.opt_loss = self.loss + self.reg * tf.reduce_mean(
+                tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))  # embed_p_pos == embed_q_neg
 
             if self.adver:
                 # loss for L(Theta + adv_Delta)
@@ -169,8 +168,8 @@ class MF:
                 # self.loss_adv = tf.reduce_sum(tf.log(1 + tf.exp(-self.result_adv)))
                 self.loss_adv = tf.reduce_sum(tf.nn.softplus(-self.result_adv))
                 self.opt_loss += self.reg_adv * self.loss_adv + \
-                                 self.reg * tf.reduce_mean(tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
-
+                                 self.reg * tf.reduce_mean(
+                    tf.square(embed_p_pos) + tf.square(embed_q_pos) + tf.square(embed_q_neg))
 
     def _create_adversarial(self):
         with tf.name_scope("adversarial"):
@@ -219,7 +218,8 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
             ckpt_restore_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
         else:
             ckpt_save_path = "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/MF_BPR/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/MF_BPR/embed_%d/%s/" % (
+            args.dataset, args.embed_size, args.restore)
 
         if not os.path.exists(ckpt_save_path):
             os.makedirs(ckpt_save_path)
@@ -252,7 +252,7 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
         best_res = {}
 
         # train by epoch
-        for epoch_count in range(epoch_start, epoch_end+1):
+        for epoch_count in range(epoch_start, epoch_end + 1):
 
             # initialize for training batches
             batch_begin = time()
@@ -271,7 +271,8 @@ def training(model, dataset, args, runName, epoch_start, epoch_end, time_stamp):
 
             if epoch_count % args.verbose == 0:
                 _, ndcg, cur_res, raw_result = output_evaluate(model, sess, dataset, train_batches, eval_feed_dicts,
-                                                   epoch_count, batch_time, train_time, prev_acc, runName, args, output_adv=0)
+                                                               epoch_count, batch_time, train_time, prev_acc, runName,
+                                                               args, output_adv=0)
 
             # print and log the best result
             if max_ndcg < ndcg:
@@ -486,6 +487,7 @@ def _eval_by_user(user):
 
     return hr, ndcg, auc
 
+
 def init_logging(args, time_stamp):
     path = "Log/%s_%s/" % (strftime('%Y-%m-%d_%H', localtime()), args.task)
     if not os.path.exists(path):
@@ -507,7 +509,8 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
             ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
         else:
             ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, args.restore)
+            ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (
+            args.dataset, args.embed_size, args.restore)
 
         if not os.path.exists(ckpt_save_path):
             os.makedirs(ckpt_save_path)
@@ -526,7 +529,6 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
         # initialize the weights
         else:
             print("Initialized from scratch")
-
 
         # train by epoch
         for epoch_count in range(epoch_start, epoch_end + 1):
@@ -556,9 +558,9 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
                         hr.append(position < k)
                         ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
                         auc.append(1 - (
-                            position / len(neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+                                position / len(
+                            neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                     res.append((hr, ndcg, auc))
-                    break
 
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
@@ -604,9 +606,9 @@ def parse_args():
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=3,
+    parser.add_argument('--epochs', type=int, default=2,
                         help='Number of epochs.')
-    parser.add_argument('--adv_epoch', type=int, default=2,
+    parser.add_argument('--adv_epoch', type=int, default=1,
                         help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
                              'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
     parser.add_argument('--embed_size', type=int, default=64,
@@ -631,7 +633,6 @@ def parse_args():
                         help='Epsilon for adversarial weights.')
     parser.add_argument('--eval_mode', type=str, default="sample",
                         help='Eval mode: sample or all')
-    parser.add_argument('--mode', type=int, default=2)
     return parser.parse_args()
 
 
@@ -642,7 +643,6 @@ if __name__ == '__main__':
     # initilize arguments and logging
     args = parse_args()
     init_logging(args, time_stamp)
-
 
     # initialize dataset
     dataset = OriginalDataset(args.path + "data/" + args.dataset)
@@ -661,9 +661,9 @@ if __name__ == '__main__':
         training(MF_BPR, dataset, args, runName, epoch_start=0, epoch_end=args.epochs, time_stamp=time_stamp)
 
     elif args.model == "apr":
-        runName = "%s_%s_d%d_e%f_l%f_%s" % (args.dataset, args.model, args.embed_size, args.eps, args.reg_adv, time_stamp)
-        write2file(args.path + "out/" + args.opath,  runName + ".out", runName)
-
+        runName = "%s_%s_d%d_e%f_l%f_%s" % (
+        args.dataset, args.model, args.embed_size, args.eps, args.reg_adv, time_stamp)
+        write2file(args.path + "out/" + args.opath, runName + ".out", runName)
 
         args.adver = 0
         # initialize MF_BPR models
@@ -701,20 +701,25 @@ if __name__ == '__main__':
         print(dataset.num_users, dataset.num_items)
 
         if args.model in ["sasrec", "asasrec"]:
+            time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
             args.adver = 0
-            runName = "%s_%s_d%d_m%d_%s" % (args.dataset, args.model, args.embed_size, args.mode, time_stamp)
-            maxlen = int(dataset.df.groupby("uid").size().mean())
-            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
-
             write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
-            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1, max_ndcg, best_res, ranker, dataset, args)
+            maxlen = int(dataset.df.groupby("uid").size().mean())
+            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args,
+                            time_stamp=time_stamp)
+            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1,
+                                                  max_ndcg, best_res, ranker, dataset, args)
 
             if args.model == "asasrec":
+                runName = "%s_%s_d%d_ml%d_l%.2f_e%.2f_%s" % (
+                    args.dataset, args.model, args.embed_size, maxlen, args.reg_adv, args.eps, time_stamp)
                 tf.reset_default_graph()
-                args.adver = 1
-                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args, time_stamp=time_stamp)
                 write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize Adversarial_SASREC")
-                max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset, args)
+                args.adver = 1
+                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args,
+                                time_stamp=time_stamp)
+                max_ndcg, best_res = run_normal_model(args.adv_epoch, args.epochs, max_ndcg, best_res, ranker, dataset,
+                                                      args)
 
         elif args.model == "apl":
             ranker = APL(dataset.num_users, dataset.num_items, args.embed_size)
@@ -728,14 +733,8 @@ if __name__ == '__main__':
             ranker.init(dataset.trainSeq)
             # max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
 
-
-
         output = "Epoch %d is the best epoch" % best_res['epoch']
         write2file(args.path + "out/" + args.opath, runName + ".out", output)
         for idx, (hr_k, ndcg_k, auc_k) in enumerate(np.swapaxes(best_res['result'], 0, 1)):
             res = "K = %d: HR = %.4f, NDCG = %.4f AUC = %.4f" % (idx + 1, hr_k, ndcg_k, auc_k)
             write2file(args.path + "out/" + args.opath, runName + ".out", res)
-
-
-
-
