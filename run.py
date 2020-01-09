@@ -2,7 +2,6 @@ import argparse
 from datetime import datetime
 from time import time
 import numpy as np
-import pandas as pd
 
 from APR import APR
 from APL import APL
@@ -31,7 +30,7 @@ def parse_args():
     parser.add_argument('--opath', type=str, help='Path to output', default="test/")
 
     parser.add_argument('--model', type=str,
-                        help='Model Name: lstm', default="sasrec")
+                        help='Model Name: lstm', default="bpr")
 
     parser.add_argument('--data', type=str,
                         help='Dataset name', default="test")

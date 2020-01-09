@@ -2,7 +2,6 @@ from keras.layers import Input, Embedding, Flatten, Lambda, Dense, dot
 from keras.models import Model;
 import numpy as np
 import math
-from tqdm import tqdm
 
 
 class MatrixFactorization:

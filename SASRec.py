@@ -27,18 +27,19 @@ import logging
 import os
 from multiprocessing import Process, Queue
 
+
 class SASRec(Recommender):
     def __init__(self, usernum, itemnum, hidden_units=50, maxlen=50, num_blocks=2,
                  num_heads=1,
                  dropout_rate=0.5,
                  l2_emb=0.0, lr=0.001, reuse=None, args=None, eps=0.5, time_stamp=None):
 
-
         self.uNum = usernum + 1
         self.iNum = itemnum + 1
         self.maxlen = maxlen
         self.hidden_units = hidden_units
-        self.eps = eps
+        self.eps = args.eps
+        self.reg_adv = args.reg_adv
         self.args = args
         self.is_training = tf.placeholder(tf.bool, shape=())
         self.u = tf.placeholder(tf.int32, shape=(None))
@@ -50,22 +51,26 @@ class SASRec(Recommender):
         mask = tf.expand_dims(tf.to_float(tf.not_equal(self.input_seq, 0)), -1)
 
         with tf.variable_scope("SASRec", reuse=reuse):
-        # with tf.name_scope("SASRec"):
+            # with tf.name_scope("SASRec"):
             # sequence embedding, item embedding table
             self.emb, self.item_emb_table = embedding(self.input_seq,
-                                                 vocab_size=itemnum + 1,
-                                                 num_units=hidden_units,
-                                                 zero_pad=True,
-                                                 scale=True,
-                                                 l2_reg=l2_emb,
-                                                 scope="input_embeddings",
-                                                 with_t=True,
-                                                 reuse=reuse
-                                                 )
+                                                      vocab_size=itemnum + 1,
+                                                      num_units=hidden_units,
+                                                      zero_pad=True,
+                                                      scale=True,
+                                                      l2_reg=l2_emb,
+                                                      scope="input_embeddings",
+                                                      with_t=True,
+                                                      reuse=reuse
+                                                      )
 
-            # self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
-            self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]), name='delta_emb', dtype=tf.float32, trainable=False)
-            self.h = tf.constant(1.0, tf.float32, [hidden_units, 1], name="h")
+            self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb',
+                                         dtype=tf.float32, trainable=False)
+            # self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+            #                              name='delta_emb', dtype=tf.float32, trainable=False)
+
+            # self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+            #                              name='delta_pos_emb', dtype=tf.float32, trainable=False)
 
             # Positional Encoding
             self.t, pos_emb_table = embedding(
@@ -116,7 +121,7 @@ class SASRec(Recommender):
         neg_emb = tf.nn.embedding_lookup(self.item_emb_table, neg)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        self.test_item = tf.placeholder(tf.int32, shape=(itemnum+1))
+        self.test_item = tf.placeholder(tf.int32, shape=(itemnum + 1))
         test_item_emb = tf.nn.embedding_lookup(self.item_emb_table, self.test_item)
         self.test_logits = tf.matmul(seq_emb, tf.transpose(test_item_emb))
         self.test_logits = tf.reshape(self.test_logits, [tf.shape(self.input_seq)[0], maxlen, itemnum + 1])
@@ -125,10 +130,6 @@ class SASRec(Recommender):
         # prediction layer
         self.pos_logits = tf.reduce_sum(pos_emb * seq_emb, -1)
         self.neg_logits = tf.reduce_sum(neg_emb * seq_emb, -1)
-
-
-
-
 
         # ignore padding items (0)
         istarget = tf.reshape(tf.to_float(tf.not_equal(pos, 0)), [tf.shape(self.input_seq)[0] * maxlen])
@@ -155,15 +156,14 @@ class SASRec(Recommender):
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta2=0.98)
         self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
-
         self.merged = tf.summary.merge_all()
 
         if args.adver:
             #
             # self.output_adv, embed_seq_pos = self._create_inference_adv(self.pos, maxlen, hidden_units)
-            self.output_adv = self._create_inference_adv(self.pos, maxlen, hidden_units)
+            self.output_adv = self._create_inference_adv(pos, maxlen, hidden_units)
             # self.output_neg_adv, embed_seq_neg = self._create_inference_adv(self.neg, maxlen, hidden_units)
-            self.output_neg_adv = self._create_inference_adv(self.neg, maxlen, hidden_units)
+            self.output_neg_adv = self._create_inference_adv(neg, maxlen, hidden_units)
             # self.result_adv = tf.clip_by_value(self.output_adv - self.output_neg_adv, -80.0, 1e8)
 
             self.adv_loss = tf.reduce_sum(
@@ -174,7 +174,10 @@ class SASRec(Recommender):
             self.adv_loss += sum(reg_adv_losses)
 		self.train_op = self.optimizer.minimize(self.loss + self.adv_loss, global_step=self.global_step)
 
-        self._create_adversarial()
+            self.opt_loss = self.loss + (self.reg_adv * self.adv_loss)
+            self.train_op = self.optimizer.minimize(self.opt_loss, global_step=self.global_step)
+
+            self._create_adversarial()
 
         # # initialized the save op
         #
@@ -210,24 +213,24 @@ class SASRec(Recommender):
         #     logging.info("Initialized from scratch")
 
     def _create_inference_adv(self, item_input, maxlen, hidden_units):
-        # emb = tf.nn.embedding_lookup(self.item_emb_table, item_input)
-        emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
+        emb = tf.nn.embedding_lookup(self.item_emb_table, item_input)
+        # emb = tf.reduce_sum(tf.nn.embedding_lookup(self.item_emb_table, item_input), 1)
         seq_emb = tf.reshape(self.seq, [tf.shape(self.input_seq)[0] * maxlen, hidden_units])
 
-        emb_plus_delta = emb + tf.reduce_sum(tf.nn.embedding_lookup(self.delta_emb, item_input),1)
+        emb_plus_delta = emb + tf.nn.embedding_lookup(self.delta_emb, item_input)
 
-        return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
+        # return tf.reduce_sum(emb_plus_delta * seq_emb, -1)
+        return tf.reduce_sum(emb * seq_emb, -1)
 
     def _create_adversarial(self):
-        self.grad_emb = tf.gradients(self.loss, [self.seq])
-        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
-        # self.grad_emb_dense = tf.truncated_normal(shape=[self.iNum, self.hidden_units], mean=0.0, stddev=0.01)
+        self.grad_emb = tf.gradients(self.loss, [self.item_emb_table])
+        self.grad_emb_dense = tf.stop_gradient(self.grad_emb[0])
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
-
 
     def init(self, trainSeq, batch_size, sess):
         self.trainSeq = trainSeq
-        self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen, n_workers=3)
+        self.sampler = WarpSampler(self.trainSeq, self.uNum, self.iNum, batch_size=batch_size, maxlen=self.maxlen,
+                                   n_workers=3)
         self.sess = sess
 
         # self.saver_ckpt.save(self.sess, self.ckpt_save_path + 'weights', global_step=0)
@@ -237,7 +240,8 @@ class SASRec(Recommender):
         seq = pad_sequences([self.trainSeq[users[0]]], self.maxlen)
 
         score = self.sess.run(self.test_logits,
-                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum), self.is_training: False})[0]
+                              {self.u: users[0], self.input_seq: seq, self.test_item: range(self.iNum),
+                               self.is_training: False})[0]
         # res = []
         # for i in items:
         #
@@ -261,14 +265,18 @@ class SASRec(Recommender):
         for step in list(range(num_batch)):
             u, seq, pos, neg = self.sampler.next_batch()
 
-            auc, loss, _ = self.sess.run([self.auc, self.loss, self.train_op],
-                                         {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
-                                          self.is_training: True})
-
             if self.args.adver:
                 self.sess.run([self.update_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
-                                          self.is_training: True})
+                                                  self.is_training: False})
 
+                auc, loss, _ = self.sess.run([self.auc, self.opt_loss, self.train_op],
+                                             {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                              self.is_training: True})
+            else:
+
+                auc, loss, _ = self.sess.run([self.auc, self.loss, self.train_op],
+                                             {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                              self.is_training: True})
 
             losses.append(loss)
 
@@ -313,7 +321,7 @@ def normalize(inputs,
       A tensor with the same shape and data dtype as `inputs`.
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         inputs_shape = inputs.get_shape()
         params_shape = inputs_shape[-1:]
 
@@ -392,7 +400,7 @@ def embedding(inputs,
     ```
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         lookup_table = tf.get_variable('lookup_table',
                                        dtype=tf.float32,
                                        shape=[vocab_size, num_units],
@@ -401,6 +409,10 @@ def embedding(inputs,
         if zero_pad:
             lookup_table = tf.concat((tf.zeros(shape=[1, num_units]),
                                       lookup_table[1:, :]), 0)
+            lookup_table = tf.Variable(
+                tf.truncated_normal(shape=[vocab_size, num_units], mean=0.0, stddev=0.01), name='embedding_Q',
+                dtype=tf.float32)
+
         outputs = tf.nn.embedding_lookup(lookup_table, inputs)
 
         if scale:
@@ -439,7 +451,7 @@ def multihead_attention(queries,
       A 3d tensor with shape of (N, T_q, C)
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         # Set the fall back option for num_units
         if num_units is None:
             num_units = queries.get_shape().as_list[-1]
@@ -529,7 +541,7 @@ def feedforward(inputs,
       A 3d tensor with the same shape and dtype as inputs
     '''
     with tf.variable_scope(scope, reuse=reuse):
-    # with tf.name_scope(scope):
+        # with tf.name_scope(scope):
         # Inner layer
         params = {"inputs": inputs, "filters": num_units[0], "kernel_size": 1,
                   "activation": tf.nn.relu, "use_bias": True}
