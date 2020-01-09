@@ -598,7 +598,7 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='brightkite-sort',
+    parser.add_argument('--dataset', nargs='?', default='brightkite-sort2',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
                         help='Model Name', default="asasrec")
