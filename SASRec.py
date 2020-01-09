@@ -172,6 +172,7 @@ class SASRec(Recommender):
             ) / tf.reduce_sum(istarget)
             reg_adv_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             self.adv_loss += sum(reg_adv_losses)
+		self.train_op = self.optimizer.minimize(self.loss + self.adv_loss, global_step=self.global_step)
 
         self._create_adversarial()
 
