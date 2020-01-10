@@ -601,7 +601,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='brightkite-sort2',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="sasrec")
+                        help='Model Name', default="asasrec")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,

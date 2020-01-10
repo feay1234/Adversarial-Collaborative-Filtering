@@ -66,11 +66,8 @@ class SASRec(Recommender):
 
             self.delta_emb = tf.Variable(tf.zeros(shape=[itemnum + 1, hidden_units]), name='delta_emb',
                                          dtype=tf.float32, trainable=False)
-
-            self.delta_E = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
-                                       name='delta_emb', dtype=tf.float32, trainable=False)
-            self.delta_T = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
-                                       name='delta_emb', dtype=tf.float32, trainable=False)
+            # self.delta_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
+            #                              name='delta_emb', dtype=tf.float32, trainable=False)
 
             # self.delta_pos_emb = tf.Variable(tf.zeros(shape=[1, self.args.batch_size, maxlen, hidden_units]),
             #                              name='delta_pos_emb', dtype=tf.float32, trainable=False)
@@ -231,7 +228,6 @@ class SASRec(Recommender):
         self.grad_emb = tf.gradients(self.loss, [self.item_emb_table])
         self.grad_emb_dense = tf.stop_gradient(self.grad_emb[0])
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
-
 
     def init(self, trainSeq, batch_size, sess):
         self.trainSeq = trainSeq
@@ -551,19 +547,6 @@ def feedforward(inputs,
         # Inner layer
         params = {"inputs": inputs, "filters": num_units[0], "kernel_size": 1,
                   "activation": tf.nn.relu, "use_bias": True}
-        # tmp = {"filters": num_units[0], "kernel_size": 1,
-        #        "activation": tf.nn.relu, "use_bias": True}
-        #
-        # conv1 = tf.layers.Conv1D(**tmp)
-        # dropout1 = tf.layers.Dropout(rate=dropout_rate)
-        #
-        # tmp = {"filters": num_units[1], "kernel_size": 1,
-        #           "activation": None, "use_bias": True}
-        # conv2 = tf.layers.Conv1D(**tmp)
-        # dropout2 = tf.layers.Dropout(rate=dropout_rate)
-        #
-        # ff = dropout2.apply(conv2.apply(dropout1.apply(conv1.apply(inputs))))
-
         outputs = tf.layers.conv1d(**params)
         outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(is_training))
         # Readout layer
@@ -576,7 +559,7 @@ def feedforward(inputs,
         outputs += inputs
 
         # Normalize
-        outputs = normalize(outputs)
+        # outputs = normalize(outputs)
 
     return outputs
 
