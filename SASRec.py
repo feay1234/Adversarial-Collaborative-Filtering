@@ -85,6 +85,9 @@ class SASRec(Recommender):
                 with_t=True
             )
 
+            # TODO
+            # replace who emb and t with full adv
+
             self.seq = self.emb + self.t
 
             # Dropout
