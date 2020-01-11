@@ -498,6 +498,7 @@ def init_logging(args, time_stamp):
     print(args)
 
 
+
 def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset, args):
     with tf.Session() as sess:
         ranker.init(dataset.trainSeq, args.batch_size, sess)
@@ -592,6 +593,66 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
 
         return max_ndcg, best_res
 
+def run_keras_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, args):
+
+    # train by epoch
+    for epoch_count in range(epoch_start, epoch_end + 1):
+
+        x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
+
+        # training the model
+        train_begin = time()
+        loss = ranker.train(x_train, y_train, args.batch_size)
+        train_time = time() - train_begin
+
+        if epoch_count % args.verbose == 0:
+
+            eval_begin = time()
+            res = []
+            for user in range(dataset.num_users):
+                user_input, item_input = eval_feed_dicts[user]
+                predictions = ranker.rank(user_input, item_input)
+
+                neg_predict, pos_predict = predictions[:-1], predictions[-1]
+                position = (neg_predict >= pos_predict).sum()
+
+                # calculate from HR@1 to HR@100, and from NDCG@1 to NDCG@100, AUC
+                hr, ndcg, auc = [], [], []
+                K = 100 if args.eval_mode == "all" else 10
+                for k in range(1, K + 1):
+                    hr.append(position < k)
+                    ndcg.append(math.log(2) / math.log(position + 2) if position < k else 0)
+                    auc.append(1 - (
+                            position / len(
+                        neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
+                res.append((hr, ndcg, auc))
+
+
+            res = np.array(res)
+            hr, ndcg, auc = (res.mean(axis=0)).tolist()
+            cur_res = (hr, ndcg, auc)
+            hr, ndcg, auc = np.swapaxes((hr, ndcg, auc), 0, 1)[-1]
+
+            eval_time = time() - eval_begin
+
+            output = "Epoch %d [%.1fs + %.1fs]: HR = %.4f, NDCG = %.4f ACC = %.4f ACC_adv = %.4f [%.1fs], |P|=%.2f, |Q|=%.2f" % \
+                     (epoch_count, train_time, 0, hr, ndcg, loss,
+                      loss, eval_time, 0, 0)
+
+            write2file(args.path + "out/" + args.opath, runName + ".out", output)
+
+        # print and log the best result
+        if max_ndcg < ndcg:
+            max_ndcg = ndcg
+            best_res['result'] = cur_res
+            best_res['epoch'] = epoch_count
+
+            _hrs = res[:, 0, -1]
+            _ndcgs = res[:, 1, -1]
+            prediction2file(args.path + "out/" + args.opath, runName + ".hr", _hrs)
+            prediction2file(args.path + "out/" + args.opath, runName + ".ndcg", _ndcgs)
+
+    return max_ndcg, best_res
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run AMF.")
@@ -737,7 +798,7 @@ if __name__ == '__main__':
             runName = "%s_%s_d%d_ml%d_%s" % (args.dataset, args.model, args.embed_size, maxlen, time_stamp)
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
-            # max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
+            max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args)
 
         output = "Epoch %d is the best epoch" % best_res['epoch']
         write2file(args.path + "out/" + args.opath, runName + ".out", output)
