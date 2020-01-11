@@ -229,7 +229,7 @@ class SASRec(Recommender):
 
     def _create_adversarial(self):
         self.grad_emb = tf.gradients(self.loss, [self.item_emb_table])
-        self.grad_emb_dense = tf.stop_gradient(self.grad_emb[0])
+        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
 
@@ -556,7 +556,7 @@ def feedforward(inputs,
         #
         # conv1 = tf.layers.Conv1D(**tmp)
         # dropout1 = tf.layers.Dropout(rate=dropout_rate)
-        #
+
         # tmp = {"filters": num_units[1], "kernel_size": 1,
         #           "activation": None, "use_bias": True}
         # conv2 = tf.layers.Conv1D(**tmp)
