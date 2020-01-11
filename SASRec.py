@@ -229,7 +229,7 @@ class SASRec(Recommender):
 
     def _create_adversarial(self):
         self.grad_emb = tf.gradients(self.loss, [self.item_emb_table])
-        self.grad_emb_dense = tf.stop_gradient(self.grad_emb)
+        self.grad_emb_dense = tf.stop_gradient(self.grad_emb[0])
         self.update_emb = self.delta_emb.assign(tf.nn.l2_normalize(self.grad_emb_dense, 1) * self.eps)
 
 
@@ -285,6 +285,7 @@ class SASRec(Recommender):
                                               self.is_training: True})
 
             losses.append(loss)
+            # break
 
         return np.mean(losses)
 

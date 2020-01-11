@@ -562,6 +562,7 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
                             neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                     res.append((hr, ndcg, auc))
 
+
                 res = np.array(res)
                 hr, ndcg, auc = (res.mean(axis=0)).tolist()
                 cur_res = (hr, ndcg, auc)
@@ -598,10 +599,10 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='Beauty',
+    parser.add_argument('--dataset', nargs='?', default='brightkite-sort2',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="sasrec")
+                        help='Model Name', default="asasrec")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -703,8 +704,9 @@ if __name__ == '__main__':
         if args.model in ["sasrec", "asasrec"]:
             time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
             args.adver = 0
+            # maxlen = int(dataset.df.groupby("uid").size().mean())
             maxlen = min(int(dataset.df.groupby("uid").size().mean()), 50)
-            print(maxlen)
+            print(maxlen, int(dataset.df.groupby("uid").size().mean()))
             if args.model == "asasrec":
                 runName = "%s_%s_d%d_ml%d_l%.2f_e%.2f_%s" % (
                     args.dataset, args.model, args.embed_size, maxlen, args.reg_adv, args.eps, time_stamp)
