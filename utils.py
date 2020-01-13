@@ -379,7 +379,6 @@ def run_keras_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, args, da
     for epoch_count in range(epoch_start, epoch_end + 1):
 
         x_train, y_train = ranker.get_train_instances(dataset.trainMatrix)
-
         # training the model
         train_begin = time()
         loss = ranker.train(x_train, y_train, args.batch_size)

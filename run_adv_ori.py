@@ -1,6 +1,7 @@
 from APL import APL
 from APR import *
 from DRCF import DRCF
+from DREAM import DREAM
 from Dataset import Dataset, OriginalDataset
 from NaiveBaselines import MostPopular, MostFrequentlyVisit, MostRecentlyVisit
 from NeuMF import NeuMF
@@ -16,10 +17,10 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='ml-1m',
+    parser.add_argument('--dataset', nargs='?', default='brightkite-sort-dup',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="mostvisit")
+                        help='Model Name', default="dream")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -158,6 +159,12 @@ if __name__ == '__main__':
 
         elif args.model == "neumf":
             ranker = NeuMF(dataset.num_users, dataset.num_items, args.embed_size)
+            max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+
+        elif args.model == "dream":
+            maxlen = 10
+            ranker = DREAM(dataset.num_users, dataset.num_items, args.embed_size, 10)
+            ranker.init(dataset.df)
             max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
 
         elif args.model == "pop":

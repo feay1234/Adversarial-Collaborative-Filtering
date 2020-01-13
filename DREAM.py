@@ -70,7 +70,7 @@ class DREAM(Recommender):
         return [np.array(checkins), np.array(positive_venues), np.array(negative_venues)], np.array(labels)
 
     def rank(self, users, items):
-        checkins = [self.df[self.df.uid == users[0]].iid.tolist()] * len(items)
+        checkins = [self.df[self.df.uid == users[0][0]].iid.tolist()] * len(items)
         checkins = sequence.pad_sequences(checkins, maxlen=self.maxlen)
         return self.predictor.predict([checkins, items], batch_size=100, verbose=0)
 
