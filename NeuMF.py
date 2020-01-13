@@ -9,8 +9,8 @@ from MF import AdversarialMatrixFactorisation, MatrixFactorization
 
 class NeuMF(MatrixFactorization):
     def __init__(self, uNum, iNum, mf_dim=10):
-        self.uNum = uNum
-        self.iNum = iNum
+        self.uNum = uNum + 1
+        self.iNum = iNum + 1
 
         layers = [mf_dim, mf_dim * 2, mf_dim]
 
@@ -20,12 +20,12 @@ class NeuMF(MatrixFactorization):
         self.item_input = Input(shape=(1,), dtype='int32', name='item_input')
 
         # Embedding layer
-        self.MF_Embedding_User = Embedding(input_dim=uNum, output_dim=mf_dim, name='mf_embedding_user', input_length=1)
-        self.MF_Embedding_Item = Embedding(input_dim=iNum, output_dim=mf_dim, name='mf_embedding_item', input_length=1)
+        self.MF_Embedding_User = Embedding(input_dim=self.uNum, output_dim=mf_dim, name='mf_embedding_user', input_length=1)
+        self.MF_Embedding_Item = Embedding(input_dim=self.iNum, output_dim=mf_dim, name='mf_embedding_item', input_length=1)
 
-        self.MLP_Embedding_User = Embedding(input_dim=uNum, output_dim=layers[0], name="mlp_embedding_user",
+        self.MLP_Embedding_User = Embedding(input_dim=self.uNum, output_dim=layers[0], name="mlp_embedding_user",
                                             input_length=1)
-        self.MLP_Embedding_Item = Embedding(input_dim=iNum, output_dim=layers[0], name='mlp_embedding_item',
+        self.MLP_Embedding_Item = Embedding(input_dim=self.iNum, output_dim=layers[0], name='mlp_embedding_item',
                                             input_length=1)
 
         # MF part

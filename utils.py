@@ -406,6 +406,8 @@ def run_keras_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, args, da
                             position / len(
                         neg_predict)))  # formula: [#(Xui>Xuj) / #(Items)] = [1 - #(Xui<=Xuj) / #(Items)]
                 res.append((hr, ndcg, auc))
+                # break
+
 
 
             res = np.array(res)

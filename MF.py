@@ -36,6 +36,7 @@ class MatrixFactorization:
         pass
 
     def rank(self, users, items):
+        # print(users.shape, items.shape)
         return self.model.predict([users, items], batch_size=100, verbose=0)
 
     def get_train_instances(self, train):

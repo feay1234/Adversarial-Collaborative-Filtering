@@ -1,17 +1,9 @@
-import os
-import numpy as np
-import tensorflow as tf
-from multiprocessing import Pool
-from multiprocessing import cpu_count
-import argparse
-import logging
-from time import time
-from time import strftime
-from time import localtime
 from APL import APL
 from APR import *
 from DRCF import DRCF
 from Dataset import Dataset, OriginalDataset
+from NaiveBaselines import MostPopular, MostFrequentlyVisit, MostRecentlyVisit
+from NeuMF import NeuMF
 from SASRec import SASRec
 from utils import *
 
@@ -24,10 +16,10 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='brightkite-sort',
+    parser.add_argument('--dataset', nargs='?', default='ml-1m',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="asasrec2")
+                        help='Model Name', default="mostvisit")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -57,7 +49,7 @@ def parse_args():
                         help='Generate the adversarial sample by gradient method or random method')
     parser.add_argument('--eps', type=float, default=0.5,
                         help='Epsilon for adversarial weights.')
-    parser.add_argument('--eval_mode', type=str, default="sample",
+    parser.add_argument('--eval_mode', type=str, default="all",
                         help='Eval mode: sample or all')
     return parser.parse_args()
 
@@ -163,6 +155,21 @@ if __name__ == '__main__':
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
             max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+
+        elif args.model == "neumf":
+            ranker = NeuMF(dataset.num_users, dataset.num_items, args.embed_size)
+            max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+
+        elif args.model == "pop":
+            ranker = MostPopular(dataset.df)
+            max_ndcg, best_res = run_keras_model(0,0, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+        elif args.model == "mostvisit":
+            ranker = MostFrequentlyVisit(dataset.df)
+            max_ndcg, best_res = run_keras_model(0, 0, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts,
+                                                 runName)
+        elif args.model == "recentvisit":
+            ranker = MostRecentlyVisit(dataset.df)
+            max_ndcg, best_res = run_keras_model(0,0, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
 
         output = "Epoch %d is the best epoch" % best_res['epoch']
         write2file(args.path + "out/" + args.opath, runName + ".out", output)

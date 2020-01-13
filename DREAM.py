@@ -1,11 +1,9 @@
-# A Dynamic Recurrent Neural Network model for Venue Recommendation
 import numpy as np
 from keras.models import Model
 from keras.layers import Embedding, Input, SimpleRNN, Dot, Subtract, Activation
 from keras.preprocessing import sequence
 from Recommender import Recommender
 import tensorflow as tf
-import math
 
 
 class DREAM(Recommender):
