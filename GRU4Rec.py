@@ -49,7 +49,9 @@ class GRU4Rec(Recommender):
         super().load_pre_train(pre)
 
     def rank(self, users, items):
-        seq = pad_sequences([self.data[self.data.uid == users[0]].iid.values.tolist()], self.batch_size)
+        # print(users[0])
+        # print(self.data[self.data.uid == users[0][0]].iid.values.tolist())
+        seq = pad_sequences([self.data[self.data.uid == users[0][0]].iid.values.tolist()], self.batch_size)
         fetches = [self.pred, self.final_state]
         feed_dict = {self.X: seq[0]}
         for i in range(self.layers):

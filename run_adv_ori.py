@@ -1,8 +1,10 @@
 from APL import APL
 from APR import *
+from Caser import CaserModel
 from DRCF import DRCF
 from DREAM import DREAM
 from Dataset import Dataset, OriginalDataset
+from GRU4Rec import GRU4Rec
 from NaiveBaselines import MostPopular, MostFrequentlyVisit, MostRecentlyVisit
 from NeuMF import NeuMF
 from SASRec import SASRec
@@ -17,10 +19,10 @@ def parse_args():
                         help='Input data path.')
     parser.add_argument('--opath', nargs='?', default='aaa/',
                         help='Output path.')
-    parser.add_argument('--dataset', nargs='?', default='brightkite-sort-dup',
+    parser.add_argument('--dataset', nargs='?', default='fsq11-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="dream")
+                        help='Model Name', default="caser")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -50,7 +52,7 @@ def parse_args():
                         help='Generate the adversarial sample by gradient method or random method')
     parser.add_argument('--eps', type=float, default=0.5,
                         help='Epsilon for adversarial weights.')
-    parser.add_argument('--eval_mode', type=str, default="all",
+    parser.add_argument('--eval_mode', type=str, default="sample",
                         help='Eval mode: sample or all')
     return parser.parse_args()
 
@@ -156,6 +158,22 @@ if __name__ == '__main__':
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
             max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+
+        elif args.model == "gru4rec":
+            ranker = GRU4Rec(dataset.num_users, dataset.num_items, args.embed_size, args.batch_size)
+            ranker.init(dataset.df)
+            max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+
+        elif args.model == "caser":
+            isCUDA = torch.cuda.is_available()
+            set_seed(2019, cuda=True if isCUDA else False)
+            maxlen = 10
+            # maxlen = int(dataset.df.groupby("uid").size().mean())
+            # print(maxlen, 10)
+            ranker = CaserModel(dataset.num_users, dataset.num_items, args.embed_size, maxlen, isCUDA)
+            ranker.init(dataset.df, args.batch_size)
+            max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)
+
 
         elif args.model == "neumf":
             ranker = NeuMF(dataset.num_users, dataset.num_items, args.embed_size)
