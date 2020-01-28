@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='fsq11-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="caser")
+                        help='Model Name', default="asasrec2")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
@@ -167,8 +167,7 @@ if __name__ == '__main__':
         elif args.model == "caser":
             isCUDA = torch.cuda.is_available()
             set_seed(2019, cuda=True if isCUDA else False)
-            maxlen = 10
-            # maxlen = int(dataset.df.groupby("uid").size().mean())
+            maxlen = int(dataset.df.groupby("uid").size().mean())
             # print(maxlen, 10)
             ranker = CaserModel(dataset.num_users, dataset.num_items, args.embed_size, maxlen, isCUDA)
             ranker.init(dataset.df, args.batch_size)

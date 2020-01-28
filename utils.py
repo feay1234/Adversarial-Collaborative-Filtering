@@ -384,6 +384,9 @@ def run_keras_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, args, da
         loss = ranker.train(x_train, y_train, args.batch_size)
         train_time = time() - train_begin
 
+        if math.isnan(loss):
+            break
+
         if epoch_count % args.verbose == 0:
 
             eval_begin = time()

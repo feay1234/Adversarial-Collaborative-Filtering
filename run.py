@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     elif modelName == "caser":
         set_seed(2019, cuda=False)
-        # maxlen = int(df.groupby("uid").size().mean())
+        maxlen = int(df.groupby("uid").size().mean())
         ranker = CaserModel(uNum, iNum, dim, maxlen, False)
         ranker.init(df, batch_size)
 
