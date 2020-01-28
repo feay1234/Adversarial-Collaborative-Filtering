@@ -153,7 +153,7 @@ if __name__ == '__main__':
             # max_ndcg, best_res = run_normal_model(0, args.epochs, max_ndcg, best_res, ranker, dataset)
 
         elif args.model == "drcf":
-            maxlen = 10
+            maxlen = 5
             runName = "%s_%s_d%d_ml%d_%s" % (args.dataset, args.model, args.embed_size, maxlen, time_stamp)
             ranker = DRCF(dataset.num_users, dataset.num_items, args.embed_size, maxlen)
             ranker.init(dataset.trainSeq)
@@ -167,8 +167,7 @@ if __name__ == '__main__':
         elif args.model == "caser":
             isCUDA = torch.cuda.is_available()
             set_seed(2019, cuda=True if isCUDA else False)
-            maxlen = int(dataset.df.groupby("uid").size().mean())
-            # print(maxlen, 10)
+            maxlen = min(int(dataset.df.groupby("uid").size().mean()), 50)
             ranker = CaserModel(dataset.num_users, dataset.num_items, args.embed_size, maxlen, isCUDA)
             ranker.init(dataset.df, args.batch_size)
             max_ndcg, best_res = run_keras_model(0, args.epochs, max_ndcg, best_res, ranker, args, dataset, eval_feed_dicts, runName)

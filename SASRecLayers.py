@@ -169,14 +169,10 @@ def multihead_attention(queries,
         if num_units is None:
             num_units = queries.get_shape().as_list[-1]
 
-        denseQ = tf.layers.Dense(num_units, activation=tf.nn.relu) if not denseQ else denseQ
-        denseK = tf.layers.Dense(num_units, activation=tf.nn.relu) if not denseK else denseK
-        denseV = tf.layers.Dense(num_units, activation=tf.nn.relu) if not denseV else denseV
+        denseQ = tf.layers.Dense(num_units, activation=None) if not denseQ else denseQ
+        denseK = tf.layers.Dense(num_units, activation=None) if not denseK else denseK
+        denseV = tf.layers.Dense(num_units, activation=None) if not denseV else denseV
 
-        # Linear projections
-        # Q = tf.layers.dense(queries, num_units, activation=tf.nn.relu) # (N, T_q, C)
-        # K = tf.layers.dense(keys, num_units, activation=tf.nn.relu) # (N, T_k, C)
-        # V = tf.layers.dense(keys, num_units, activation=tf.nn.relu) # (N, T_k, C)
         Q = denseQ.apply(queries)  # (N, T_q, C)
         K = denseK.apply(keys)  # (N, T_k, C)
         V = denseV.apply(keys)  # (N, T_k, C)
