@@ -184,11 +184,11 @@ class CaserModel(Recommender):
         # set model to evaluation model
         self._net.eval()
         with torch.no_grad():
-            sequences_np = pad_sequences([self.df[self.df.uid == users[0]].iid.values], self.maxlen)
+            sequences_np = pad_sequences([self.df[self.df.uid == users[0][0]].iid.values], self.maxlen)
             sequences_np = np.atleast_2d(sequences_np)
             sequences = torch.from_numpy(sequences_np).long()
             item_ids = torch.from_numpy(items).long()
-            user_id = torch.from_numpy(np.array([[users[0]]])).long()
+            user_id = torch.from_numpy(np.array([users[0]])).long()
 
             user, sequences, items = (user_id.to(self._device),
                                       sequences.to(self._device),
