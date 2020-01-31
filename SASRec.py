@@ -447,7 +447,6 @@ class SASRec(Recommender):
     def train(self, x_train, y_train, batch_size):
         losses = []
         num_batch = int(len(self.trainSeq) / batch_size)
-        print(num_batch)
         for step in list(range(num_batch)):
             u, seq, pos, neg = self.sampler.next_batch()
             if self.args.adver:
