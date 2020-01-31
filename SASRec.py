@@ -119,16 +119,20 @@ class SASRec(Recommender):
                     self.seq, beta, gamma = normalize(self.seq)
                     self.variables["num_blocks_%d_before_beta" % i] = beta
                     self.variables["num_blocks_%d_before_gamma" % i] = gamma
-                    self.seq, denseQ, denseK, denseV, dropout = multihead_attention(queries=self.seq,
-                                                                                    keys=self.seq,
-                                                                                    num_units=hidden_units,
-                                                                                    num_heads=num_heads,
-                                                                                    dropout_rate=dropout_rate,
-                                                                                    is_training=self.is_training,
-                                                                                    causality=True,
-                                                                                    scope="self_attention")
 
-                    self.delta_variables["num_blocks_%d_attention_denseQ" % i] = tf.layers.Dense(hidden_units, activation=tf.nn.relu, trainable=False)
+                    self.seq, denseQ, denseK, denseV, dropout, delta_denseQ, delta_denseK, delta_denseV = multihead_attention(
+                        queries=self.seq,
+                        keys=self.seq,
+                        num_units=hidden_units,
+                        num_heads=num_heads,
+                        dropout_rate=dropout_rate,
+                        is_training=self.is_training,
+                        causality=True,
+                        scope="self_attention")
+
+                    self.delta_variables["num_blocks_%d_attention_denseQ" % i] = delta_denseQ
+                    self.delta_variables["num_blocks_%d_attention_denseK" % i] = delta_denseK
+                    self.delta_variables["num_blocks_%d_attention_denseV" % i] = delta_denseV
 
                     self.variables["num_blocks_%d_attention_denseQ" % i] = denseQ
                     self.variables["num_blocks_%d_attention_denseK" % i] = denseK
@@ -140,11 +144,12 @@ class SASRec(Recommender):
                     self.variables["num_blocks_%d_after_beta" % i] = beta
                     self.variables["num_blocks_%d_after_gamma" % i] = gamma
 
-                    self.seq, conv1, dropout1, conv2, dropout2, beta, gamma = feedforward(self.seq,
-                                                                                          num_units=[hidden_units,
-                                                                                                     hidden_units],
-                                                                                          dropout_rate=dropout_rate,
-                                                                                          is_training=self.is_training)
+                    self.seq, conv1, dropout1, conv2, dropout2, beta, gamma, delta_conv1, delta_conv2 = feedforward(
+                        self.seq,
+                        num_units=[hidden_units,
+                                   hidden_units],
+                        dropout_rate=dropout_rate,
+                        is_training=self.is_training)
 
                     self.variables["num_blocks_%d_ff_conv1" % i] = conv1
                     self.variables["num_blocks_%d_ff_dropout1" % i] = dropout1
@@ -152,6 +157,9 @@ class SASRec(Recommender):
                     self.variables["num_blocks_%d_ff_dropout2" % i] = dropout2
                     self.variables["num_blocks_%d_ff_beta" % i] = beta
                     self.variables["num_blocks_%d_ff_gamma" % i] = gamma
+
+                    self.delta_variables["num_blocks_%d_ff_conv1" % i] = delta_conv1
+                    self.delta_variables["num_blocks_%d_ff_conv2" % i] = delta_conv2
 
                     self.seq *= mask
 
@@ -205,7 +213,6 @@ class SASRec(Recommender):
         if args.adver:
 
             if args.model == "asasrec2":
-                print("asasrec2")
 
                 self.output_adv = self._create_inference_adv2(pos, maxlen, hidden_units)
                 self.output_neg_adv = self._create_inference_adv2(neg, maxlen, hidden_units)
@@ -213,7 +220,6 @@ class SASRec(Recommender):
             elif args.model == "asasrec":
                 self.output_adv = self._create_inference_adv(pos, maxlen, hidden_units)
                 self.output_neg_adv = self._create_inference_adv(neg, maxlen, hidden_units)
-
 
             self.adv_loss = tf.reduce_sum(
                 - tf.log(tf.sigmoid(self.output_adv) + 1e-24) * istarget -
@@ -268,8 +274,9 @@ class SASRec(Recommender):
         pos_emb = tf.nn.embedding_lookup(self.pos_emb_table,
                                          tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0),
                                                  [tf.shape(self.input_seq)[0], 1]))
-        pos_emb_plus_delta = pos_emb + tf.nn.embedding_lookup(self.delta_pos_emb, tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0),
-                                                 [tf.shape(self.input_seq)[0], 1]))
+        pos_emb_plus_delta = pos_emb + tf.nn.embedding_lookup(self.delta_pos_emb, tf.tile(
+            tf.expand_dims(tf.range(tf.shape(self.input_seq)[1]), 0),
+            [tf.shape(self.input_seq)[0], 1]))
 
         seq_emb = tf.nn.embedding_lookup(self.item_emb_table, self.input_seq)
         seq_emb_plus_delta = seq_emb + tf.nn.embedding_lookup(self.delta_emb, self.input_seq)
@@ -291,23 +298,26 @@ class SASRec(Recommender):
                 # Self-attention
                 seq, _, _ = normalize(seq, beta=beta, gamma=gamma)
 
-
                 delta_denseQ = self.delta_variables["num_blocks_%d_attention_denseQ" % i]
+                delta_denseK = self.delta_variables["num_blocks_%d_attention_denseK" % i]
+                delta_denseV = self.delta_variables["num_blocks_%d_attention_denseV" % i]
 
                 denseQ = self.variables["num_blocks_%d_attention_denseQ" % i]
                 denseK = self.variables["num_blocks_%d_attention_denseK" % i]
                 denseV = self.variables["num_blocks_%d_attention_denseV" % i]
                 dropout = self.variables["num_blocks_%d_attention_dropout" % i]
 
-                seq, _, _, _, _ = multihead_attention(queries=seq,
-                                                      keys=seq,
-                                                      num_units=hidden_units,
-                                                      num_heads=self.num_heads,
-                                                      dropout_rate=self.dropout_rate,
-                                                      is_training=self.is_training,
-                                                      causality=True,
-                                                      scope="self_attention",
-                                                      denseQ=denseQ, denseK=denseK, denseV=denseV, dropout=dropout)
+                seq, _, _, _, _, _, _, _ = multihead_attention(queries=seq,
+                                                               keys=seq,
+                                                               num_units=hidden_units,
+                                                               num_heads=self.num_heads,
+                                                               dropout_rate=self.dropout_rate,
+                                                               is_training=self.is_training,
+                                                               causality=True,
+                                                               scope="self_attention",
+                                                               denseQ=denseQ, denseK=denseK, denseV=denseV,
+                                                               dropout=dropout, delta_denseQ=delta_denseQ,
+                                                               delta_denseK=delta_denseK, delta_denseV=delta_denseV)
 
                 # Feed forward
                 beta = self.variables["num_blocks_%d_after_beta" % i]
@@ -321,13 +331,18 @@ class SASRec(Recommender):
                 beta = self.variables["num_blocks_%d_ff_beta" % i]
                 gamma = self.variables["num_blocks_%d_ff_gamma" % i]
 
-                seq, _, _, _, _, _, _ = feedforward(seq,
-                                                    num_units=[hidden_units,
-                                                               hidden_units],
-                                                    dropout_rate=self.dropout_rate,
-                                                    is_training=self.is_training,
-                                                    conv1=conv1, dropout1=dropout1, conv2=conv2, dropout2=dropout2,
-                                                    beta=beta, gamma=gamma)
+                delta_conv1 = self.delta_variables["num_blocks_%d_ff_conv1" % i]
+                delta_conv2 = self.delta_variables["num_blocks_%d_ff_conv2" % i]
+
+                seq, _, _, _, _, _, _, _, _ = feedforward(seq,
+                                                          num_units=[hidden_units,
+                                                                     hidden_units],
+                                                          dropout_rate=self.dropout_rate,
+                                                          is_training=self.is_training,
+                                                          conv1=conv1, dropout1=dropout1, conv2=conv2,
+                                                          dropout2=dropout2,
+                                                          beta=beta, gamma=gamma, delta_conv1=delta_conv1,
+                                                          delta_conv2=delta_conv2)
 
                 seq *= self.mask
 
@@ -360,8 +375,35 @@ class SASRec(Recommender):
             self.update_pos_emb = self.delta_pos_emb.assign(
                 tf.nn.l2_normalize(self.getDelta(self.pos_emb_table), 1) * self.eps)
 
-            # for i in range(self.num_blocks):
-            #     print(self.getDelta(self.variables["num_blocks_%d_attention_denseQ" % i].kernel))
+            self.update_denses = []
+            for i in range(self.num_blocks):
+                grad_dense = self.getDelta(self.variables["num_blocks_%d_attention_denseQ" % i].kernel)
+                self.update_denses.append(self.delta_variables["num_blocks_%d_attention_denseQ" % i].kernel.assign(
+                    tf.nn.l2_normalize(grad_dense, 1) * self.eps))
+
+                grad_dense = self.getDelta(self.variables["num_blocks_%d_attention_denseQ" % i].bias)
+                self.update_denses.append(self.delta_variables["num_blocks_%d_attention_denseQ" % i].bias.assign(
+                    tf.nn.l2_normalize(grad_dense) * self.eps))
+
+            self.update_cnns = []
+            for i in range(self.num_blocks):
+                grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv1" % i].kernel)
+                self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv1" % i].kernel.assign(
+                    tf.nn.l2_normalize(grad_dense, 1) * self.eps))
+
+                grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv1" % i].bias)
+                self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv1" % i].bias.assign(
+                    tf.nn.l2_normalize(grad_dense) * self.eps))
+
+                grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv2" % i].kernel)
+                self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv2" % i].kernel.assign(
+                    tf.nn.l2_normalize(grad_dense, 1) * self.eps))
+
+                grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv2" % i].bias)
+                self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv2" % i].bias.assign(
+                    tf.nn.l2_normalize(grad_dense) * self.eps))
+
+
         # layers = []
         # for i in self.variables:
         #     if "beta" in i or "gamma" in i:
@@ -415,6 +457,12 @@ class SASRec(Recommender):
                 if self.args.model == "asasrec2":
                     self.sess.run([self.update_pos_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
                                                           self.is_training: False})
+                    for _update in self.update_denses:
+                        self.sess.run([_update], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                                  self.is_training: False})
+                    for _update in self.update_cnns:
+                        self.sess.run([_update], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                                  self.is_training: False})
 
                 auc, loss, _ = self.sess.run([self.auc, self.opt_loss, self.train_op],
                                              {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
@@ -432,5 +480,3 @@ class SASRec(Recommender):
 
     def get_params(self):
         return "_ml%d" % (self.maxlen)
-
-

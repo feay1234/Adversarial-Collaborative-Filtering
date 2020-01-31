@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 from multiprocessing import Process, Queue
+from tensorflow.python.ops import init_ops
+
 
 def positional_encoding(dim, sentence_length, dtype=tf.float32):
     encoded_vec = np.array([pos / np.power(10000, 2 * i / dim) for pos in range(sentence_length) for i in range(dim)])
@@ -145,7 +147,10 @@ def multihead_attention(queries,
                         denseQ=None,
                         denseK=None,
                         denseV=None,
-                        dropout=None):
+                        dropout=None,
+                        delta_denseQ=None,
+                        delta_denseK=None,
+                        delta_denseV=None):
     '''Applies multihead attention.
 
     Args:
@@ -173,9 +178,16 @@ def multihead_attention(queries,
         denseK = tf.layers.Dense(num_units, activation=None) if not denseK else denseK
         denseV = tf.layers.Dense(num_units, activation=None) if not denseV else denseV
 
-        Q = denseQ.apply(queries)  # (N, T_q, C)
-        K = denseK.apply(keys)  # (N, T_k, C)
-        V = denseV.apply(keys)  # (N, T_k, C)
+        delta_denseQ = tf.layers.Dense(num_units, activation=None, trainable=False,
+                                       kernel_initializer=init_ops.zeros_initializer()) if not delta_denseQ else delta_denseQ
+        delta_denseK = tf.layers.Dense(num_units, activation=None, trainable=False,
+                                       kernel_initializer=init_ops.zeros_initializer()) if not delta_denseK else delta_denseK
+        delta_denseV = tf.layers.Dense(num_units, activation=None, trainable=False,
+                                       kernel_initializer=init_ops.zeros_initializer()) if not delta_denseV else delta_denseV
+
+        Q = denseQ.apply(queries) + delta_denseQ.apply(queries)  # (N, T_q, C)
+        K = denseK.apply(keys) + delta_denseK.apply(keys)  # (N, T_k, C)
+        V = denseV.apply(keys) + delta_denseV.apply(keys)  # (N, T_k, C)
 
         # Split and concat
         Q_ = tf.concat(tf.split(Q, num_heads, axis=2), axis=0)  # (h*N, T_q, C/h)
@@ -233,7 +245,7 @@ def multihead_attention(queries,
     if with_qk:
         return Q, K
     else:
-        return outputs, denseQ, denseK, denseV, dropout
+        return outputs, denseQ, denseK, denseV, dropout, delta_denseQ, delta_denseK, delta_denseV
 
 
 def feedforward(inputs,
@@ -247,7 +259,9 @@ def feedforward(inputs,
                 conv2=None,
                 dropout2=None,
                 beta=None,
-                gamma=None):
+                gamma=None,
+                delta_conv1=None,
+                delta_conv2=None):
     '''Point-wise feed forward net.
 
     Args:
@@ -267,22 +281,33 @@ def feedforward(inputs,
         params = {"filters": num_units[0], "kernel_size": 1,
                   "activation": tf.nn.relu, "use_bias": True}
 
+        delta_params = {"filters": num_units[0], "kernel_size": 1,
+                        "activation": tf.nn.relu, "use_bias": True, "trainable": False,
+                        "kernel_initializer": init_ops.zeros_initializer()}
+
         conv1 = tf.layers.Conv1D(**params) if not conv1 else conv1
+        delta_conv1 = tf.layers.Conv1D(**delta_params) if not delta_conv1 else delta_conv1
+
         dropout1 = tf.layers.Dropout(rate=dropout_rate) if not dropout1 else dropout1
 
         # outputs = tf.layers.conv1d(**params)
         # outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(is_training))
-        outputs = conv1.apply(inputs)
+        outputs = conv1.apply(inputs) + delta_conv1.apply(inputs)
         outputs = dropout1.apply(outputs, training=tf.convert_to_tensor(is_training))
         # Readout layer
         # params = {"inputs": outputs, "filters": num_units[1], "kernel_size": 1,
         #           "activation": None, "use_bias": True}
         params = {"filters": num_units[1], "kernel_size": 1,
                   "activation": None, "use_bias": True}
+        delta_params = {"filters": num_units[1], "kernel_size": 1,
+                        "activation": None, "use_bias": True, "trainable": False,
+                        "kernel_initializer": init_ops.zeros_initializer()}
+
         conv2 = tf.layers.Conv1D(**params) if not conv2 else conv2
+        delta_conv2 = tf.layers.Conv1D(**delta_params) if not delta_conv2 else delta_conv2
         dropout2 = tf.layers.Dropout(rate=dropout_rate) if not dropout2 else dropout2
 
-        outputs = conv2.apply(outputs)
+        outputs = conv2.apply(outputs) + delta_conv2.apply(outputs)
         outputs = dropout2.apply(outputs, training=tf.convert_to_tensor(is_training))
 
         # Residual connection
@@ -291,7 +316,7 @@ def feedforward(inputs,
         # Normalize
         outputs, beta, gamma = normalize(outputs, beta=beta, gamma=gamma)
 
-    return outputs, conv1, dropout1, conv2, dropout2, beta, gamma
+    return outputs, conv1, dropout1, conv2, dropout2, beta, gamma, delta_conv1, delta_conv2
 
 
 def random_neq(l, r, s):

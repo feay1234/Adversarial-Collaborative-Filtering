@@ -132,11 +132,11 @@ if __name__ == '__main__':
                     args.dataset, args.model, args.embed_size, maxlen, args.reg_adv, args.eps, time_stamp)
 
             write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
-            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args,
-                            time_stamp=time_stamp)
+            # ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args,
+            #                 time_stamp=time_stamp)
 
-            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1,
-                                                  max_ndcg, best_res, ranker, dataset, args, eval_feed_dicts, runName, time_stamp)
+            # max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1,
+            #                                       max_ndcg, best_res, ranker, dataset, args, eval_feed_dicts, runName, time_stamp)
 
             if "asasrec" in args.model:
                 tf.reset_default_graph()
