@@ -454,8 +454,8 @@ class SASRec(Recommender):
                                                   self.is_training: False})
 
                 if self.args.model == "asasrec2":
-                    # self.sess.run([self.update_pos_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
-                    #                                       self.is_training: False})
+                    self.sess.run([self.update_pos_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                                                          self.is_training: False})
                     for _update in self.update_denses:
                         self.sess.run([_update], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
                                                   self.is_training: False})
