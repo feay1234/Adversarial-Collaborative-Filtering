@@ -9,6 +9,7 @@ from NaiveBaselines import MostPopular, MostFrequentlyVisit, MostRecentlyVisit
 from NeuMF import NeuMF
 from SASRec import SASRec
 from utils import *
+import glob
 
 
 
@@ -27,9 +28,9 @@ def parse_args():
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,
                         help='batch_size')
-    parser.add_argument('--epochs', type=int, default=2,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='Number of epochs.')
-    parser.add_argument('--adv_epoch', type=int, default=1,
+    parser.add_argument('--adv_epoch', type=int, default=0,
                         help='Add APR in epoch X, when adv_epoch is 0, it\'s equivalent to pure AMF.\n '
                              'And when adv_epoch is larger than epochs, it\'s equivalent to pure MF model. ')
     parser.add_argument('--embed_size', type=int, default=64,
@@ -51,6 +52,12 @@ def parse_args():
     parser.add_argument('--adv', nargs='?', default='grad',
                         help='Generate the adversarial sample by gradient method or random method')
     parser.add_argument('--eps', type=float, default=0.5,
+                        help='Epsilon for adversarial weights.')
+    parser.add_argument('--eps_dense', type=float, default=0.5,
+                        help='Epsilon for adversarial weights.')
+    parser.add_argument('--eps_conv', type=float, default=0.5,
+                        help='Epsilon for adversarial weights.')
+    parser.add_argument('--eps_pos', type=float, default=0.5,
                         help='Epsilon for adversarial weights.')
     parser.add_argument('--eval_mode', type=str, default="sample",
                         help='Eval mode: sample or all')
@@ -112,6 +119,11 @@ if __name__ == '__main__':
         pass
 
     else:
+
+        if args.model == "asasrec2":
+
+            pass
+
         # initialize the max_ndcg to memorize the best result
         max_ndcg = -1
         best_res = {}
@@ -120,23 +132,31 @@ if __name__ == '__main__':
 
         runName = "%s_%s_d%d_%s" % (args.dataset, args.model, args.embed_size, time_stamp)
         print(dataset.num_users, dataset.num_items)
+        print(runName)
 
         if args.model in ["sasrec", "asasrec", "asasrec2", "asasrec3"]:
-            time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
+            # time_stamp = strftime('%Y_%m_%d_%H_%M_%S', localtime())
             args.adver = 0
             # maxlen = int(dataset.df.groupby("uid").size().mean())
             maxlen = min(int(dataset.df.groupby("uid").size().mean()), 50)
             print(maxlen, int(dataset.df.groupby("uid").size().mean()))
-            if "asasrec" in args.model:
+            if args.model == "asasrec":
                 runName = "%s_%s_d%d_ml%d_l%.2f_e%.2f_%s" % (
                     args.dataset, args.model, args.embed_size, maxlen, args.reg_adv, args.eps, time_stamp)
+            elif args.model == "asasrec2":
+                runName = "%s_%s_d%d_ml%d_l%.2f_e%.2f_ep%.3f_ed%.3f_ec%.3f_%s" % (
+                    args.dataset, args.model, args.embed_size, maxlen, args.reg_adv, args.eps, args.eps_pos, args.eps_dense, args.eps_conv, time_stamp)
 
-            write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
-            ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args,
-                            time_stamp=time_stamp)
-            #
-            max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1,
-                                                  max_ndcg, best_res, ranker, dataset, args, eval_feed_dicts, runName, time_stamp)
+            print(runName)
+
+            if args.adv_epoch > 0:
+
+                write2file(args.path + "out/" + args.opath, runName + ".out", "Initialize SASREC")
+                ranker = SASRec(dataset.num_users, dataset.num_items, args.embed_size, maxlen, args=args,
+                                time_stamp=time_stamp)
+                #
+                max_ndcg, best_res = run_normal_model(0, args.epochs if args.model == "sasrec" else args.adv_epoch - 1,
+                                                      max_ndcg, best_res, ranker, dataset, args, eval_feed_dicts, runName, time_stamp)
 
             if "asasrec" in args.model:
                 tf.reset_default_graph()

@@ -373,35 +373,35 @@ class SASRec(Recommender):
         if self.args.model == "asasrec2":
 
             self.update_pos_emb = self.delta_pos_emb.assign(
-                tf.nn.l2_normalize(self.getDelta(self.pos_emb_table), 1) * self.eps)
+                tf.nn.l2_normalize(self.getDelta(self.pos_emb_table), 1) * self.args.eps_pos)
 
             self.update_denses = []
             for i in range(self.num_blocks):
                 grad_dense = self.getDelta(self.variables["num_blocks_%d_attention_denseQ" % i].kernel)
                 self.update_denses.append(self.delta_variables["num_blocks_%d_attention_denseQ" % i].kernel.assign(
-                    tf.nn.l2_normalize(grad_dense, 1) * self.eps))
+                    tf.nn.l2_normalize(grad_dense, 1) * self.args.eps_dense))
 
                 grad_dense = self.getDelta(self.variables["num_blocks_%d_attention_denseQ" % i].bias)
                 self.update_denses.append(self.delta_variables["num_blocks_%d_attention_denseQ" % i].bias.assign(
-                    tf.nn.l2_normalize(grad_dense) * self.eps))
+                    tf.nn.l2_normalize(grad_dense) * self.args.eps_dense))
 
             self.update_cnns = []
             for i in range(self.num_blocks):
                 grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv1" % i].kernel)
                 self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv1" % i].kernel.assign(
-                    tf.nn.l2_normalize(grad_dense, 1) * self.eps))
+                    tf.nn.l2_normalize(grad_dense, 1) * self.args.eps_conv))
 
                 grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv1" % i].bias)
                 self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv1" % i].bias.assign(
-                    tf.nn.l2_normalize(grad_dense) * self.eps))
+                    tf.nn.l2_normalize(grad_dense) * self.args.eps_conv))
 
                 grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv2" % i].kernel)
                 self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv2" % i].kernel.assign(
-                    tf.nn.l2_normalize(grad_dense, 1) * self.eps))
+                    tf.nn.l2_normalize(grad_dense, 1) * self.args.eps_conv))
 
                 grad_dense = self.getDelta(self.variables["num_blocks_%d_ff_conv2" % i].bias)
                 self.update_denses.append(self.delta_variables["num_blocks_%d_ff_conv2" % i].bias.assign(
-                    tf.nn.l2_normalize(grad_dense) * self.eps))
+                    tf.nn.l2_normalize(grad_dense) * self.args.eps_conv))
 
 
         # layers = []
@@ -454,8 +454,8 @@ class SASRec(Recommender):
                                                   self.is_training: False})
 
                 if self.args.model == "asasrec2":
-                    self.sess.run([self.update_pos_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
-                                                          self.is_training: False})
+                    # self.sess.run([self.update_pos_emb], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
+                    #                                       self.is_training: False})
                     for _update in self.update_denses:
                         self.sess.run([_update], {self.u: u, self.input_seq: seq, self.pos: pos, self.neg: neg,
                                                   self.is_training: False})

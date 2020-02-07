@@ -1,3 +1,4 @@
+import glob
 import random
 import torch
 import pandas as pd
@@ -286,10 +287,16 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
         if args.adver:
             ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
             ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
+            mylist = [f for f in glob.glob("Pretrain/save/%s/SASREC/embed_%d/*" % (args.dataset, args.embed_size))]
+            args.restore = mylist[0] + "/"
+            ckpt_restore_path = mylist[0] + "/"
+
         else:
             ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
             ckpt_restore_path = 0 if args.restore is None else "Pretrain/%s/SASREC/embed_%d/%s/" % (
             args.dataset, args.embed_size, args.restore)
+
+            # Pretrain/fsq11-sort/SASREC/embed_64/2020_01_24_12_50_17/
 
         if not os.path.exists(ckpt_save_path):
             os.makedirs(ckpt_save_path)
@@ -303,8 +310,9 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
         if args.restore is not None or epoch_start:
             ckpt = tf.train.get_checkpoint_state(os.path.dirname(str(ckpt_restore_path) + 'checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
+                # TODO add feature to get input from user then start from pre-trained.
                 saver_ckpt.restore(sess, ckpt.model_checkpoint_path)
-                print("restored")
+                print("restored", ckpt_restore_path)
         # initialize the weights
         else:
             print("Initialized from scratch")
@@ -317,6 +325,7 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
             # training the model
             train_begin = time()
             loss = ranker.train(x_train, y_train, args.batch_size)
+            # loss = 0
             train_time = time() - train_begin
 
             if epoch_count % args.verbose == 0:
