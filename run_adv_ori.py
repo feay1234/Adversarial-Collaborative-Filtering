@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='fsq11-sort',
                         help='Choose a dataset.')
     parser.add_argument('--model', type=str,
-                        help='Model Name', default="asasrec2")
+                        help='Model Name', default="pop")
     parser.add_argument('--verbose', type=int, default=1,
                         help='Evaluate per X epochs.')
     parser.add_argument('--batch_size', type=int, default=512,

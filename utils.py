@@ -287,9 +287,9 @@ def run_normal_model(epoch_start, epoch_end, max_ndcg, best_res, ranker, dataset
         if args.adver:
             ckpt_save_path = "Pretrain/%s/ASASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
             ckpt_restore_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
-            mylist = [f for f in glob.glob("Pretrain/save/%s/SASREC/embed_%d/*" % (args.dataset, args.embed_size))]
-            args.restore = mylist[0] + "/"
-            ckpt_restore_path = mylist[0] + "/"
+            # mylist = [f for f in glob.glob("Pretrain/save/%s/SASREC/embed_%d/*" % (args.dataset, args.embed_size))]
+            # args.restore = mylist[0] + "/"
+            # ckpt_restore_path = mylist[0] + "/"
 
         else:
             ckpt_save_path = "Pretrain/%s/SASREC/embed_%d/%s/" % (args.dataset, args.embed_size, time_stamp)
